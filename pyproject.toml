@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "occultation_recon"
+version = "0.1.0"
+description = "CASSPIAN Occultation Reconstruction Toolkit for Saturn atmospheric profiles"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "netCDF4",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
