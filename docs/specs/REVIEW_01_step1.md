@@ -52,3 +52,20 @@ v0.4 carry them.
 
 **Then:** commit Step 1 (code plus the `.gitignore` line), rerun nothing (Step 1 writes no
 product), set STATE row 1 to `accepted`, and begin Step 2.
+
+---
+
+## Addendum, after the changes were applied
+
+Both further defects are real and both proposed readings are adopted (SPEC_00 v0.5).
+
+11. `positive` is required only of vertical coordinates, defined by name (`pressure`,
+    `geopotential`, `height`, `radius` in the coordinate name); other coordinates carry neither
+    `positive` nor `direction`. Strict monotonicity stays on every coordinate.
+12. Uncertainty companions are named by inserting `_uncertainty` before the unit suffix, and a
+    variable with no unit suffix appends it. The section 6 tables were already written that way;
+    section 5 now says it. The `VarSpec.uncertainty_name` mechanism is fine as the
+    implementation, but with the rule stated the default should produce the right name without
+    per-variable overrides; keeping the override for the two cases already set is acceptable.
+
+Step 1 stands accepted. Commit it, set STATE row 1 to `accepted`, begin Step 2.

@@ -2,8 +2,8 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.4, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 and 1 accepted; v0.4 aligns with SPEC_00 v0.4 (harmonic code, uncertainty vocabulary, reports directory, commit and rebuild rule).
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.4, which it does not repeat.
+Version 0.5, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 and 1 accepted. See §13 for the revision history.
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.6, which it does not repeat.
 
 ---
 
@@ -11,10 +11,16 @@ Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.4, which it does not repe
 
 **One step at a time.** This document is a sequence of steps, each producing one deliverable
 with its own acceptance checks. The coding agent implements one step, runs its acceptance
-checks from a script kept under `reports/<step>/` (not committed; SPEC_00 §2), writes `docs/specs/REPORT_01_<step>.md` stating what was built, what deviates from the
+checks from a script kept under `reports/step<N>/` (ignored; SPEC_00 §2), writes `reports/REPORT_01_step<N>.md` stating what was built, what deviates from the
 spec and why, the acceptance results with the actual numbers, and any question that blocked it,
 updates `docs/specs/STATE.md`, and **stops**. The next step begins only after the report has
 been reviewed. Do not implement ahead. Do not build two steps in one commit.
+
+**Housekeeping at the start of Step 2 (one commit, before the step's code).** Move the
+existing `REPORT_01_step0.md`, `REPORT_01_step1.md`, `REVIEW_01_step0.md`, and
+`REVIEW_01_step1.md` from `docs/specs/` to `reports/` with `git mv`; change the `.gitignore`
+rule from `reports/` to `reports/step*/`; commit. From then on reports and reviews are written
+to `reports/` directly.
 
 **Commit on acceptance, then rebuild.** A step's code is committed when its review says
 `accepted`. Any data product the step wrote before that commit carries `-dirty` in
@@ -413,7 +419,9 @@ six figures. `read` as kind C succeeds and refuses when one mole fraction is per
 `casspian-lindal-inputs`, which:
 
 1. Writes `lindal_thermo.nc`, kind T (SPEC_00 §6.1): `pressure_Pa`, `temperature_K`,
-   `height_m` from the raw bundle's `table1` group, uncertainty variables present and NaN, and
+   `height_m` from the raw bundle's `table1` group, the three uncertainty companions
+   (`pressure_uncertainty_Pa`, `temperature_uncertainty_K`, `height_uncertainty_m`) present and
+   NaN, and
    every global attribute of §6.1 filled from the `scalars` groups (latitude with convention
    in the name, its `value_source`, swath, uncertainty, longitude, date, bands, datum,
    source top boundary statement, source gravity, rotation, and wind citations), with
@@ -464,3 +472,15 @@ acceptance number will be the wind-included `phi_c` reported in Step 6 and the w
    rather than as Lindal's iteration with wind, because with a latitude-dependent wind the
    effective field is not conservative and the two do not agree exactly (§6). The difference
    is itself a useful number and is to be reported.
+
+---
+
+## 13. Revision history
+
+| Version | Date | Change | Cause |
+|---|---|---|---|
+| 0.1 | 2026-09-10 | First draft: Step 0 reset plus nine steps with acceptance numbers | SPEC_00 v0.2 accepted |
+| 0.2 | 2026-09-10 | Step 0 force-adds ignored Phase 1 files before tagging; header dependency corrected; Step 7 rewritten as a two-dimensional reduction wind with flagged extension | coding agent pre-execution review of Step 0; discussion of Steps 7 to 9 |
+| 0.3 | 2026-09-10 | Step 1 item 0 (`.gitattributes`); version rule; `raw/notes.md` hashed into the raw bundle | REVIEW_01_step0 |
+| 0.4 | 2026-09-10 | `harmonic_convention` code; `uncertainty_kind = "1sigma"` with `uncertainty_method`; `reports/` for acceptance scripts; commit-on-acceptance-then-rebuild rule; `thermo_instance` on the Lindal kind T | REVIEW_01_step1 |
+| 0.5 | 2026-09-10 | Uncertainty companion names spelled out in Step 9; Step 2 housekeeping commit moving reports and reviews to `reports/`; this section added | REPORT_01_step1 §6; author request |
