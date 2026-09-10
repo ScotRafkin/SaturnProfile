@@ -14,7 +14,9 @@ dependencies = [
     "netCDF4",
 ]
 
-# Console entry points are added as the tools of SPEC_01 appear. None exist yet.
+# Console entry points are added as the tools of SPEC_01 appear.
+[project.scripts]
+casspian-lindal-raw = "casspian.tools.lindal.build_raw:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

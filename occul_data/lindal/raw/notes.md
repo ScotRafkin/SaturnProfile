@@ -17,8 +17,8 @@ the end gap at 1298.48 mbar left blank. The profile values are trusted (S. Rafki
 
 Every scalar the paper states that the reduction needs, each with the page, table, figure, or
 caption it was read from. Read from the PDF in `docs/` on 9 and 10 September 2026 by the app
-agent; marked for a second reader before the raw bundle is frozen. If a value is found wrong,
-correct it here and rerun the chain from stage one; nothing downstream is edited by hand.
+agent and accepted by S. Rafkin on 10 September 2026 (REVIEW_01_step2). If a value is found
+wrong, correct it here and rerun the chain from stage one; nothing downstream is edited by hand.
 
 Two items worth knowing when checking it. The paper states no numerical top boundary condition
 for its hydrostatic integration (only "from the top of the detectable atmosphere and
