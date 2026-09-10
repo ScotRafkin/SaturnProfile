@@ -39,6 +39,11 @@ HARMONIC_CONVENTION = "CASSPIAN-J1"
 #: The codes this reader knows. A kind G file carrying any other code is refused.
 KNOWN_HARMONIC_CONVENTIONS = frozenset({HARMONIC_CONVENTION})
 
+#: SPEC_00 section 5. Two of these are easily confused, so section 5 defines them: `derived`
+#: is obtained from measurements by a fit or a computation with no additional physical
+#: assumption (a harmonic coefficient fitted to tracking data, a pressure from a hydrostatic
+#: integration); `inferred` is deduced through a model assumption the source declares (an
+#: ammonia abundance from an opacity with an assumed line shape).
 PROVENANCE_VALUES = frozenset(
     {
         "measured",
@@ -51,6 +56,9 @@ PROVENANCE_VALUES = frozenset(
         # Produced by `casspian.forward`. Appears only in files the model writes, so that a
         # delivered field is never mistaken for a retrieval when the two lie side by side.
         "modeled",
+        # A coordinate that is a label rather than a measurement: `degree`, `species_name`,
+        # `surface`.
+        "index",
     }
 )
 

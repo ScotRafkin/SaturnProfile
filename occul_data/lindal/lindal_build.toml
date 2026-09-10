@@ -1,0 +1,19 @@
+# CASSPIAN build control file for the Lindal profile (SPEC_00 section 2.2.2).
+# Pointers and declared choices only; every physical value lives in the files this points at.
+# Sections are added as the steps that read them appear. Steps 7, 8 and 9 add [wind],
+# [composition] and the stage two settings.
+
+[gravity]
+# The harmonic set that stands for what the source used. Lindal et al. (1985) cite
+# Null et al. (1981); that choice is the content of this section.
+source = "../../data_static/harmonics/null1981.toml"
+output = "lindal_gravity.nc"
+prefix = "lindal"
+title  = "Null et al. (1981) harmonic set, as used in the Lindal reduction"
+
+[rotation]
+source = "../../data_static/rotation/system_iii.toml"
+entry  = "system_iii"
+output = "lindal_rotation.nc"
+prefix = "lindal"
+title  = "System III rotation, as used in the Lindal reduction"

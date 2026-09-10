@@ -28,7 +28,7 @@ value_source = "Null et al. 1981, Table XIV, Solution 6 (final adopted): J4 = -9
 
 [J.6]
 value = 84.0e-6
-uncertainty = 0.0
+uncertainty = nan             # unstated: an assumed value has no uncertainty on record; NaN, never 0.0
 fitted = false
 status = "verified"
 value_source = "Null et al. 1981, Sec. II g, p. 461: 'The value J6 = 84 x 10^-6 from Saturn interior models (Slattery 1977) is used for all calculations in this paper'; Table XIV note a. Not fitted; J2 and J4 conditional on it through the relation J2 - (J4 + 937e-6)/2.28 + (J6 - 84e-6)/5.137 = (16479 +/- 3)e-6 (p. 466)."

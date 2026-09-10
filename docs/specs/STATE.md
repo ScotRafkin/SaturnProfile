@@ -9,7 +9,7 @@ reviewed against the specification.
 | 0 | Repository reset and skeleton | accepted | `reports/REPORT_01_step0.md`, `reports/REVIEW_01_step0.md` | 2026-09-10 |
 | 1 | `.gitattributes`; `lib.constants`, `lib.schema`, `lib.io` | accepted | `reports/REPORT_01_step1.md`, `reports/REVIEW_01_step1.md` | 2026-09-10 |
 | 2 | `tools/lindal/build_raw.py`, the raw bundle | accepted | `reports/REPORT_01_step2.md`, `reports/REVIEW_01_step2.md` | 2026-09-10 |
-| 3 | `tools/gravity/`, kinds G and R | not started | | |
+| 3 | `tools/gravity/`, kinds G and R | accepted | `reports/REPORT_01_step3.md`, `reports/REVIEW_01_step3.md` | 2026-09-10 |
 | 4 | `lib.gravity` | not started | | |
 | 5 | `lib.geoid` | not started | | |
 | 6 | `lib.latitude` | not started | | |

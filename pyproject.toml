@@ -17,6 +17,8 @@ dependencies = [
 # Console entry points are added as the tools of SPEC_01 appear.
 [project.scripts]
 casspian-lindal-raw = "casspian.tools.lindal.build_raw:main"
+casspian-gravity-file = "casspian.tools.gravity.build_gravity:main"
+casspian-rotation-file = "casspian.tools.gravity.build_rotation:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
