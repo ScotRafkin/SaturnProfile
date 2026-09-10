@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.5, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 and 1 accepted. See §13 for the revision history.
+Version 0.6, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 4 accepted. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.6, which it does not repeat.
 
 ---
@@ -232,21 +232,42 @@ an argument:
 - `g_eff_radial(u, r, phi_c, Omega, GM, J, degrees, R_norm)`: Eq. A3 (equivalently A4),
   positive inward.
 - `G_phi_eff(u, r, phi_c, Omega, GM, J, degrees, R_norm)`: Eq. A5.
-- `g_eff_vector(...)` returning both, and the magnitude and the angle ψ = arctan(G_φ / g)
-  (Lindal Eq. 5 with the sign convention of handoff §9A.5: Lindal's outward `g_r` is `−g`).
+- `g_eff_vector(...)` returning both, the magnitude, and the angle ψ = arctan2(−G_φ, g).
+
+**Sign convention for `G_φ` (ruled at the Step 4 review, v0.6).** `G_φ` is the component of
+the effective gravity along increasing planetocentric latitude, exactly as the formula
+`−(1/r) ∂V/∂φ` defines it. It is negative in the northern hemisphere and positive in the
+southern, the bulge and the centrifugal term both pulling toward the equator. It is never
+redefined as "equatorward positive": a component along a coordinate direction keeps one
+meaning in both hemispheres, and Eq. B3, `g dr₀/dφ = r₀ G_φ`, holds as written with this
+convention (dr₀/dφ < 0 north of the equator) and would need a hemisphere dependent sign with
+the other. The angle ψ = φ_g − φ_c is the tilt of the local vertical from the radial
+direction toward the pole, positive in the north, so ψ = arctan2(−G_φ, g); the minus sign is
+part of the definition of ψ, not a correction. Handoff §9A.5 and the manuscript's statement
+of Lindal Eq. 5 are to be read with `G_φ` in this convention; the manuscript is to be checked
+for consistency (manuscript notes list).
 
 All functions accept scalars or broadcastable arrays. No file I/O in this module.
 
-**Acceptance.** With Null's set at 60,000 km, GM = 3.7931206e16, System III, and the 1 bar
-radii from `lindal_scalars.toml` (60,268 and 54,364 km): `g_eff_radial` at the equator with
-u = 450 m/s is 8.951 ± 0.005 m/s² and with u = 0 is 9.102; at the pole 12.137 (Lindal Table II:
-8.96, 12.14). With Null's GM (3.7929085e16) the same to within 5e-4 m/s². `G_phi_eff` is zero
-at the equator and the pole to round-off and positive (toward the equator, by the sign of
-Eq. A5 with the J2 term) at 45° at 1 bar radius with u = 0, magnitude reported. Jupiter check
-optional but recommended: with J2 = 14736e-6, J4 = −587e-6, J6 = 31e-6 at 71,398 km,
+**Acceptance.** With Null's set at 60,000 km, the planet GM read from `iess2019.toml`
+(3.7931206234e16), System III, and the 1 bar radii from `lindal_scalars.toml` (60,268 and
+54,364 km): `g_eff_radial` at the equator with u = 450 m/s is 8.951 ± 0.005 m/s² and with
+u = 0 is 9.102; at the pole 12.137 (Lindal Table II: 8.96, 12.14). With Null's GM
+(3.7929085e16) the same to within 1e-3 m/s² (the two GM values differ by 5.6e-5 relative, so
+the shift is 6e-4 at the equator and 6.8e-4 at the pole; v0.5 said 5e-4, which was set without
+allowing for the polar value). `G_phi_eff` is zero at the equator and the pole to round-off and
+negative (equatorward, by the convention above) at 45° north on a sphere of the 1 bar
+equatorial radius with u = 0, value reported; on that sphere it is −1.056 m/s² and ψ is 6.35°,
+to be read as a sign and an order of magnitude, since the geoid radius at 45° is Step 5's
+product and this check is to be repeated on the constructed surface once it exists. Jupiter
+check optional but recommended: with J2 = 14736e-6, J4 = −587e-6, J6 = 31e-6 at 71,398 km,
 GM = 1.26686534e17, period 9h 55m 29.7s, radii 71,492 and 66,854 km, u = 100 m/s at the
 equator: 23.116 and 27.015 (Lindal: 23.12, 27.01). A deliberately wrong coefficient (5, 9, 13)
-must give 9.29 and 11.68, demonstrating that the check discriminates.
+must give 9.29 at the equator with u = 0 (against the correct 9.102; with u = 450 the wrong
+value is 9.14 against 8.951) and 11.68 at the pole (against 12.137), demonstrating that the
+check discriminates. Every Saturn number in the acceptance script is read from the static
+transcriptions; the Jupiter values, which appear in no static file, are quoted from this
+paragraph and labeled as such.
 
 ---
 
@@ -484,3 +505,4 @@ acceptance number will be the wind-included `phi_c` reported in Step 6 and the w
 | 0.3 | 2026-09-10 | Step 1 item 0 (`.gitattributes`); version rule; `raw/notes.md` hashed into the raw bundle | REVIEW_01_step0 |
 | 0.4 | 2026-09-10 | `harmonic_convention` code; `uncertainty_kind = "1sigma"` with `uncertainty_method`; `reports/` for acceptance scripts; commit-on-acceptance-then-rebuild rule; `thermo_instance` on the Lindal kind T | REVIEW_01_step1 |
 | 0.5 | 2026-09-10 | Uncertainty companion names spelled out in Step 9; Step 2 housekeeping commit moving reports and reviews to `reports/`; this section added | REPORT_01_step1 §6; author request |
+| 0.6 | 2026-09-10 | Step 4: `G_φ` sign convention ruled (along increasing latitude; ψ = arctan2(−G_φ, g)); Null GM tolerance 1e-3; wrong coefficient values paired with their no-wind counterparts; GM read from `iess2019.toml`; the 45° check placed on the equatorial 1 bar sphere with a repeat on the Step 5 surface | REPORT_01_step4 §3 |
