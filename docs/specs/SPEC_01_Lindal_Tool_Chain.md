@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.6, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 4 accepted. See §13 for the revision history.
+Version 0.7, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 5 accepted. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.6, which it does not repeat.
 
 ---
@@ -278,33 +278,52 @@ paragraph and labeled as such.
 **Deliverable: `src/casspian/lib/geoid.py`.** Pure functions:
 
 - `U_rigid(r, phi_c, Omega, GM, J, degrees, R_norm)`: Lindal Eq. 11, the potential of a
-  uniformly rotating fluid, `U = V − ½ Ω² r² cos² φ_c` in the sign convention where `g_eff =
-  −grad U` and U → 0 on the axis at infinity (Lindal's form is stated with the opposite overall
-  sign; use one convention and say which in the docstring).
+  uniformly rotating fluid, `U = V − ½ Ω² r² cos² φ_c`, with `g_eff = −grad U` and U → 0 on
+  the axis at infinity. This is Lindal's Eq. 11 term for term and in the same sign (v0.6 said
+  his form carried the opposite overall sign; it does not, and the docstring is not to claim
+  it). With `g` positive inward, `dU/dr = g`.
 - `reference_geoid(phi_c_grid, r_polar, Omega, GM, J, degrees, R_norm, tol_m, max_iter)`:
   Lindal Eqs. 12 to 14. Set `U_ref = U_rigid(r_polar, π/2)`; at each latitude iterate
-  `r ← r + (U(r, φ) − U_ref) / g_r(r, φ)` from an ellipsoid seed until `|Δr| < tol_m`. Returns
-  `r_ref(φ_c)`, the iteration count per latitude, and the final `|ΔU|`. This is the **no-wind**
-  reference geoid.
-- `wind_geoid(phi_c_grid, r_polar, u_of_phi, Omega, GM, J, degrees, R_norm, tol_m, max_iter)`:
-  the same construction with the full effective gravity of Step 4, `u` altitude independent
-  (Lindal's assumption), which is the manuscript's Eq. B3 solved as a potential closure rather
-  than as an ODE in latitude. Since with wind the field is not exactly conservative when u
-  varies with latitude (that is the whole point of §A6), this function integrates the slope
-  equation `g dr₀/dφ = r₀ G_φ` (Eq. B3) from the pole inward with a fourth-order scheme on the
-  supplied latitude grid, using the Step 4 components with `u(φ)`, and reports the closure
-  `U(r₀(φ), φ) − U_ref` as a diagnostic of how far the wind takes the surface from an
-  equipotential. Both the ODE result and the closure are returned.
-- `radius_at(phi_c, geoid)`: interpolation of a constructed geoid to a latitude (linear in
-  sin φ_c, stated).
+  `r ← r − (U(r, φ) − U_ref) / g` from an ellipsoid seed until `|Δr| < tol_m` (Lindal Eq. 14
+  is `Δr = ΔU / g_r` with his outward `g_r = −g`; same update). Returns `r_ref(φ_c)`, the
+  iteration count per latitude, and the final `|ΔU|`. This is the **no-wind** reference geoid.
+  It is solved independently at every latitude supplied, so any latitude at which the radius
+  is wanted is to be put in the grid and solved, never interpolated.
+- `wind_geoid(phi_c_grid, r_polar, u_of_phi, Omega, GM, J, degrees, R_norm)`: the surface a
+  latitude dependent, altitude independent wind produces (Lindal's assumption), which is the
+  manuscript's Eq. B3, `g dr₀/dφ = r₀ G_φ`, integrated from each pole inward with a
+  fourth-order scheme on the supplied latitude grid using the Step 4 components with `u(φ)`.
+  Since with wind the field is not conservative when u varies with latitude (§A6), this surface
+  is the level set of nothing, and no potential closure is defined for it. The function returns
+  the radius and, as a diagnostic, `U(r₀(φ), φ) − U_ref` against the **no-wind** potential
+  through the same polar radius, which is the dynamical height of the wind surface above the
+  no-wind geoid in potential units (divide by `g` for meters). No pseudo-potential built from
+  `Ω_abs` is to be evaluated or reported; its variation along the surface restates the wind
+  kinetic term and measures nothing. The march accepts any grid, so a latitude at which the
+  radius is wanted (the anchor latitude above all) is to be inserted as a node, never
+  interpolated. No `tol_m` or `max_iter` arguments: an initial value problem does not iterate.
+- `radius_at(phi_c, phi_c_grid, radii)`: interpolation of a constructed geoid to a latitude,
+  for the vectorized uses of Step 7 and later, never for the frozen anchor radius. Scheme
+  (ruled at the Step 5 review, v0.7): bracket the target between its two neighboring grid
+  nodes in `φ_c`, then interpolate `1/r²` linearly in `sin² φ_c` between them. For an ellipse
+  `1/r² = sin² φ / b² + cos² φ / a²` holds exactly, so the scheme interpolates only the
+  harmonic and wind residual; measured error at the anchor latitude is eight times smaller
+  than linear in `sin φ_c` (v0.6) at equal spacing. Because `sin² φ_c` is not monotonic across
+  the equator, the bracketing is done in `φ_c`, and an interval that straddles the equator is
+  refused; a grid is to contain the equator as a node. Refuses to extrapolate.
 
-**Acceptance.** No-wind reference geoid with Null's set, System III, `r_polar` = 54,438 km:
-equatorial radius 60,244 ± 2 km and `r(31.0°)` = 58,435 ± 2 km (handoff §9A.6 numbers, which
-were computed the same way); `r(30.8185°)` = 58,452.9 ± 2 km (handoff §9A.8). Wind geoid with
-the Step 6 wind (or, if Step 6 is not yet built, a stand-in `u(φ)` with 450 m/s at the equator
-falling to zero by 35°): equatorial radius larger than the no-wind value by roughly 120 km
-(handoff: Lindal's fitted 60,367 against 60,244 no-wind, the wind bulge). The exact number with
-the real Smith wind is to be reported, not prescribed, and compared to 60,367 ± 4.
+**Acceptance.** No-wind reference geoid with Null's set and Null's GM (the reduction uses
+the GM of `lindal_gravity.nc`, which is Null's; the handoff numbers below were evidently
+computed with the modern GM, and the two differ by 0.2 km, inside the tolerance), System III,
+`r_polar` = 54,438 km: equatorial radius 60,244 ± 2 km and `r(31.0°)` = 58,435 ± 2 km
+(handoff §9A.6); `r(30.8185°)` = 58,452.9 ± 2 km (handoff §9A.8); the surface is an
+equipotential to a stated residual. The 45° check of Step 4 repeated on this surface, value
+reported. Wind geoid: grid convergence of the equatorial radius under refinement is the
+acceptance; a stand-in `u(φ)` does not determine the bulge (profiles equally consistent with
+"450 m/s at the equator falling to zero by 35°" give 66 to 215 km), so no bulge figure is
+prescribed here. The comparison of the wind geoid equatorial radius with Lindal's fitted
+60,367 ± 4 km belongs to Step 7, with the real Smith wind, where the number is to be reported,
+not prescribed.
 
 ---
 
@@ -316,9 +335,11 @@ the real Smith wind is to be reported, not prescribed, and compared to 60,367 ±
 
 - `planetocentric_from_ellipsoid(phi_g, flattening)`: the seed, `tan φ_c = (1−f)² tan φ_g`.
 - `planetocentric_fixed_point(phi_g, surface, u_of_phi, Omega, GM, J, degrees, R_norm,
-  tol_deg, max_iter)`: iterate `φ_c ← φ_g − ψ(φ_c)` with ψ from Step 4 evaluated on the
-  supplied surface (a constructed geoid from Step 5) at `r = surface(φ_c)`, seeded from the
-  ellipsoid. Returns `φ_c`, ψ, the iterates, and the count. Vectorized over `phi_g` for the
+  tol_deg, max_iter)`: iterate `φ_c ← φ_g − ψ(φ_c)` with ψ from Step 4 evaluated at
+  `r = surface(φ_c)`, where `surface` is a Step 5 construction solved at the current
+  iterate's latitude (for the no-wind geoid, a direct Newton solve at that latitude; for the
+  wind geoid, a march with that latitude inserted as a node), not an interpolated radius
+  (Step 5 review, v0.7). Seeded from the ellipsoid. Returns `φ_c`, ψ, the iterates, and the count. Vectorized over `phi_g` for the
   wind tool.
 - The inverse, `planetographic_from_planetocentric`, which is a direct evaluation.
 
@@ -392,7 +413,11 @@ column of `u_total_ms` is identical. `read` of the file as kind W succeeds and t
 §6.6 load-time checks (sum identity to round-off; constancy of `Omega_abs` from
 `u_cylindrical_ms` on cylinders to the declared tolerance) pass; the maximum of
 `|u_shear_ms|` is reported. The report includes a plot of the binned mean with ±std against
-latitude over the digitized points.
+latitude over the digitized points. With the binned wind as `u(φ)`, the Step 5 wind geoid
+through `r_polar` = 54,438 km is run and its equatorial radius reported and compared with
+Lindal's fitted 60,367 ± 4 km (moved here from Step 5 at v0.7); the number is to be reported,
+not prescribed, and a departure is a finding about the wind, the anchoring, or Lindal's fit,
+to be discussed rather than tuned away.
 
 ---
 
@@ -506,3 +531,4 @@ acceptance number will be the wind-included `phi_c` reported in Step 6 and the w
 | 0.4 | 2026-09-10 | `harmonic_convention` code; `uncertainty_kind = "1sigma"` with `uncertainty_method`; `reports/` for acceptance scripts; commit-on-acceptance-then-rebuild rule; `thermo_instance` on the Lindal kind T | REVIEW_01_step1 |
 | 0.5 | 2026-09-10 | Uncertainty companion names spelled out in Step 9; Step 2 housekeeping commit moving reports and reviews to `reports/`; this section added | REPORT_01_step1 §6; author request |
 | 0.6 | 2026-09-10 | Step 4: `G_φ` sign convention ruled (along increasing latitude; ψ = arctan2(−G_φ, g)); Null GM tolerance 1e-3; wrong coefficient values paired with their no-wind counterparts; GM read from `iess2019.toml`; the 45° check placed on the equatorial 1 bar sphere with a repeat on the Step 5 surface | REPORT_01_step4 §3 |
+| 0.7 | 2026-09-10 | Step 5: `radius_at` scheme changed to `1/r²` linear in `sin² φ_c` with bracketing in `φ_c`; anchor radius solved or marched, never interpolated; closure diagnostic fixed as the no-wind potential departure, pseudo-potential excluded; stand-in bulge figure dropped, 60,367 comparison moved to Step 7; Null GM stated for the reduction geoid; `U_rigid` sign claim about Lindal Eq. 11 withdrawn; unused arguments removed from `wind_geoid` | REPORT_01_step5 §3; author direction on the interpolant |

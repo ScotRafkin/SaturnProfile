@@ -11,7 +11,7 @@ reviewed against the specification.
 | 2 | `tools/lindal/build_raw.py`, the raw bundle | accepted | `reports/REPORT_01_step2.md`, `reports/REVIEW_01_step2.md` | 2026-09-10 |
 | 3 | `tools/gravity/`, kinds G and R | accepted | `reports/REPORT_01_step3.md`, `reports/REVIEW_01_step3.md` | 2026-09-10 |
 | 4 | `lib.gravity` | accepted | `reports/REPORT_01_step4.md`, `reports/REVIEW_01_step4.md` | 2026-09-10 |
-| 5 | `lib.geoid` | not started | | |
+| 5 | `lib.geoid` | accepted with changes | `reports/REPORT_01_step5.md`, `reports/REVIEW_01_step5.md` | 2026-09-10 |
 | 6 | `lib.latitude` | not started | | |
 | 7 | `tools/wind/`, kind W | not started | | |
 | 8 | `tools/composition/`, kind C | not started | | |
