@@ -246,6 +246,13 @@ Also applied from the review's other decisions: `read` now returns a `DataTree` 
    so both spellings are recognized. **This needs a ruling too**, since it decides the variable
    names in kinds G, W and N before Steps 3, 7 and 9 write them.
 
+   *Resolved by the addendum to `REVIEW_01_step1.md` and SPEC_00 v0.5, which states the rule:
+   `_uncertainty` is inserted before the unit suffix, and a variable with no unit suffix appends
+   it. `lib.schema.uncertainty_companion` now derives every companion name from that rule, and
+   both per-variable overrides have been removed, so the registry carries none. The names it
+   produces match the section 6 tables exactly and are printed by check 7 of
+   `reports/step1/verify_review_changes.py`.*
+
 **Verification.** `reports/step1/verify_review_changes.py` exercises all six items and prints
 its results to `reports/step1/verify_output.txt`. Thirteen checks, all passing: the known code
 validates and `CASSPIAN-J2` is refused; `UNCERTAINTY_KINDS` holds exactly the three section 5

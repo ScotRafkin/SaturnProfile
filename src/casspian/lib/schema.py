@@ -92,8 +92,28 @@ POSITIVE_VALUES = frozenset({"up", "down"})
 DIRECTION_VALUES = frozenset({"increasing", "decreasing"})
 
 #: Coordinate names that carry a vertical sense, and so must declare `positive`. A harmonic
-#: `degree`, a `species` index and a `surface` index are coordinates with no vertical sense.
+#: `degree`, a `species` index, a `surface` index and a latitude carry neither `positive` nor
+#: `direction` (SPEC_00 section 5).
 VERTICAL_COORDINATE_HINTS = ("pressure", "geopotential", "height", "radius")
+
+#: Unit suffixes a variable name may carry. Used only to place `_uncertainty`; longest match
+#: wins, so `GM_m3s2` resolves on `_m3s2` and not on `_m`.
+UNIT_SUFFIXES = ("_m3s2", "_m2s2", "_rad_s", "_deg", "_m3", "_ms", "_Pa", "_K", "_m", "_s")
+
+
+def uncertainty_companion(name: str) -> str:
+    """Return the name of the uncertainty companion of `name`.
+
+    SPEC_00 section 5: the companion is named by inserting `_uncertainty` before the unit
+    suffix of the variable it accompanies, so `pressure_Pa` has `pressure_uncertainty_Pa`,
+    `GM_m3s2` has `GM_uncertainty_m3s2` and `u_total_ms` has `u_total_uncertainty_ms`. A
+    variable with no unit suffix appends it, so `refractivity` has `refractivity_uncertainty`
+    and `x_H2` has `x_H2_uncertainty`.
+    """
+    for suffix in sorted(UNIT_SUFFIXES, key=len, reverse=True):
+        if name.endswith(suffix):
+            return f"{name[: -len(suffix)]}_uncertainty{suffix}"
+    return f"{name}_uncertainty"
 
 #: A bare name carries no convention and no unit, so it cannot be read unambiguously.
 FORBIDDEN_BARE_NAMES = frozenset({"latitude", "r", "z", "p"})
@@ -139,15 +159,13 @@ class VarSpec:
     is_flag: bool = False
     #: An uncertainty companion must exist even when the source states none, holding NaN.
     needs_uncertainty: bool = False
-    #: SPEC_00 section 5 gives the companion the name `<variable>_uncertainty`, but the kind
-    #: tables of section 6 keep the unit suffix last: `GM_uncertainty_m3s2` in 6.4 and
-    #: `u_total_uncertainty_ms` in 6.6. Where a kind table names the companion, that name wins
-    #: and is given here. See REPORT_01_step1.md section 6, item 6.
+    #: An override, for a kind table that names a companion against the section 5 rule. The
+    #: default derives the name from the rule and needs no override for any current kind.
     uncertainty_name: str | None = None
 
     def companion(self) -> str:
-        """The name of this variable's uncertainty companion."""
-        return self.uncertainty_name or f"{self.name}_uncertainty"
+        """The name of this variable's uncertainty companion (SPEC_00 section 5)."""
+        return self.uncertainty_name or uncertainty_companion(self.name)
 
 
 @dataclass(frozen=True)
@@ -244,13 +262,7 @@ _GRAVITY = KindSpec(
         VarSpec("degree", dims=("degree",), units="1"),
         VarSpec("J", dims=("degree",), units="1", needs_uncertainty=True),
         VarSpec("J_status", dims=("degree",), units="1", is_flag=True),
-        VarSpec(
-            "GM_m3s2",
-            dims=(),
-            units="m3 s-2",
-            needs_uncertainty=True,
-            uncertainty_name="GM_uncertainty_m3s2",
-        ),
+        VarSpec("GM_m3s2", dims=(), units="m3 s-2", needs_uncertainty=True),
         VarSpec("normalization_radius_m", dims=(), units="m"),
     ),
     globals_required=("GM_scope", "epoch", "harmonic_convention"),
@@ -276,12 +288,7 @@ _WIND = KindSpec(
     variables=(
         VarSpec("latitude_planetocentric_deg", dims=("latitude_planetocentric",), units="degrees_north"),
         VarSpec("pressure_Pa", dims=("pressure",), units="Pa"),
-        VarSpec(
-            "u_total_ms",
-            units="m s-1",
-            needs_uncertainty=True,
-            uncertainty_name="u_total_uncertainty_ms",
-        ),
+        VarSpec("u_total_ms", units="m s-1", needs_uncertainty=True),
         VarSpec("u_cylindrical_ms", units="m s-1"),
         VarSpec("u_shear_ms", units="m s-1"),
         VarSpec("value_provenance", units="1", is_flag=True),
