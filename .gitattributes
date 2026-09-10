@@ -1,0 +1,17 @@
+# Text files are pinned to LF so that the bytes on disk are identical on every
+# platform. Provenance is by the SHA-256 of the bytes on disk (SPEC_00 section 6),
+# so a CRLF checkout would hash the same transcription differently. These rules
+# override core.autocrlf for the paths they match.
+*.csv           text eol=lf
+*.toml          text eol=lf
+*.md            text eol=lf
+*.py            text eol=lf
+*.txt           text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+
+# Binaries are never converted.
+*.nc   binary
+*.png  binary
+*.svg  binary
+*.pdf  binary
