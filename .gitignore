@@ -13,6 +13,7 @@ forward/*/output/
 occul_data/*/*.nc
 occul_data/*/raw/*.nc
 
-# Acceptance scripts and their printed output, one subdirectory per step.
-# Kept while a step is under review, deletable afterward (SPEC_00 section 2).
-reports/
+# `reports/` is the committed build record: REPORT_01_stepN.md and REVIEW_01_stepN.md.
+# Only the per step working directories are ignored, holding each step's acceptance
+# scripts and their printed output, deletable after acceptance (SPEC_00 section 2).
+reports/step*/
