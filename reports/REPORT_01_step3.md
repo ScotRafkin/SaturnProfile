@@ -102,10 +102,19 @@ Products: `occul_data/lindal/lindal_gravity.nc` from `null1981` and
    C and `surface` in kind D. A ninth value such as `index`, or an exemption for coordinate
    variables that are labels, would settle it. Not urgent, and no number depends on it.
 
+   *Resolved by `REVIEW_01_step3.md`: `index` is added to the vocabulary (SPEC_00 v0.7
+   section 5) and `degree` now carries it. Kinds C and D will use it for `species_name` and
+   `surface`.*
+
 3. **`J` is written with `provenance = "inferred"`** on the reading that a harmonic coefficient
    fitted to tracking data is deduced from other measurements rather than measured directly.
    `derived` would also be defensible. Confirm which the author intends, since every later kind
    G file will follow whichever is chosen.
+
+   *Resolved by `REVIEW_01_step3.md`: `derived`. SPEC_00 v0.7 section 5 now separates the two.
+   `derived` is obtained from measurements by a fit or a computation with no added physical
+   assumption; `inferred` is deduced through a model assumption the source declares. A fitted
+   harmonic is `derived`, so `J`, `J_uncertainty`, `GM_m3s2` and its companion were changed.*
 
 ## 4. Acceptance results
 
