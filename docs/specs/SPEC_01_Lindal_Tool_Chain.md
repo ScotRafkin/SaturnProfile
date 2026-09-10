@@ -2,8 +2,8 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.3, 10 September 2026. Author of record: S. Rafkin. Status: in work; Step 0 accepted (REVIEW_01_step0.md); v0.3 adds the line-ending item to Step 1 and the version rule.
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.3, which it does not repeat.
+Version 0.4, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 and 1 accepted; v0.4 aligns with SPEC_00 v0.4 (harmonic code, uncertainty vocabulary, reports directory, commit and rebuild rule).
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.4, which it does not repeat.
 
 ---
 
@@ -11,10 +11,16 @@ Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.3, which it does not repe
 
 **One step at a time.** This document is a sequence of steps, each producing one deliverable
 with its own acceptance checks. The coding agent implements one step, runs its acceptance
-checks, writes `docs/specs/REPORT_01_<step>.md` stating what was built, what deviates from the
+checks from a script kept under `reports/<step>/` (not committed; SPEC_00 §2), writes `docs/specs/REPORT_01_<step>.md` stating what was built, what deviates from the
 spec and why, the acceptance results with the actual numbers, and any question that blocked it,
 updates `docs/specs/STATE.md`, and **stops**. The next step begins only after the report has
 been reviewed. Do not implement ahead. Do not build two steps in one commit.
+
+**Commit on acceptance, then rebuild.** A step's code is committed when its review says
+`accepted`. Any data product the step wrote before that commit carries `-dirty` in
+`casspian_git_commit`; after the acceptance commit the step's tool is rerun so that every
+product on disk carries the clean commit, and only those products are inputs to the next step
+(SPEC_00 §8).
 
 **The spec does not describe tests to be written.** The acceptance checks below are numbers to
 be reproduced and reported; how they are checked (a script, a notebook, a printed value) is the
@@ -186,7 +192,7 @@ transcriptions, so that `lib.gravity` in the next step reads real files.
 `occul_data/lindal/lindal_build.toml` (sections `[gravity]` and `[rotation]` only; the other
 sections are added by later steps) and the outputs are `occul_data/lindal/lindal_gravity.nc`
 (from `null1981`) and `occul_data/lindal/lindal_rotation.nc` (from `system_iii`). Kind G per
-SPEC_00 §6.4 with the `harmonic_convention` string fixed as a constant in `lib.schema`; kind R
+SPEC_00 §6.4 with `harmonic_convention = "CASSPIAN-J1"`, the code defined in `lib.schema`; kind R
 per §6.5. The planet GM goes into kind G; the system GM and the derivation note go into an
 attribute.
 
@@ -195,7 +201,7 @@ attribute.
 6.0e7, `GM_m3s2` = 3.7929085e16; a second run pointed at `iess2019` gives six degrees to 12 and
 `normalization_radius_m` = 6.033e7; `lindal_rotation.nc` gives `period_s` = 38362.4 and
 `angular_rate_rad_s` = 2π/38362.4 to double precision; the reader refuses a G file whose
-`harmonic_convention` attribute has been altered by one character.
+`harmonic_convention` attribute is a code it does not know.
 
 ---
 
@@ -340,7 +346,8 @@ which:
    observation level set to a fifth code, 4, `extended_by_source_assumption`, so the
    assumption is visible in the data and the file has the same shape as every other kind W.
 5. Writes kind W (SPEC_00 §6.6): `u_total_ms(latitude, pressure)` as the binned mean,
-   `u_total_uncertainty_ms` as the bin standard deviation with `uncertainty_kind = "bin_std"`,
+   `u_total_uncertainty_ms` as the bin standard deviation with `uncertainty_kind = "1sigma"` and
+   `uncertainty_method = "sample standard deviation of the digitized points in the bin"`,
    `bin_count` as an extra variable, `reference_level_pressure_Pa` equal to the observation
    level, `u_cylindrical_ms` computed from the field at the reference level extended along
    cylinders on the no-wind geoid geometry, and `u_shear_ms = u_total_ms − u_cylindrical_ms`.
@@ -410,8 +417,8 @@ six figures. `read` as kind C succeeds and refuses when one mole fraction is per
    every global attribute of §6.1 filled from the `scalars` groups (latitude with convention
    in the name, its `value_source`, swath, uncertainty, longitude, date, bands, datum,
    source top boundary statement, source gravity, rotation, and wind citations), with
-   `latitude_absent_meaning = "point"` (SPEC_00 §5). **No composition and no geodesy in this
-   file.**
+   `latitude_absent_meaning = "point"` and `thermo_instance = "source_profile"` (SPEC_00 §5,
+   §6.1). **No composition and no geodesy in this file.**
 2. Writes `lindal_geodesy.nc`, kind D (SPEC_00 §6.3): the two surfaces from the `scalars`
    geodesy groups, with the fit residual, `fit_inputs`, and `fit_latitude_convention`.
 3. Calls the Step 3, 7, and 8 tools (or verifies their outputs exist and match the hashes in
