@@ -1,0 +1,75 @@
+# CASSPIAN data_static: Voyager-era Saturn gravity harmonic set.
+# Null, Lau, Biller and Anderson (1981), AJ 86, 456. Pioneer 11 tracking plus
+# Earth-based satellite secular rates. This is the set Lindal et al. (1985)
+# cite and the one used in the Lindal reduction phase.
+
+[meta]
+citation             = "Null, G. W., Lau, E. L., Biller, E. D., Anderson, J. D. 1981, AJ 86, 456"
+epoch                = "Pioneer 11 encounter, 1979"
+normalization_radius_m = 60000.0e3
+normalization_status = "verified"
+normalization_source = "Null et al. 1981, Table XIV note a: 'harmonics correspond to a Saturn radius of 60000 km'; also abstract"
+harmonic_convention  = "V = -(GM/r)[1 - sum J_2n (R/r)^2n P_2n(sin phi_c)], g_N positive inward, phi_c planetocentric"
+
+# Coefficients, unscaled (printed value x 1e-6)
+[J.2]
+value = 16479.0e-6
+uncertainty = 18.0e-6
+fitted = true
+status = "verified"
+value_source = "Null et al. 1981, Table XIV, Solution 6 (final adopted): J2 = 16479 +/- 18; abstract agrees"
+
+[J.4]
+value = -937.0e-6
+uncertainty = 38.0e-6
+fitted = true
+status = "verified"
+value_source = "Null et al. 1981, Table XIV, Solution 6 (final adopted): J4 = -937 +/- 38; abstract agrees"
+
+[J.6]
+value = 84.0e-6
+uncertainty = 0.0
+fitted = false
+status = "verified"
+value_source = "Null et al. 1981, Sec. II g, p. 461: 'The value J6 = 84 x 10^-6 from Saturn interior models (Slattery 1977) is used for all calculations in this paper'; Table XIV note a. Not fitted; J2 and J4 conditional on it through the relation J2 - (J4 + 937e-6)/2.28 + (J6 - 84e-6)/5.137 = (16479 +/- 3)e-6 (p. 466)."
+
+[GM]
+# Null et al. 1981 report the Sun-to-Saturn-system mass ratio, not GM. Table XII, Solution 6:
+# M_sun / M_Saturn-system = 3498.09 +/- 0.22. Jacobson et al. 2006 (AJ 132, 2520, Table 3)
+# restate Null's solution as GM_system = 37938544 +/- 2400 km^3/s^2 and GM_Saturn =
+# 37929085 +/- 2400 km^3/s^2 (satellite masses removed; ring mass -1.4 +/- 1.7 e-6 M_s,
+# i.e. zero). Independent recomputation here from the ratio with GM_sun (DE440) and Null's
+# satellite masses gives 37929080, agreeing to 5 km^3/s^2.
+system_value_m3s2 = 3.7938544e16
+system_uncertainty_m3s2 = 2.4e12
+system_status = "verified"
+system_source = "Null et al. 1981 Table XII Solution 6 (ratio); Jacobson et al. 2006 Table 3 (restated as GM)"
+planet_value_m3s2 = 3.7929085e16
+planet_uncertainty_m3s2 = 2.4e12
+planet_status = "verified"
+planet_source = "Jacobson et al. 2006, AJ 132, 2520, Table 3, column 'Null et al. (1981)': 37929085.0 +/- 2400.0 km^3/s^2"
+scope = "planet (satellites removed; rings zero)"
+note = "Differs from the modern planet GM (3.7931206e16) by 5.6e-5 relative, within Null's stated uncertainty (6.3e-5). Effect on g is 5.6e-5 relative, negligible against the anchor-radius error budget, but the reduction phase uses this value for consistency with Lindal."
+
+[check_values]
+# Lindal et al. 1985 Table II, 1 bar level, "objects corotating with the atmospheric gas":
+# equatorial g = 8.96 +/- 0.01 m/s^2, polar g = 12.14 +/- 0.01 m/s^2, at
+# r_eq = 60268 +/- 4 km, r_p(mean) = 54364 +/- 10 km, System III period 10 h 39 m 22.4 s.
+#
+# REPRODUCED (10 Sept 2026) with the harmonics above at R = 60,000 km, GM = 3.7931206e16 (modern; Null's own GM changes the numbers by 5e-4 m/s^2)
+# m^3/s^2, System III, Lindal Eq. (2) [g_r = -GM/r^2 + (GM/r^2) sum (2i+1) J_2i (R/r)^2i P_2i
+# + (2/3) w^2 r (1 - P_2)], and an equatorial cloud-top wind of 450 m/s in Omega_abs:
+#   g_eq  = 8.951 (no wind: 9.102)   vs 8.96
+#   g_pole = 12.137                  vs 12.14
+# Jupiter row of the same table reproduces to 0.01 m/s^2 the same way (u_eq = 100 m/s).
+# This is the first acceptance check for lib.gravity.
+#
+# TRAP, sprung once already in this project: the coefficient on J_2i is (2i+1) = degree + 1,
+# i.e. 3 for J2, 5 for J4, 7 for J6. Reading the handoff's "(2n+1) J_2n" with n taken as the
+# degree gives 5, 9, 13 and produces g_eq = 9.29, g_pole = 11.68, a 4 percent error that
+# looks plausible. The check above catches it.
+lindal_table2_g_eq_ms2 = 8.96
+lindal_table2_g_pole_ms2 = 12.14
+lindal_table2_r_eq_m = 60268.0e3
+lindal_table2_r_pole_m = 54364.0e3
+equatorial_wind_assumed_ms = 450.0

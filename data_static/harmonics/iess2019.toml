@@ -1,0 +1,76 @@
+# CASSPIAN data_static: Cassini-era Saturn gravity harmonic set.
+# Iess et al. (2019), Science 364, eaat2965, Table 1. Grand Finale orbits.
+# The forward-phase default per manuscript section 10 and Table B2.
+
+[meta]
+citation             = "Iess, L., et al. 2019, Science 364, eaat2965"
+epoch                = "Cassini Grand Finale, 2017"
+normalization_radius_m = 60330.0e3
+normalization_status = "verified"
+normalization_source = "Iess et al. 2019 Table 1 (postprint, IRIS Sapienza): reference radius 60330 km"
+uncertainty_scaling  = "3 times formal, per Iess et al. 2019: 'For the zonal harmonics they correspond to 3 times the formal uncertainties.'"
+harmonic_convention  = "V = -(GM/r)[1 - sum J_2n (R/r)^2n P_2n(sin phi_c)], g_N positive inward, phi_c planetocentric"
+rotation_note        = "Iess et al. modeled with four rotation periods (10h32m45s, 10h39m22s, 10h45m45s, 10h47m06s); the harmonics are frame independent and no single period is attached to this set"
+
+# Even zonal coefficients, unscaled (printed value x 1e-6). All verified against the postprint Table 1.
+[J.2]
+value = 16290.573e-6
+uncertainty = 0.028e-6
+fitted = true
+status = "verified"
+
+[J.4]
+value = -935.314e-6
+uncertainty = 0.037e-6
+fitted = true
+status = "verified"
+
+[J.6]
+value = 86.340e-6
+uncertainty = 0.087e-6
+fitted = true
+status = "verified"
+
+[J.8]
+value = -14.624e-6
+uncertainty = 0.205e-6
+fitted = true
+status = "verified"
+
+[J.10]
+value = 4.672e-6
+uncertainty = 0.420e-6
+fitted = true
+status = "verified"
+
+[J.12]
+value = -0.997e-6
+uncertainty = 0.672e-6
+fitted = true
+status = "verified"
+note = "not in manuscript Table B2; included for completeness, one sigma-equivalent of zero"
+
+# Odd harmonics are also reported (J3 = 0.059 +/- 0.023, J5 = -0.224 +/- 0.054, x1e-6).
+# The formulation is axisymmetric and equatorially symmetric in its harmonic expansion
+# (handoff section 9A.5); odd terms are not carried. Recorded here so the omission is deliberate.
+
+[GM]
+# Iess et al. 2019 Table 1 does not list GM. The Cassini-era planet GM comes from the JPL
+# satellite-ephemeris solutions, which the Grand Finale analysis is built on.
+planet_value_m3s2 = 3.7931206234e16
+planet_uncertainty_m3s2 = 7.26e8
+planet_status = "verified"
+planet_source = "Jacobson 2022, AJ 164, 199, Table 4 ('Current'): GM_Saturn = 37931206.234 +/- 0.726 km^3/s^2, 1 sigma. JPL Horizons (sat441l) carries the same value with a 1-sigma of 98 km^3/s^2, which is Horizons' conservative figure."
+scope = "planet (Saturn body; satellites removed)"
+alternates = "Jacobson et al. 2006, AJ 132, 2520, Table 3: 37931207.68 +/- 1.11 km^3/s^2 (the value most Cassini-era papers cite). System GM (planet plus satellites), Jacobson 2022: 37940584.920 +/- 0.178."
+
+[cross_reference]
+# Jacobson 2022 Table 6 restates the historical sets at 60,330 km (formal 3 sigma):
+#   Null (1981):      J2 16299.0 +/- 18.0,  J4 -916.0 +/- 38.0,  J6 81.0 (assumed)
+#   Campbell (1989):  J2 16298.0 +/- 10.0,  J4 -915.0 +/- 40.0,  J6 103.0 +/- 50.0, J8 -10.0
+#   Jacobson (2004):  J2 16292.0 +/- 7.0,   J4 -931.0 +/- 31.0,  J6 91.0 +/- 31.0
+#   Jacobson (2006a): J2 16290.71 +/- 0.27, J4 -935.83 +/- 2.77, J6 86.14 +/- 9.64
+#   Iess (2019):      as above
+#   Jacobson (2022):  J2 16290.615 +/- 0.025, J4 -935.119 +/- 0.093, J6 86.764 +/- 0.162, J8 -13.931 +/- 0.217, J10 5.426 +/- 0.208, J12 -0.537 +/- 0.180
+# NOTE for the manuscript: section B2 quotes Campbell and Anderson 1989 as J4 = -920 +/- 50; both Jacobson
+# restatements give -915 +/- 40. Different solution in the same paper, or a transcription slip; check the source.

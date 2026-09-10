@@ -64,8 +64,8 @@ def mean_molecular_weight_amu(mole_fractions: dict) -> float:
     float
         Mean molecular weight in amu.
     """
-    from .constants import ATOMIC_MASS_UNIT
-    return mean_molar_mass(mole_fractions) / (ATOMIC_MASS_UNIT * 6.02214076e23)
+    from .constants import ATOMIC_MASS_UNIT, AVOGADRO
+    return mean_molar_mass(mole_fractions) / (ATOMIC_MASS_UNIT * AVOGADRO)
 
 
 def mean_refractivity_per_particle(mole_fractions: dict) -> float:

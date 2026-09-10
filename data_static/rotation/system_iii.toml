@@ -1,0 +1,11 @@
+# CASSPIAN data_static: Saturn rotation system entry.
+
+[system_iii]
+name        = "System III"
+period_s    = 38362.4                 # 10 h 39 m 22.4 s
+angular_rate_rad_s = 1.63785e-4       # 2 pi / period_s; the tool recomputes from period_s
+citation    = "Desch and Kaiser 1981, GRL 8, 253 (Saturn kilometric radiation period)"
+epoch       = "Voyager 1 and 2, 1980 to 1981"
+status      = "verified"
+value_source = "Lindal et al. 1985 Table II (System III rotation period, Davies et al. 1983): 10 hr 39 min 22.4 s; manuscript section 9"
+note        = "Smith et al. 1982 winds are in the frame of Saturn's magnetic field, which is this system."
