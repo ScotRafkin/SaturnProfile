@@ -1,7 +1,14 @@
 __pycache__/
-*.pyc
 *.egg-info/
-.pytest_cache/
-dist/
 build/
-*.nc
+dist/
+.pytest_cache/
+
+# Forward run products are transient and regenerable from the run directory.
+forward/*/output/
+
+# Generated netCDF under occul_data is regenerable from raw/ and data_static/.
+# These two rules are removed once a reduction is accepted, so that the
+# registered product is committed as the anchor of every run (SPEC_00 section 2.4).
+occul_data/*/*.nc
+occul_data/*/raw/*.nc
