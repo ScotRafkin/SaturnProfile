@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.2, 10 September 2026. Author of record: S. Rafkin. Status: in work; Step 0 revised after the coding agent found that an ignored file would not reach the tag.
+Version 0.3, 10 September 2026. Author of record: S. Rafkin. Status: in work; Step 0 accepted (REVIEW_01_step0.md); v0.3 adds the line-ending item to Step 1 and the version rule.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.3, which it does not repeat.
 
 ---
@@ -90,6 +90,15 @@ Table I CSV survives as data. Everything else is rewritten to this specification
 
 **Purpose.** The two pieces every tool needs before it can write a file.
 
+**Item 0, before any code: line endings.** Add `.gitattributes` at the repository root pinning
+text files to LF (`*.csv`, `*.toml`, `*.md`, `*.py`, `*.txt`, `.gitignore`, `.gitattributes`:
+`text eol=lf`) and marking `*.nc`, `*.png`, `*.svg`, `*.pdf` as `binary`; run
+`git add --renormalize .`; commit and push. Provenance hashes are of the bytes on disk, and this
+makes those bytes the same on every platform. One commit, before Deliverable 1a.
+
+**Version rule.** `pyproject.toml` and `casspian.__version__` must agree. `write()` obtains the
+version through `importlib.metadata` and refuses if the two differ.
+
 **Deliverable 1a: `src/casspian/lib/constants.py`.** CODATA 2018 values, each with a comment
 giving the CODATA name: Boltzmann constant, Avogadro constant, atomic mass constant, molar gas
 constant, Newtonian constant of gravitation, Loschmidt constant at 273.15 K and 101325 Pa, and
@@ -148,7 +157,8 @@ in km above the source's 1 bar level) and `occul_data/lindal/raw/lindal_scalars.
   name, values as numeric attributes where numeric and strings otherwise, with each
   `value_source` beside its value. Nothing is interpreted, converted, or dropped; the bundle
   is the transcription in netCDF form.
-- Globals per §5, plus `raw_sources` listing both ASCII files with hashes.
+- Globals per §5, plus `raw_sources` listing both ASCII files and `raw/notes.md` with hashes
+  (the notes are documentation, not read by the tool, hashed so the record is complete).
 
 **Acceptance.** 66 levels; the 1 bar row reads exactly 100000.0 Pa, 134.8 K, 0.0 m; the top
 row 20.0 Pa, 138.7 K, 376700.0 m; the bottom row 129848.0 Pa, 146.2 K, −14100.0 m; exactly

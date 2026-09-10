@@ -830,11 +830,14 @@ authoritative).
 
 Settled 10 September 2026 unless marked otherwise.
 
-1. Radio-frequency per-molecule refractivities. **Literature task, in progress.** Both the values
-   Lindal would have used (Essen 1953; Orcutt and Cole 1967; Bose et al. 1972) and a modern set,
-   delivered as `data_static/species_master` with a citation per number. Blocks SPEC_01.
-2. GM values and sources for the Null et al. (1981) and Iess et al. (2019) sets, planet or
-   system stated per source. **Literature task, in progress.** Blocks SPEC_01.
+1. Radio-frequency per-molecule refractivities. **Closed 10 September 2026:**
+   `data_static/species_master.toml`, two sets (`lindal1985`, `modern`), every value with a
+   status and a citation. NH3 in the Lindal set is zero per the Fig. 3 caption; NH3 in the
+   modern set is the static Debye value with a 1/T law, flagged computed. Primary-source
+   confirmation of values read from Gupta et al. (2022) remains, and changes no value.
+2. GM values and sources. **Closed 10 September 2026:** Null 1981 planet GM from Jacobson et
+   al. 2006 Table 3 (37,929,085 ± 2400 km³/s²), Cassini-era planet GM from Jacobson 2022 Table 4
+   (37,931,206.234 ± 0.726), both in `data_static/harmonics/`.
 3. Lindal's cloud-top wind. **Settled:** Smith et al. (1982) is the baseline table for the
    reduction; Ingersoll and Pollard (1982) is a cross-check, recorded in the manifest as such.
 4. The forward output schema and the forward SPEC. **Later, by nature.**

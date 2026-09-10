@@ -6,8 +6,8 @@ reviewed against the specification.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 0 | Repository reset and skeleton | reported | `REPORT_01_step0.md` | 2026-09-10 |
-| 1 | `lib.constants`, `lib.schema`, `lib.io` | not started | | |
+| 0 | Repository reset and skeleton | accepted | `REPORT_01_step0.md`, `REVIEW_01_step0.md` | 2026-09-10 |
+| 1 | `.gitattributes`; `lib.constants`, `lib.schema`, `lib.io` | not started | | |
 | 2 | `tools/lindal/build_raw.py`, the raw bundle | not started | | |
 | 3 | `tools/gravity/`, kinds G and R | not started | | |
 | 4 | `lib.gravity` | not started | | |
