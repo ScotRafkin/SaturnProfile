@@ -218,7 +218,15 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
     # never depends on the caller's grid. A caller who passes a single hemisphere would
     # otherwise get one enormous step across the other one, which is silent and wrong.
     dense = np.radians(np.arange(-90.0, 90.0 + 0.5 * march_step_deg, march_step_deg))
-    nodes = np.unique(np.concatenate([phi, dense, [-pole, pole]]))
+    wanted = [phi, dense, [-pole, pole]]
+    if anchor_rule == "latitude":
+        if anchor_latitude is None:
+            raise ValueError("anchor_rule 'latitude' needs anchor_latitude in radians")
+        # The anchor latitude is a node, so the radius the anchor is set from is marched and
+        # never interpolated. Without this it would be the one latitude in the function that
+        # broke that rule.
+        wanted.append([float(anchor_latitude)])
+    nodes = np.unique(np.concatenate(wanted))
     order = np.argsort(-nodes)          # north pole first, south pole last
     march_nodes = nodes[order]
 

@@ -197,3 +197,28 @@ and the 45° checks are unaffected, the closure diagnostic now against the ancho
 and the Step 7 geoid checks with the anchor rule sensitivity added; regenerate Figure 2; a
 short addendum to REPORT_01_step7 with the new table (no new report). Then commit Step 7,
 rebuild `lindal_wind.nc` clean, and proceed to Step 8.
+
+## Third review, 11 September 2026: the anchoring addendum
+
+**Disposition: accepted.** Commit Step 7, rebuild `lindal_wind.nc` clean, proceed to Step 8.
+
+The addendum reproduces the independent march to the meter (north pole 54,423.63 against
+54,423.7; south 54,452.37 against 54,452.3; equator 60,371.04 against 60,371.1), Figure 2 is
+continuous, and the sensitivity table is the right one: `north_pole` anchoring reproduces the
+v0.15 number exactly, which settles that the 23 km was the anchoring and nothing else. The
+revised reading of finding 3 (the gap reaches the equator through the anchor, not the slope)
+and of finding 5 (the Eq. 18 agreement with 123 km does not discriminate) are both correct. The
+dense march grid is the right fix for the single-hemisphere caller, and catching that the
+first version had silently quadrupled the Step 5 bulge is exactly the kind of check the
+regression exists for.
+
+One small fix to carry into the Step 7 commit, not a reason to hold it: under
+`anchor_rule = "latitude"` the anchor latitude is read off the march by `np.interp` but is not
+unioned into the march nodes, so it is the one latitude in the function that can be
+interpolated. Add `anchor_latitude` to `nodes` when that rule is in use, so the rule that the
+anchor radius is never interpolated holds for every anchor rule.
+
+Two numbers go forward to SPEC_02: the 28.7 km polar asymmetry the wind produces (Lindal's
+Fig. 9 caption allows about 10 km in the same sense), and the ±19 km spread between polar
+anchor choices, which is the honest size of the anchoring uncertainty until the observed radii
+of his Fig. 9 are brought in. Neither touches Step 8 or Step 9.
