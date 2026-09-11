@@ -31,6 +31,12 @@ its temperature law must be taken from Mohammed and Steffes (2003, Icarus 166,
 from here.
 """
 
+[is_polar]                          # property of the molecule, not of a refractivity set (SPEC_01 v0.17)
+H2  = false
+He  = false
+CH4 = false
+NH3 = true
+
 [molar_mass]                        # kg/mol, CODATA/IUPAC standard atomic weights
 H2  = { value = 2.01588e-3,  status = "verified", source = "IUPAC 2013 standard atomic weights" }
 He  = { value = 4.002602e-3, status = "verified", source = "IUPAC 2013 standard atomic weights" }
@@ -45,7 +51,6 @@ frequency_Hz        = 2.4e10     # Essen 1953 measured near 24 GHz (24,000 Mc/s)
 status              = "verified_secondary"
 source              = "Essen 1953, Proc. Phys. Soc. B 66, 189; value as used by Lindal et al. 1981"
 value_source        = "Gupta et al. 2022, PSJ 3, 159, Table 3 row Original and note a (PDF read 10 Sept 2026)"
-is_polar            = false
 temperature_dependence = "none (nonpolar)"
 
 [refractivity.lindal1985.He]
@@ -55,7 +60,6 @@ frequency_Hz        = 2.4e10
 status              = "verified_secondary"
 source              = "Essen 1953, as used by Lindal et al. 1981"
 value_source        = "Gupta et al. 2022, PSJ 3, 159, Table 3 row Original and note a (PDF read 10 Sept 2026)"
-is_polar            = false
 temperature_dependence = "none (nonpolar)"
 
 [refractivity.lindal1985.CH4]
@@ -65,8 +69,8 @@ source              = "Lindal et al. 1985 reduced under 94% H2, remainder He and
 
 [refractivity.lindal1985.NH3]
 refractivity_stp_e6 = 0.0
-status              = "unverified"
-source              = "Lindal et al. 1985 Table I footnote includes NH3 in the remainder; the value they used is not stated; effect on mean refractivity at ppm abundance is below 1e-4 relative"
+status              = "verified_reading"
+source              = "Lindal et al. 1985: the Fig. 3 caption states the number density was computed assuming 94 percent hydrogen with the remainder helium, and that other nonpolar mixtures may be scaled, so the refractivity conversion used H2 and He only; the Table I footnote puts NH3 in the remainder for the temperature (mean molar mass), not the refractivity. Zero is therefore the value to reproduce Lindal; the true S/X band value is in the modern set"
 
 # ---------------------------------------------------------------- set: modern
 [refractivity.modern.H2]
@@ -76,7 +80,6 @@ frequency_Hz        = 0.0        # enter from Newell and Baird 1965 (microwave c
 status              = "verified_secondary"
 source              = "Newell and Baird 1965, J. Appl. Phys. 36, 3751 (not read; cited by Gupta et al. 2022 note a)"
 value_source        = "Gupta et al. 2022, PSJ 3, 159, Table 3 row Current (PDF read 10 Sept 2026)"
-is_polar            = false
 temperature_dependence = "none; Gupta et al. 2022 sec. 3.2, citing Spilker 1990: density-normalized refractivity of H2, He and CH4 independent of p, T and density"
 
 [refractivity.modern.He]
@@ -86,7 +89,6 @@ frequency_Hz        = 0.0
 status              = "verified_secondary"
 source              = "Newell and Baird 1965, J. Appl. Phys. 36, 3751 (not read; cited by Gupta et al. 2022 note a)"
 value_source        = "Gupta et al. 2022, PSJ 3, 159, Table 3 row Current (PDF read 10 Sept 2026)"
-is_polar            = false
 temperature_dependence = "none"
 
 [refractivity.modern.CH4]
@@ -96,7 +98,6 @@ frequency_Hz        = 0.0        # Asmar 2022: radio frequency nearest the Voyag
 status              = "verified_secondary"
 source              = "Asmar 2022, as cited by Gupta et al. 2022 note a (not read)"
 value_source        = "Gupta et al. 2022, PSJ 3, 159, Table 3 row Current (PDF read 10 Sept 2026)"
-is_polar            = false
 temperature_dependence = "none per Gupta et al. 2022"
 note                = "Published values for CH4 spread from about 395 to 445 (handoff section 8); 437.98 is the radio value Gupta et al. adopted. Orcutt and Cole 1967 (J. Chem. Phys. 46, 697) is the classical dielectric-constant source and should be read for the frequency and uncertainty."
 
@@ -106,7 +107,6 @@ uncertainty_e6      = 0.0
 frequency_Hz        = 0.0
 status              = "unverified"
 source              = "Mohammed and Steffes 2003, Icarus 166, 425 (Ka band); Mohammed and Steffes 2004, JGR 109, E07S03 (W band)"
-is_polar            = true
 temperature_dependence = "Debye term; expect a 1/T law on top of a constant; take the fitted form from the source"
 note = """Read from both Steffes papers (10 Sept 2026). Their NH3 refractivities are
 density-normalized, in N-units cm^3 per molecule (x1e-17), in an H2/He mixture:

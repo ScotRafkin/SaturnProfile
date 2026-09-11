@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.16, 11 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 6 accepted; Step 7 returned for rework. See §13 for the revision history.
+Version 0.17, 11 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 8 accepted. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.8, which it does not repeat.
 
 ---
@@ -522,24 +522,47 @@ species group carrying the `lindal1985` refractivity set.
 **Inputs.** The raw bundle (Step 2) for the NH3 column and pressure levels;
 `data_static/species_master.toml`; the `[composition]` section of `lindal_build.toml`, which
 declares: the species set name (`lindal1985`), the H2 and He fractions of the remainder
-(0.94 and 0.06 as the ratio to hold), the NH3 rule (interpolate and extrapolate linearly in
-pressure with `scipy.interpolate.interp1d(fill_value="extrapolate")`, clamp at zero, then
-assign NH3 first and split the remainder 0.94 to 0.06), and the vertical coordinate
+(0.94 and 0.06 as the ratio to hold), the NH3 rule, and the vertical coordinate
 (`pressure`).
+
+**The NH3 rule (v0.17; the v0.5 wording, "interpolate and extrapolate linearly in pressure,
+clamp at zero", produced a value of 0.2 ppm at 794.33 mbar and a puzzle about where the
+clamp fell, REPORT_01_step8 finding 1).** Lindal's Table I lists NH3 at nine levels from
+831.76 to 1258.93 mbar, inferred from the S and X band absorption where absorption was
+measurable; above 831.76 mbar the table is blank, which is "not measured", not "zero". The
+rule has three parts. Interior gap (1047.13 mbar): linear interpolation in pressure between
+the neighboring tabulated values, `interpolated`. Below the deepest tabulated level (1298.48
+mbar): linear extrapolation in pressure from the two deepest tabulated values,
+`extrapolated`. Above the highest tabulated level (every level at or above 794.33 mbar):
+**zero, by assumption**, `assumed`, with the reason recorded in an attribute
+(`nh3_aloft_assumption`): Lindal states the troposphere is saturated with ammonia at these
+levels, and the saturation mixing ratio over NH3 ice on his own temperatures falls from a
+few ppm near 0.8 bar to below 1e-7 by 0.5 bar and below 1e-12 at the tropopause, so the
+assumption costs less than 1e-6 of the mean molar mass and nothing in the refractivity,
+where the `lindal1985` set carries NH3 at zero. No upward extrapolation, no clamp. NH3 is
+assigned first and the remainder split 0.94 to 0.06, so the three fractions sum to one
+identically.
 
 **Deliverable: `src/casspian/tools/composition/`** with entry point
 `casspian-composition-lindal` (the generic generator for forward compositions comes later and
 is out of scope here), writing kind C per SPEC_00 §6.2 with `composition_role = "reduction"`,
 `source_statement` quoting the Table I footnote, per-species `provenance` (`assumed` for H2
 and He, `measured` where NH3 is tabulated and `interpolated` or `extrapolated` elsewhere),
-`x_H2_uncertainty` = 0.03, `latitude_absent_meaning = "point"` with the profile latitude in
-the source convention beside it (SPEC_00 §5), and the `species` group with molar masses and the `lindal1985`
+`x_H2_uncertainty` = 0.03 read from the raw bundle (a stated value is data, not a control
+choice), `latitude_planetocentric_absent_meaning = "point"` (the SPEC_00 §5 form
+`<dimension>_absent_meaning`; v0.5 wrote the shorthand) with the profile latitude in the
+source convention beside it, a per-level `nh3_provenance` flag beside the variable-level
+`provenance` (same pattern as kind W's `value_provenance`), and the `species` group with molar masses and the `lindal1985`
 refractivities (H2 136, He 35, NH3 0 with the caption note) converted to m³ per molecule by
 the Loschmidt constant of `lib.constants`, with each value's `status` copied from the master
-table and the master table's hash recorded.
+table and the master table's hash recorded. `is_polar` is a property of the molecule and is
+read from the `[is_polar]` table of the master file (v0.17; it was per refractivity set and
+absent from the `lindal1985` NH3 entry, which would have written ammonia as nonpolar);
+`temperature_dependence` stays per set, since it describes the value.
 
-**Acceptance.** Mole fractions sum to one at every level to 1e-12. NH3 is zero at and above
-794.33 mbar (the clamp), 15.9 ± 0.1 ppm at the 1047.13 mbar interior gap, and the
+**Acceptance.** Mole fractions sum to one at every level to 1e-12. NH3 is exactly zero at
+and above 794.33 mbar, the first grid level above the highest tabulated value, flagged
+`assumed`; 2.6 ppm at 831.76 mbar, `measured`; 15.9 ± 0.1 ppm at the 1047.13 mbar interior gap, and the
 extrapolated value at 1298.48 mbar is reported (Phase 1 found 79.3 ppm). Mean molar mass with NH3 set to zero is 2.1351 amu
 (Phase 1 check) and the value with NH3 at the deepest level is reported. Mean molecular
 refractivity at a level with zero NH3 is (0.94 × 136 + 0.06 × 35) × 1e-6 / n_Loschmidt to
@@ -641,3 +664,4 @@ same Monte Carlo; and the pass-through of the 0.2° label uncertainty into `phi_
 | 0.14 | 2026-09-11 | Step 7: the wind is the digitized Ingersoll and Pollard (1982) Fig. 5 curve, with the Smith points as its uncertainty; gap rule (reflection, their dashed curve) and polar rule declared with alternatives for sensitivity; entry point `casspian-wind-from-curve`; acceptance numbers from the digitization | author direction; new static data set |
 | 0.15 | 2026-09-11 | Step 7: equatorial bridge specified (cubic Hermite, `a + b φ²` by symmetry); linear blend of the reflection into the southern segment over a declared join window | author review of the assembled curve |
 | 0.16 | 2026-09-11 | Step 5 `wind_geoid`: one continuous march from pole to pole with a declared `anchor_rule` (default mean polar radius), returning the polar asymmetry; Step 7 acceptance: anchor rule sensitivity, Eq. 18 anchored the same way, expected figures from an independent march; sample check excludes the join window | REPORT_01_step7 (v0.15) Figure 2 discontinuity |
+| 0.17 | 2026-09-11 | Step 8: NH3 rule restated (zero above the tabulated range by assumption with the saturation reason, no upward extrapolation or clamp; interior interpolation and downward extrapolation kept); `is_polar` moved to a molecular table in `species_master.toml`; `x_H2_uncertainty` from the raw bundle; `<dimension>_absent_meaning` spelled out; per-level `nh3_provenance` | REPORT_01_step8 §3 and author question |

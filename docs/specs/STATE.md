@@ -14,5 +14,5 @@ reviewed against the specification.
 | 5 | `lib.geoid` | accepted with changes | `reports/REPORT_01_step5.md`, `reports/REVIEW_01_step5.md` | 2026-09-10 |
 | 6 | `lib.latitude` | accepted | `reports/REPORT_01_step6.md`, `reports/REVIEW_01_step6.md` | 2026-09-11 |
 | 7 | `tools/wind/`, kind W | accepted | `reports/REPORT_01_step7.md`, `reports/REVIEW_01_step7.md` | 2026-09-11 |
-| 8 | `tools/composition/`, kind C | not started | | |
+| 8 | `tools/composition/`, kind C | accepted with changes (SPEC_01 v0.17) | `reports/REPORT_01_step8.md`, `reports/REVIEW_01_step8.md` | 2026-09-11 |
 | 9 | `tools/lindal/build_inputs.py`, kinds T and D, the manifest | not started | | |

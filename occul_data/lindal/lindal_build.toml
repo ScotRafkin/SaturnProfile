@@ -58,3 +58,22 @@ pressure_grid_Pa = [
   100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
   1e+06
 ]
+
+[composition]
+# The composition Lindal assumed. Pointers and declared choices only; the ammonia column and
+# the source's own stated H2 fraction come from the raw bundle, the species properties from
+# the master table.
+raw_bundle     = "raw/lindal_raw.nc"
+species_master = "../../data_static/species_master.toml"
+species_set    = "lindal1985"
+output         = "lindal_composition.nc"
+prefix         = "lindal"
+title          = "Lindal et al. (1985) reduction composition, 94 percent H2 with He and NH3"
+
+# How the remainder is divided once ammonia is assigned. Checked against the h2_fraction the
+# raw bundle transcribes from p. 1137; the tool refuses if the two disagree.
+h2_fraction_of_remainder = 0.94
+he_fraction_of_remainder = 0.06
+
+nh3_fill_rule = "linear in pressure through the tabulated Table I values, extrapolated beyond them by scipy.interpolate.interp1d(fill_value='extrapolate'), then clamped at zero; ammonia is assigned first and the remainder is split by the two shares above"
+vertical_coordinate = "pressure_Pa"
