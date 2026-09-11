@@ -38,7 +38,8 @@ SECTION_KEYS = {
 
 def build(control_path, section: str = "rotation") -> Path:
     """Build a kind R file from the control file's named section."""
-    control = load_section(control_path, section, SECTION_KEYS)
+    control = load_section(control_path, section, SECTION_KEYS,
+                           path_keys=("source", "output"))
     reject_physical_values(
         {k: v for k, v in control.items() if not isinstance(v, Path)}, control_path, section
     )

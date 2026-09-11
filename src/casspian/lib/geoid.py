@@ -17,10 +17,12 @@ by integrating the slope equation of Eq. B3,
 
     g dr0/dphi = r0 G_phi,
 
-from the pole inward with a fourth order Runge Kutta scheme, and the residual
-`U(r0(phi), phi) - U_ref` is returned alongside as a diagnostic of how far the wind has taken
-the surface from an equipotential. Both are returned because the size of that residual is
-itself a result.
+as **one** march from the north pole through the equator to the south pole with a fourth order
+Runge Kutta scheme. Eq. B3 is first order and carries one constant, so there is one surface and
+one constant to fix; marching each hemisphere from its own pole with the same polar radius
+gives two surfaces that do not meet where the wind is not symmetric. The constant is set by a
+declared `anchor_rule`, and the residual `U(r0(phi), phi) - U_ref` is returned alongside as the
+dynamical height above the no wind geoid.
 
 Sign conventions follow `lib.gravity`. `g` is positive inward and `G_phi` is the component
 along increasing planetocentric latitude, negative in the northern hemisphere. With those,
@@ -30,6 +32,8 @@ bulge, and south of it both signs reverse together.
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -126,8 +130,13 @@ def _rk4_slope(phi, r, u_of_phi, Omega, GM, J, degrees, R_norm):
     return r * G_phi / g
 
 
-def _integrate_hemisphere(nodes, r_start, u_of_phi, Omega, GM, J, degrees, R_norm):
-    """RK4 from `nodes[0]` (a pole) along `nodes`, returning the radius at each node."""
+def _march_nodes(nodes, r_start, u_of_phi, Omega, GM, J, degrees, R_norm):
+    """RK4 from `nodes[0]` along `nodes`, returning the radius at each node.
+
+    The nodes run north pole to south pole, so this is the whole surface in one pass. It was
+    named for a hemisphere when the march was per hemisphere; that was the error SPEC_01 v0.16
+    corrects.
+    """
     radii = np.empty(nodes.shape, dtype="float64")
     radii[0] = r_start
     r = float(r_start)
@@ -147,58 +156,123 @@ def _integrate_hemisphere(nodes, r_start, u_of_phi, Omega, GM, J, degrees, R_nor
     return radii
 
 
-def wind_geoid(phi_c_grid, r_polar, u_of_phi, Omega, GM, J, degrees, R_norm):
+@dataclass
+class WindGeoidResult:
+    """The marched wind surface and the numbers that describe how it was anchored."""
+
+    radius: np.ndarray
+    closure: np.ndarray
+    polar_north_m: float
+    polar_south_m: float
+    polar_asymmetry_m: float
+    anchor_residual_m: float
+    north_start_m: float
+    anchor_rule: str
+
+    def __iter__(self):
+        """Unpack as `(radius, closure)`, which is what most callers want."""
+        return iter((self.radius, self.closure))
+
+
+def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degrees, R_norm,
+               anchor_latitude=None, tol_m=1.0e-6, max_iter=40, march_step_deg=0.05):
     """The surface a latitude dependent zonal wind produces. Manuscript Eq. B3.
 
     `u_of_phi` is a callable taking planetocentric latitude in radians and returning the zonal
-    wind in m/s. It must return zero at the pole: a nonzero zonal wind there is not a wind
-    field but a defect, and `lib.gravity.omega_abs` will not rescue it (see its docstring).
+    wind in m/s. It must return zero at both poles: a nonzero zonal wind there is not a wind
+    field but a defect, SPEC_00 section 6.6 refuses a kind W file that carries one, and
+    `lib.gravity.omega_abs` will not rescue it (see its docstring). It must also return an
+    array shaped like its argument; under NumPy 2 a one element array no longer converts to a
+    scalar, and a callable that always returns an array breaks the march.
 
-    Integrates `g dr0/dphi = r0 G_phi` from each pole inward with RK4, anchored at `r_polar`.
-    Each hemisphere is integrated from its own pole, so a wind that is not symmetric about the
-    equator is handled without a reflection assumption. The pole is inserted into the march if
-    the supplied grid does not contain it; the returned arrays are on the supplied grid.
+    **One march, one constant.** Eq. B3, `g dr0/dphi = r0 G_phi`, is first order and carries a
+    single constant of integration, so the surface is integrated once from the north pole
+    through the equator to the south pole. Marching from each pole separately with the same
+    polar radius produces two surfaces which, for a wind that is not symmetric about the
+    equator, do not meet: the Step 7 v0.15 figure showed a 38 km step at the equator from
+    exactly that mistake. The constant is fixed by `anchor_rule`:
 
-    Returns `(r0, closure)`: the radius at each supplied latitude, and
-    `U(r0(phi), phi) - U_ref` there against the **no wind** potential through the same polar
-    radius. That is the dynamical height of the wind surface above the no wind geoid in
-    potential units; divide by `g` for meters.
+    * `"mean_polar_radius"` (the default): the north polar start is found so that the two
+      polar radii of the marched surface average to `r_anchor`. Lindal states a **mean** polar
+      radius, which is what this reproduces.
+    * `"north_pole"` or `"south_pole"`: `r_anchor` is the radius at that pole.
+    * `"latitude"`: `r_anchor` is the radius at `anchor_latitude` (radians), for a surface
+      anchored on an observed radius.
 
-    No pseudo-potential built from `Omega_abs` is evaluated. With `u` varying in latitude the
-    gradient of such a quantity is not the effective gravity, so its variation along the
-    surface restates the wind kinetic term and measures nothing about conservativeness. The
-    non conservativeness of the field is the shear kernel of Eq. A15 and belongs to the forward
-    model. Ruled at the Step 5 review; SPEC_01 v0.7 states it.
+    The root find is a secant on the north polar start. The map from start to outcome is very
+    nearly affine, because Eq. B3 is linear in `r0` to the accuracy that matters here, so it
+    converges in a few steps; the residual it reached is returned rather than assumed.
 
-    There is no `tol_m` or `max_iter`: an initial value problem does not iterate.
+    Returns a `WindGeoidResult`, which unpacks as `(radius, closure)` for callers that want
+    only those. `closure` is `U(r0(phi), phi) - U_ref` against the **no wind** potential
+    through `r_anchor`, the dynamical height of the wind surface above the no wind geoid in
+    potential units; divide by `g` for meters. No pseudo-potential built from `Omega_abs` is
+    evaluated: with `u` varying in latitude its gradient is not the effective gravity, so its
+    variation along the surface restates the wind kinetic term and measures nothing.
     """
     phi = np.asarray(phi_c_grid, dtype="float64")
     pole = np.pi / 2
-    result = np.empty(phi.shape, dtype="float64")
 
-    for sign in (+1, -1):
-        selected = phi >= 0 if sign > 0 else phi < 0
-        if not selected.any():
-            continue
-        here = phi[selected]
-        order = np.argsort(-sign * here)  # from the pole inward
-        march = here[order]
-        if abs(abs(march[0]) - pole) > 1e-12:
-            march = np.concatenate(([sign * pole], march))
-            radii = _integrate_hemisphere(
-                march, r_polar, u_of_phi, Omega, GM, J, degrees, R_norm
-            )[1:]
-        else:
-            radii = _integrate_hemisphere(
-                march, r_polar, u_of_phi, Omega, GM, J, degrees, R_norm
-            )
-        restored = np.empty_like(radii)
-        restored[order] = radii
-        result[selected] = restored
+    # The march runs on its own dense grid spanning both poles, unioned with whatever the
+    # caller asked for, so every requested latitude is a node and the accuracy of the march
+    # never depends on the caller's grid. A caller who passes a single hemisphere would
+    # otherwise get one enormous step across the other one, which is silent and wrong.
+    dense = np.radians(np.arange(-90.0, 90.0 + 0.5 * march_step_deg, march_step_deg))
+    nodes = np.unique(np.concatenate([phi, dense, [-pole, pole]]))
+    order = np.argsort(-nodes)          # north pole first, south pole last
+    march_nodes = nodes[order]
 
-    U_ref = float(U_rigid(r_polar, pole, Omega, GM, J, degrees, R_norm))
-    closure = U_rigid(result, phi, Omega, GM, J, degrees, R_norm) - U_ref
-    return result, closure
+    def march(start):
+        return _march_nodes(march_nodes, start, u_of_phi, Omega, GM, J, degrees,
+                                     R_norm)
+
+    def outcome(radii):
+        if anchor_rule == "mean_polar_radius":
+            return 0.5 * (float(radii[0]) + float(radii[-1]))
+        if anchor_rule == "north_pole":
+            return float(radii[0])
+        if anchor_rule == "south_pole":
+            return float(radii[-1])
+        if anchor_rule == "latitude":
+            if anchor_latitude is None:
+                raise ValueError("anchor_rule 'latitude' needs anchor_latitude in radians")
+            return float(np.interp(float(anchor_latitude), march_nodes[::-1], radii[::-1]))
+        raise ValueError(
+            f"unknown anchor_rule {anchor_rule!r}; SPEC_01 v0.16 Step 5 defines "
+            "'mean_polar_radius', 'north_pole', 'south_pole' and 'latitude'"
+        )
+
+    start = float(r_anchor)
+    radii = march(start)
+    residual = outcome(radii) - float(r_anchor)
+    if anchor_rule != "north_pole":
+        previous_start, previous_residual = start, residual
+        start = start - residual
+        for _ in range(int(max_iter)):
+            radii = march(start)
+            residual = outcome(radii) - float(r_anchor)
+            if abs(residual) <= float(tol_m):
+                break
+            slope = (residual - previous_residual) / (start - previous_start)
+            if slope == 0.0:
+                break
+            previous_start, previous_residual = start, residual
+            start = start - residual / slope
+
+    U_ref = float(U_rigid(r_anchor, pole, Omega, GM, J, degrees, R_norm))
+    on_grid = np.interp(phi, march_nodes[::-1], radii[::-1])
+    closure = U_rigid(on_grid, phi, Omega, GM, J, degrees, R_norm) - U_ref
+    north, south = float(radii[0]), float(radii[-1])
+    return WindGeoidResult(
+        radius=on_grid,
+        closure=closure,
+        polar_north_m=north,
+        polar_south_m=south,
+        polar_asymmetry_m=south - north,
+        anchor_residual_m=float(residual),
+        north_start_m=float(start),
+        anchor_rule=anchor_rule,
+    )
 
 
 def radius_at(phi_c, phi_c_grid, radii):

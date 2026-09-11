@@ -1,0 +1,32 @@
+# CASSPIAN data_static: properties of the Voyager cloud-top wind data set.
+#
+# These are properties of the data, not choices of any one build, so they live beside the
+# digitizations rather than in a control file (SPEC_01 v0.10, Step 7). The wind values
+# themselves are in the two CSVs beside this file: the Ingersoll and Pollard (1982) Fig. 5
+# curve is the wind, the Smith et al. (1982) Fig. 4 points are the uncertainty.
+#
+# Written by the coding agent at Step 7 from the values previously carried in the [wind]
+# section of occul_data/lindal/lindal_build.toml; every value below is either quoted from a
+# source or is the project's stated reading of one. Marked for the author, since data_static
+# is normally written by hand.
+
+[observation_level]
+# The level the cloud-top wind is assigned to. This is a declared assignment, not a
+# measurement: neither source states a pressure for the tracked features.
+value_Pa   = 1.0e5
+value_source = "project assignment, not stated by either source"
+justification = "Cloud-tracked features are ammonia cloud tops. Lindal et al. (1985) carry the zonal wind in the geoid fitted on the 100 mbar surface and assume it independent of altitude (Appendix p. 1144), so the level assigned to it does not enter their geodesy and is a declared choice here. 1 bar is taken as the nominal cloud-top level; because the reduction wind is altitude independent, no result depends on this number."
+enters_reduction = "no; the reduction wind is altitude independent, so the assigned level sets only which column of the kind W file is flagged observed"
+
+[latitude]
+convention = "planetographic"
+convention_source = "Ingersoll and Pollard 1982, Fig. 3 caption: 'the latitudes are planetographic'; Lindal et al. 1985, Appendix p. 1144: the published zonal-wind data 'give V_w as a function of the planetographic latitude'"
+
+[frame]
+rotation_system = "System III"
+frame_source = "Smith et al. 1982, Fig. 4 caption: 'Zonal (eastward) winds in the reference frame of Saturn's magnetic field'; the magnetic field frame is System III"
+positive_direction = "eastward"
+
+[epoch]
+value = "Voyager 1 and 2, 1980 to 1981"
+value_source = "Smith et al. 1982; Ingersoll and Pollard 1982 Fig. 5 caption, 'from Voyager 2 in late August, 1981'"

@@ -23,12 +23,16 @@ class ControlFileError(Exception):
     """A control file is malformed, incomplete, or carries a key the parser does not know."""
 
 
-def load_section(path, section: str, allowed: dict[str, bool]) -> dict:
+def load_section(path, section: str, allowed: dict[str, bool], path_keys=()) -> dict:
     """Load one section of a TOML control file and check its keys against `allowed`.
 
     `allowed` maps key name to whether it is required. Any key outside `allowed` is an error
-    (SPEC_00 section 7). Every key whose value is a string ending in `.toml` or `.nc` is
-    resolved against the control file's own directory and returned as an absolute `Path`.
+    (SPEC_00 section 7).
+
+    `path_keys` names the keys whose values are paths; each is resolved against the control
+    file's own directory and returned as an absolute `Path`, per SPEC_00 section 7. The keys
+    are named explicitly rather than guessed from the file extension, because guessing was
+    wrong the first time a tool pointed at a `.csv`.
     """
     path = Path(path).resolve()
     if not path.exists():
@@ -57,7 +61,7 @@ def load_section(path, section: str, allowed: dict[str, bool]) -> dict:
 
     resolved = {}
     for key, value in table.items():
-        if isinstance(value, str) and value.endswith((".toml", ".nc")):
+        if key in set(path_keys) and isinstance(value, str):
             resolved[key] = (path.parent / value).resolve()
         else:
             resolved[key] = value

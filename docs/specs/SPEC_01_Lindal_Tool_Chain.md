@@ -2,8 +2,8 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.8, 11 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 6 accepted. See §13 for the revision history.
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.6, which it does not repeat.
+Version 0.16, 11 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 6 accepted; Step 7 returned for rework. See §13 for the revision history.
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.8, which it does not repeat.
 
 ---
 
@@ -21,6 +21,10 @@ existing `REPORT_01_step0.md`, `REPORT_01_step1.md`, `REVIEW_01_step0.md`, and
 `REVIEW_01_step1.md` from `docs/specs/` to `reports/` with `git mv`; change the `.gitignore`
 rule from `reports/` to `reports/step*/`; commit. From then on reports and reviews are written
 to `reports/` directly.
+
+**Figures that a report refers to survive the step (v0.10).** `reports/step<N>/` is ignored
+and deletable, so any figure a report cites is written to `reports/figures/step<N>_<name>.png`
+and committed with the report; the step directory keeps only the script and its output.
 
 **Commit on acceptance, then rebuild.** A step's code is committed when its review says
 `accepted`. Any data product the step wrote before that commit carries `-dirty` in
@@ -289,10 +293,20 @@ paragraph and labeled as such.
   iteration count per latitude, and the final `|ΔU|`. This is the **no-wind** reference geoid.
   It is solved independently at every latitude supplied, so any latitude at which the radius
   is wanted is to be put in the grid and solved, never interpolated.
-- `wind_geoid(phi_c_grid, r_polar, u_of_phi, Omega, GM, J, degrees, R_norm)`: the surface a
-  latitude dependent, altitude independent wind produces (Lindal's assumption), which is the
-  manuscript's Eq. B3, `g dr₀/dφ = r₀ G_φ`, integrated from each pole inward with a
-  fourth-order scheme on the supplied latitude grid using the Step 4 components with `u(φ)`.
+- `wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degrees, R_norm)`:
+  the surface a latitude dependent, altitude independent wind produces (Lindal's assumption),
+  which is the manuscript's Eq. B3, `g dr₀/dφ = r₀ G_φ`, integrated as **one** march from
+  the north pole through the equator to the south pole with a fourth-order scheme on the
+  supplied latitude grid using the Step 4 components with `u(φ)`. Eq. B3 is first order and
+  has one constant; a surface marched from each pole separately with the same polar radius
+  is two surfaces, and with a wind that is not symmetric about the equator they do not meet
+  (REPORT_01_step7 v0.15, Figure 2: a 38 km step at the equator). The constant is fixed by a
+  declared `anchor_rule`: `"mean_polar_radius"` (default; Lindal states a **mean** polar
+  radius, and the two polar radii of the marched surface are made to average to `r_anchor`
+  by a one-parameter root find on the north polar start), `"north_pole"` or `"south_pole"`
+  (`r_anchor` applied at that pole), or `"latitude"` with a declared latitude (for a surface
+  anchored at an observed radius). The function returns the radius, the two polar radii and
+  their difference (the polar asymmetry the wind produces), and the anchoring residual.
   Since with wind the field is not conservative when u varies with latitude (§A6), this surface
   is the level set of nothing, and no potential closure is defined for it. The function returns
   the radius and, as a diagnostic, `U(r₀(φ), φ) − U_ref` against the **no-wind** potential
@@ -377,57 +391,126 @@ structure (cloud-top profile at its level, sheared component from thermal retrie
 Eq. A39, parameterized decay below); that is the generic wind tool and a later spec. This
 step builds only the Lindal instance, using the same file layout.
 
-**Inputs.** `data_static/winds/smith1982_fig4_points.csv` (323 digitized points, planetographic
-latitude, System III; see the `.note.md` beside it), `lindal_gravity.nc`, `lindal_rotation.nc`,
-the `[wind]` section of `lindal_build.toml`, which declares: the source file, the bin width in
-degrees (2.0), the minimum count per bin below which a bin is flagged (3), the observation level
-in Pa assigned to the cloud-top wind and its justification string, the interpolation rule for
-empty bins (linear in latitude between the nearest populated bins, flagged `interpolated`),
-the extension rule poleward of the last populated bin (hold the last bin mean, flagged
-`extrapolated`, to ±90°), `vertical_structure = "altitude independent"`, and the pressure grid
-on which the file is written (a declared list, for example ten levels per decade from 1 Pa to
-1.0e6 Pa), which must cover every pressure any reduction or run will touch.
+**Inputs.** `data_static/winds/ingersoll_pollard1982_fig5_curve.csv` (v0.14: the solid zonal
+wind curve of Ingersoll and Pollard 1982, Fig. 5, digitized at 0.2° from +81.1° to +1.3° and
+−10.9° to −72.8° planetographic; see its `.note.md`), which is the wind;
+`data_static/winds/smith1982_fig4_points.csv` (323 digitized cloud-tracking points, the data
+that curve was drawn through; see its `.note.md`), which is the uncertainty;
+`data_static/winds/smith1982_fig4.toml` (the observation level in Pa assigned to the cloud-top
+wind with its justification string, and the latitude convention of the sources; properties of
+the data, so they live beside it); `lindal_gravity.nc`, `lindal_rotation.nc`; the raw bundle
+(for the polar radius of the no-wind geoid until kind D exists at Step 9; declared as a
+pointer); and the `[wind]` section of `lindal_build.toml`, which declares choices only: the
+source pointers; the bin width in degrees (2.0) and the minimum count per bin (3) for the
+uncertainty; the gap rule and the polar rule (below); the planetocentric latitude grid of the
+product (a declared spacing, 0.5°, from −90 to +90 with both poles and the equator as nodes);
+`vertical_structure = "altitude independent"`; and the pressure grid on which the file is
+written (a declared list, ten levels per decade from 1 Pa to 1.0e6 Pa), which must cover every
+pressure any reduction or run will touch. A control section may carry such choices; the
+principle 2 refusal is for keys that name a physical quantity.
 
-**Deliverable: `src/casspian/tools/wind/`** with entry point `casspian-wind-from-points`,
-which:
+**Why this wind (v0.14).** Lindal's appendix cites Smith et al. (1982) and Ingersoll and
+Pollard (1982) as the wind sources. The Ingersoll and Pollard curve is a published smoothing of
+the Smith data by its authors' hands, and the Smith points scatter about it with RMS 21.3 m/s
+and mean −4.3 m/s, equal to their pooled within-bin scatter (21.4 m/s), so it is the mean curve
+of the data to the precision of the digitizations. Using it as the wind removes every fitting
+choice from this step (the v0.10 to v0.13 designs, spline and then PCHIP through bin means,
+are superseded; PCHIP survives only as the interpolant between digitized samples and as the
+polar rule). The Smith bins keep their role as the uncertainty. **A zonal wind that is nonzero
+at a pole is a defect, in this file and in every kind W file**; SPEC_00 §6.6 enforces at load
+time that `u_total_ms` is exactly zero at ±90°, which must be grid nodes.
 
-1. Bins the points in planetographic latitude at the declared width; per bin computes count,
-   mean, and sample standard deviation (NaN for count 1); flags bins below the minimum count.
-2. Converts bin-center planetographic latitudes to planetocentric by `lib.latitude` on the
-   no-wind reference geoid of Step 5 built from the named G and R files. (The wind itself is
-   what will later make the geoid depart from no-wind; using the no-wind surface for the
-   conversion is a second-order choice and is recorded in `latitude_conversion_inputs`.)
-3. Fills empty bins and extends to the poles per the declared rules, flagging each value in
-   `value_provenance` (0 observed, 1 interpolated, 2 parameterized, 3 extrapolated).
-4. Extends the one-level profile onto the declared pressure grid as a full two-dimensional
+**Deliverable: `src/casspian/tools/wind/`** with entry point `casspian-wind-from-curve`
+(replacing `casspian-wind-from-points`; the point-based path is retained in the module for a
+data set that has no published curve, selected by `wind_source_kind = "points"`), which:
+
+1. Reads the digitized curve and builds `u(φ_g)` as a shape-preserving cubic interpolant
+   (PCHIP) through its samples, per segment.
+2. Fills the ring gap (−10.9° to +1.3°) by the declared rule `gap_rule = "reflect_north"`:
+   the northern segment reflected about the equator, which is Ingersoll and Pollard's own
+   dashed curve (their Fig. 3 caption defines it). The strip between the northern end (+1.3°)
+   and its reflection (−1.3°) is bridged by a cubic Hermite matched to value and slope at
+   both ends, which by the symmetry reduces to `a + b φ²` (v0.15). The reflection does not
+   meet the southern segment where the latter begins (at −10.9° the reflection reads about
+   377 m/s and the southern solid 346), so the two are blended linearly over a declared
+   `join_window_deg = [-10.9, -15.0]`, reflection weight one at the first edge and zero at
+   the second, so that the assembled wind is continuous and lies on the southern data from
+   −15° southward (v0.15; the window is part of the sensitivity study). Values in the gap
+   and the window are flagged `parameterized` (code 2) with the rule named in
+   `parameterization`. The `.note.md` records that the ten Smith points on the
+   southern flank (−7.5° to −10.9°) lie 80 to 100 m/s below the reflection; the alternative
+   `gap_rule = "reflect_north_then_bins"` (reflection only where no Smith bin exists, the
+   populated Smith bins otherwise) is a declared choice for the sensitivity study, not the
+   default.
+3. Brings the wind to zero at each pole by the declared rule `polar_rule = "pchip_to_zero"`:
+   PCHIP through the last two digitized samples of the segment and a node of exactly 0.0 at
+   ±90°, which is monotone by construction; flagged `extrapolated` (code 3). The alternative
+   `polar_rule = "linear_to_zero"` is a declared choice for the sensitivity study.
+4. Evaluates the curve on the declared planetocentric grid. Each grid `φ_c` is converted to
+   `φ_g` by the **direct** relation `planetographic_from_planetocentric` on the no-wind
+   reference geoid built from the named G and R files (no fixed point is needed in this
+   direction). The choice of the no-wind surface for the conversion is second order and is
+   recorded in `latitude_conversion_inputs`.
+5. Provenance per grid latitude: 0 `observed` where the value comes from the digitized curve
+   (it is Ingersoll and Pollard's reading of observations; the `provenance` attribute of the
+   variable says `derived` and the source); 2 `parameterized` in the gap; 3 `extrapolated` in
+   the polar caps and at the poles (value exactly 0.0).
+6. Uncertainty: the Smith points are binned at the declared width in planetographic latitude
+   and, per populated bin with at least the minimum count, the RMS of the points about the
+   curve is the 1σ (`uncertainty_kind = "1sigma"`, `uncertainty_method = "RMS of the Smith
+   et al. 1982 Fig. 4 points about the Ingersoll and Pollard 1982 Fig. 5 curve within a 2
+   degree planetographic bin; NaN where the bin has fewer than the minimum count"`); assigned
+   to grid latitudes by linear interpolation in `φ_g` between populated bin centers; in the gap
+   the uncertainty is the mirrored northern value where the reflection supplies the wind and
+   the bin RMS where Smith bins exist; NaN in the polar caps and at the poles. The bins are
+   written as `bin_rms_ms` and `bin_count` on a `bin_latitude` coordinate (planetographic,
+   stated).
+7. Extends the one-level profile onto the declared pressure grid as a full two-dimensional
    array, every column identical, with `value_provenance` at every level other than the
-   observation level set to a fifth code, 4, `extended_by_source_assumption`, so the
-   assumption is visible in the data and the file has the same shape as every other kind W.
-5. Writes kind W (SPEC_00 §6.6): `u_total_ms(latitude, pressure)` as the binned mean,
-   `u_total_uncertainty_ms` as the bin standard deviation with `uncertainty_kind = "1sigma"` and
-   `uncertainty_method = "sample standard deviation of the digitized points in the bin"`,
-   `bin_count` as an extra variable, `reference_level_pressure_Pa` equal to the observation
-   level, `u_cylindrical_ms` computed from the field at the reference level extended along
-   cylinders on the no-wind geoid geometry, and `u_shear_ms = u_total_ms − u_cylindrical_ms`.
-   For an altitude-independent field on a spherical-shell geometry the shear component is
-   not identically zero (a column at fixed latitude tilts away from a cylinder), and the small
-   nonzero values are the correct decomposition of Lindal's assumption; report their maximum.
-   Provenance attributes per §6.6, including `source_latitude_convention = "planetographic"`
-   and the citation and caption quoted in the `.note.md`.
+   observation level set to code 4, `extended_by_source_assumption`.
+8. Writes kind W (SPEC_00 §6.6): `u_total_ms(latitude, pressure)`, `u_total_uncertainty_ms`,
+   `value_provenance`, the bin variables, `reference_level_pressure_Pa`. Decomposition: for a
+   field declared altitude independent on a pressure coordinate, `u_cylindrical_ms =
+   u_total_ms` and `u_shear_ms = 0` identically, with `decomposition =
+   "trivial_altitude_independent"`. Provenance attributes per §6.6, including
+   `source_latitude_convention = "planetographic"`, `wind_source = "ingersoll_pollard1982_fig5"`,
+   and the citations and captions quoted in both `.note.md` files.
 
-**Acceptance.** Bin table reported in full (latitude, count, mean, std, flag). Sum of counts
-is 323. The equatorial bins (centers near 3 to 9° N) have means between 440 and 495 m/s. The
-bin containing 38° N planetographic has a mean between −20 and +10 m/s and a count of at
-least 10. Planetocentric conversion of the 36.3° bin center matches Step 6 to 0.01°. Every
-column of `u_total_ms` is identical. `read` of the file as kind W succeeds and the SPEC_00
-§6.6 load-time checks (sum identity to round-off; constancy of `Omega_abs` from
-`u_cylindrical_ms` on cylinders to the declared tolerance) pass; the maximum of
-`|u_shear_ms|` is reported. The report includes a plot of the binned mean with ±std against
-latitude over the digitized points. With the binned wind as `u(φ)`, the Step 5 wind geoid
-through `r_polar` = 54,438 km is run and its equatorial radius reported and compared with
-Lindal's fitted 60,367 ± 4 km (moved here from Step 5 at v0.7); the number is to be reported,
-not prescribed, and a departure is a finding about the wind, the anchoring, or Lindal's fit,
-to be discussed rather than tuned away.
+**Acceptance.** The wind curve passes through every digitized sample outside the join window
+to round-off (inside it the blend replaces the samples by declaration) and is exactly 0.0 at
+both poles; the §6.6 polar check passes; a copy of the file with one polar value
+perturbed to 1e-6 m/s is refused by `read`. Peak 490.5 ± 2 m/s at +7.4 ± 0.3° planetographic;
+the reflected peak at −7.4°; the value at `φ_g` = 36.3° is 1.9 ± 3 m/s (this value enters the
+frozen anchor and is to be quoted in the report); the value at +30.8° is 75 ± 3 m/s. The tool's
+conversion of `φ_g` = 36.3° matches Step 6 to 1e-6°. Bin table reported in full (bin latitude,
+count, RMS about the curve, flag); sum of counts is 323; the RMS over all populated bins,
+pooled, is 21.3 ± 0.5 m/s. Every column of `u_total_ms` is identical. `read` as kind W succeeds
+and the §6.6 load-time checks pass. Figure 1 (to `reports/figures/step7_wind_curve.png`, committed): the Smith points, the
+Ingersoll and Pollard curve with its ±1σ band, the reflected gap fill and the polar
+extrapolations distinguished, and the provenance ranges shaded, against planetographic
+latitude. With the wind curve as `u(φ)`, the Step 5 wind geoid is run as a single march
+with `anchor_rule = "mean_polar_radius"` and `r_anchor` = 54,438 km (v0.16); its equatorial
+radius is reported and compared with Lindal's fitted 60,367 ± 4 km, remembering that the
+anchor itself carries ±10 km which passes straight into the equatorial value, so the
+comparison band is about ±11 km (an independent march with these rules gives 60,371 km,
+north and south polar radii 54,424 and 54,452 km, a 28.7 km asymmetry; these are the
+expected figures, to be reproduced, not prescribed); grid convergence across an eightfold
+refinement is reported; the sensitivity of the equatorial radius to the anchor rule
+(`north_pole` and `south_pole` against the default), to the polar rule (`pchip_to_zero`
+against `linear_to_zero`) and to the gap rule (`reflect_north` against
+`reflect_north_then_bins`) is reported, each as a difference in km. The number is to be reported, not prescribed, and
+a departure beyond the band is a finding about the wind, the anchoring, or Lindal's fit, to
+be discussed rather than tuned away. Figure 2 (`reports/figures/step7_dynamical_height.png`,
+committed): the wind curve above, and below it the dynamical height
+`h(φ) = r_wind(φ) − r_nowind(φ)` from the Eq. B3 march over all latitudes, overlaid with
+Lindal's small-wind approximation, his Eq. 18,
+`h(φ) ≈ (2 ω r_p / ⟨g⟩) ∫_φ^{π/2} u sin φ dφ`, integrated continuously from the north pole
+to the south pole and offset so that its two polar values average to zero, the same
+anchoring as the march (v0.16), evaluated from the same wind curve with
+`⟨g⟩` taken as the no-wind gravity on the reference geoid at that latitude; the anchor
+latitude is marked and the equatorial value annotated against the 123 km implied by
+60,367 − 60,244. The march and Eq. 18 are expected to agree to within the cyclostrophic term
+and the oblateness corrections Eq. 18 drops; a larger departure is to be explained.
 
 ---
 
@@ -509,6 +592,13 @@ wind-included geoid, B1, B3.3, and the kind N product with embedded inputs. Its 
 acceptance number will be the wind-included `phi_c` reported in Step 6 and the wind-included
 `r0` reported in Step 5. SPEC_03 opens the numerical methods discussion for the forward model.
 
+Items carried to SPEC_02 from Step 7 (v0.12): a Monte Carlo on the reduction wind, drawing
+bin means from their 1σ (independent per bin as the default, with a declared alternative of
+correlated draws), rebuilding the wind geoid and the anchor for each draw, and reporting the
+spread of `r0`, `phi_c` and the equatorial radius; the treatment of the polar cap, where the
+uncertainty is NaN, as a declared alternative (PCHIP decay against linear taper) inside the
+same Monte Carlo; and the pass-through of the 0.2° label uncertainty into `phi_c`.
+
 ---
 
 ## 12. Decisions made in this document
@@ -543,3 +633,11 @@ acceptance number will be the wind-included `phi_c` reported in Step 6 and the w
 | 0.6 | 2026-09-10 | Step 4: `G_φ` sign convention ruled (along increasing latitude; ψ = arctan2(−G_φ, g)); Null GM tolerance 1e-3; wrong coefficient values paired with their no-wind counterparts; GM read from `iess2019.toml`; the 45° check placed on the equatorial 1 bar sphere with a repeat on the Step 5 surface | REPORT_01_step4 §3 |
 | 0.7 | 2026-09-10 | Step 5: `radius_at` scheme changed to `1/r²` linear in `sin² φ_c` with bracketing in `φ_c`; anchor radius solved or marched, never interpolated; closure diagnostic fixed as the no-wind potential departure, pseudo-potential excluded; stand-in bulge figure dropped, 60,367 comparison moved to Step 7; Null GM stated for the reduction geoid; `U_rigid` sign claim about Lindal Eq. 11 withdrawn; unused arguments removed from `wind_geoid` | REPORT_01_step5 §3; author direction on the interpolant |
 | 0.8 | 2026-09-11 | Step 6: `tol_rad` replaces `tol_deg`; seed flattening stated (100 mbar oblateness); iteration counts tied to tolerances; Null GM values recorded beside the handoff values; label uncertainty pass-through noted | REPORT_01_step6 §3 |
+| 0.9 | 2026-09-11 | Step 7: two-panel diagnostic figure of the wind and the dynamical height, with Lindal Eq. 18 overlay | author request |
+| 0.10 | 2026-09-11 | Step 7 redesigned: fitted wind (constrained penalized spline, zero at both poles, scatter-matching smoothing) as the product, bins retained for the uncertainty; §6.6 polar zero check; observation level moved to a static file beside the digitization; trivial decomposition declared for altitude-independent files; acceptance rewritten (bin criteria restricted to populated bins, anchor wind quoted, ±11 km comparison band, polar cap sensitivity); `reports/figures/` rule in §0 | REPORT_01_step7 §3; author direction |
+| 0.11 | 2026-09-11 | Step 7: fit quality rules (hard checks a to d, soft checks e to g, smoothing escalation, PCHIP fallback), stated as general rules for any latitude fit of point data | author request |
+| 0.12 | 2026-09-11 | Step 7: default method changed to a shape-preserving interpolant (PCHIP) through the populated bin means with polar zeros; the v0.11 spline and its rules retained as a non-default alternative; uncertainty is the bin sample standard deviation; acceptance simplified accordingly | author direction: simplest method that works |
+| 0.13 | 2026-09-11 | Header dependency corrected to SPEC_00 v0.8; alternative spline rules corrected: check (a) local clause applies only where points bracket the latitude, smoothing search runs in the direction the failing check indicates | coding agent findings on v0.11 |
+| 0.14 | 2026-09-11 | Step 7: the wind is the digitized Ingersoll and Pollard (1982) Fig. 5 curve, with the Smith points as its uncertainty; gap rule (reflection, their dashed curve) and polar rule declared with alternatives for sensitivity; entry point `casspian-wind-from-curve`; acceptance numbers from the digitization | author direction; new static data set |
+| 0.15 | 2026-09-11 | Step 7: equatorial bridge specified (cubic Hermite, `a + b φ²` by symmetry); linear blend of the reflection into the southern segment over a declared join window | author review of the assembled curve |
+| 0.16 | 2026-09-11 | Step 5 `wind_geoid`: one continuous march from pole to pole with a declared `anchor_rule` (default mean polar radius), returning the polar asymmetry; Step 7 acceptance: anchor rule sensitivity, Eq. 18 anchored the same way, expected figures from an independent march; sample check excludes the join window | REPORT_01_step7 (v0.15) Figure 2 discontinuity |

@@ -55,7 +55,8 @@ def _collect(entries: dict, key: str) -> str:
 
 def build(control_path, section: str = "gravity") -> Path:
     """Build a kind G file from the control file's named section."""
-    control = load_section(control_path, section, SECTION_KEYS)
+    control = load_section(control_path, section, SECTION_KEYS,
+                           path_keys=("source", "output"))
     reject_physical_values(
         {k: v for k, v in control.items() if not isinstance(v, Path)}, control_path, section
     )

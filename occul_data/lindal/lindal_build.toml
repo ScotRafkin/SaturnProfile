@@ -17,3 +17,44 @@ entry  = "system_iii"
 output = "lindal_rotation.nc"
 prefix = "lindal"
 title  = "System III rotation, as used in the Lindal reduction"
+
+
+[wind]
+# The cloud top wind Lindal carried in his geoid. Pointers and declared choices only.
+# The wind is the Ingersoll and Pollard (1982) Fig. 5 solid curve; the Smith et al. (1982)
+# Fig. 4 points are the uncertainty. Properties of the data itself live beside the
+# digitizations in smith1982_fig4.toml, not here.
+wind_source_kind = "curve"
+curve_source     = "../../data_static/winds/ingersoll_pollard1982_fig5_curve.csv"
+points_source    = "../../data_static/winds/smith1982_fig4_points.csv"
+data_properties  = "../../data_static/winds/smith1982_fig4.toml"
+gravity_file     = "lindal_gravity.nc"
+rotation_file    = "lindal_rotation.nc"
+raw_bundle       = "raw/lindal_raw.nc"          # for the reference geoid polar radius
+output           = "lindal_wind.nc"
+prefix           = "lindal"
+title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as used in the Lindal reduction"
+
+# Uncertainty binning of the Smith points.
+bin_width_deg     = 2.0
+min_count_per_bin = 3
+
+# Assembly rules. Each is flagged in value_provenance and named in the file.
+gap_rule        = "reflect_north"      # alternative: "reflect_north_then_bins"
+polar_rule      = "pchip_to_zero"      # alternative: "linear_to_zero"
+join_window_deg = [-10.9, -15.0]       # reflection weight 1 at the first edge, 0 at the second
+
+# Product grids.
+latitude_grid_step_deg = 0.5           # -90 to +90, both poles and the equator as nodes
+vertical_structure     = "altitude independent"
+
+# Ten levels per decade from 1 Pa to 1.0e6 Pa. Declared as a list so the grid is auditable.
+pressure_grid_Pa = [
+  1, 1.25893, 1.58489, 1.99526, 2.51189, 3.16228, 3.98107, 5.01187, 6.30957, 7.94328,
+  10, 12.5893, 15.8489, 19.9526, 25.1189, 31.6228, 39.8107, 50.1187, 63.0957, 79.4328,
+  100, 125.893, 158.489, 199.526, 251.189, 316.228, 398.107, 501.187, 630.957, 794.328,
+  1000, 1258.93, 1584.89, 1995.26, 2511.89, 3162.28, 3981.07, 5011.87, 6309.57, 7943.28,
+  10000, 12589.3, 15848.9, 19952.6, 25118.9, 31622.8, 39810.7, 50118.7, 63095.7, 79432.8,
+  100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
+  1e+06
+]

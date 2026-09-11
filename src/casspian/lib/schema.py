@@ -683,6 +683,38 @@ def check_wind_components(dataset, where: str) -> None:
         )
 
 
+def check_wind_poles(dataset, where: str) -> None:
+    """Refuse a kind W dataset whose wind is not exactly zero at both poles.
+
+    SPEC_00 section 6.6 (v0.8). A zonal wind is zero at a pole by definition, and a nonzero
+    value there makes `Omega_abs` and the meridional gravity singular: the centrifugal part of
+    `G_phi` carries `u^2 tan(phi) / r`, which diverges (REPORT_01_step7, finding 5). Both poles
+    must be nodes of the latitude coordinate, and the tool that writes the file, not the model,
+    is where a source that does not reach the pole is brought to zero.
+    """
+    import numpy as np
+
+    name = "latitude_planetocentric_deg"
+    if name not in dataset.variables or "u_total_ms" not in dataset.variables:
+        return
+    latitude = np.asarray(dataset[name].values, dtype="float64")
+    for pole in (-90.0, 90.0):
+        match = np.flatnonzero(np.abs(latitude - pole) <= 1e-9)
+        if match.size == 0:
+            raise CasspianSchemaError(
+                f"{where}: {pole:+.0f} degrees is not a node of the latitude coordinate. "
+                "SPEC_00 section 6.6 requires both poles to be nodes of a kind W file."
+            )
+        values = np.asarray(dataset["u_total_ms"].values, dtype="float64")[match]
+        worst = float(np.max(np.abs(values)))
+        if worst != 0.0:
+            raise CasspianSchemaError(
+                f"{where}: u_total_ms at {pole:+.0f} degrees is {worst:.3e} m/s, not exactly "
+                "zero (SPEC_00 section 6.6). A zonal wind is zero at a pole by definition, and "
+                "a nonzero value makes the meridional gravity singular there."
+            )
+
+
 def validate(dataset, kind: str, where: str = "dataset", writer_filled: bool = True) -> None:
     """Validate `dataset` against `kind`, raising `CasspianSchemaError` on the first fault.
 
@@ -700,3 +732,4 @@ def validate(dataset, kind: str, where: str = "dataset", writer_filled: bool = T
         check_mole_fractions(dataset, where)
     if kind == "wind":
         check_wind_components(dataset, where)
+        check_wind_poles(dataset, where)

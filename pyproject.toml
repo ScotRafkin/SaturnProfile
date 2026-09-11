@@ -19,6 +19,7 @@ dependencies = [
 casspian-lindal-raw = "casspian.tools.lindal.build_raw:main"
 casspian-gravity-file = "casspian.tools.gravity.build_gravity:main"
 casspian-rotation-file = "casspian.tools.gravity.build_rotation:main"
+casspian-wind-from-curve = "casspian.tools.wind.build_wind:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
