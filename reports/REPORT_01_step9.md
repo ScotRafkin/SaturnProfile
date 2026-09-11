@@ -140,3 +140,58 @@ the **+- 19 km spread** between polar anchor choices, which is the size of the a
 uncertainty until the observed radii of his Fig. 9 are brought in. Both live in
 `lindal_geodesy.nc` in part: `polar_asymmetry_note` carries the caption, and
 `radius_polar_uncertainty_m` carries the +- 10 km.
+
+---
+
+## 6. Addendum: the directory sweep, and SPEC_01 closed
+
+Added 11 September 2026, after `REVIEW_01_step9.md`. Two changes were made, then the sweep the
+review asked for was run.
+
+**1. `source_gravity_citation` reads the new table.** The author added
+`[gravity_used_by_source]` to `lindal_scalars.toml` in the shape of `[wind_used_by_source]`, so
+kind T now carries `"Null et al. 1981; Campbell 1984 (personal communication)"` with its
+Appendix quotation in `source_gravity_citation_value_source` and the pole vector references in
+`source_pole_vector`. The prose it used to be cut from is still there as `source_fit_inputs`,
+the source's own statement of everything that went into the geoid fit. Finding 2 is closed at
+the transcription, which is the right place.
+
+**2. The manifest names the anchor rule.** SPEC_00 v0.9 adds `anchor_rule` to the `[geoid]`
+vocabulary, and the tool writes it from the control file. The reduction now has, in one place,
+the same statement Step 7 built its surface with:
+
+```toml
+[geoid]
+anchor_surface_Pa = 10000
+anchor_quantity   = "radius_polar_m"
+anchor_rule       = "mean_polar_radius"   # SPEC_01 v0.16: how the one constant of Eq. B3 is fixed
+convergence_m     = 1
+```
+
+This is the item the report could not have raised: the `[geoid]` section predates v0.16, and
+without the rule the reduction could have frozen `r0` on a differently anchored surface than
+the one Step 7 reported, which is a 19 km error and would have been invisible.
+
+**3. The sweep.** The scalars edit changes `lindal_scalars.toml`, which the raw bundle hashes,
+so it changes the bundle and everything downstream of it. Every product was rebuilt in
+dependency order after the acceptance commit: the raw bundle, then G, R, W, C, then T, D and the
+manifest. All now carry the clean commit **`ece58d24733387e8706e2680d26178d435c8f010`**, and the
+Step 9 acceptance reports no dirty product.
+
+| product | kind | SHA-256 |
+|---|---|---|
+| `raw/lindal_raw.nc` | raw | `3054cc6cf0b54905ee3d7d67bbe28ad12bac18288e1fcd53893957d54d9171eb` |
+| `lindal_gravity.nc` | gravity | `6db0129cefd01bc9c151020e604cf4563a82381e61c97381d0a7ee383826911e` |
+| `lindal_rotation.nc` | rotation | `a5c72017a423c50f2a952ddcbc4ccf777c1e94683fa6965ee96f7f43d949a424` |
+| `lindal_wind.nc` | wind | `18d8cdae4dd8faa5cdcea40d25e6a9dfce4391421b3af4205d2b377f1150e7b9` |
+| `lindal_composition.nc` | composition | `b882abcac3bf09cb4734fabb2fa6a463f4e9c1bde9428747b7f9b433555165cf` |
+| `lindal_thermo.nc` | thermo | `ff9c12991399f94c08caaae80b1a6a91f45a45feaebc4d059ad563b45a720e85` |
+| `lindal_geodesy.nc` | geodesy | `16e0c7d551c3026ce5623141b1a2f86187c013a2dbf929f3e330f79f410f787e` |
+| `lindal_reduction.toml` | manifest | `d908015605b2293442da8171d580d1ee4b2793cf6b8ac6406d09cfb0500486b9` |
+
+**Regression after the sweep:** ten suites, all passing. 6, 14, 8, 5, 7, 7, 6, 8, 7, 6.
+
+**This closes SPEC_01.** `occul_data/lindal/` holds every file SPEC_00 section 2.2 lists except
+`lindal_refractivity.nc`, which `refrac` writes at SPEC_02. The manifest names the six inputs
+the reduction reads, every path in it exists, and every product carries a clean commit and the
+hash of everything it was made from.
