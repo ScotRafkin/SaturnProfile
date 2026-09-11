@@ -1,0 +1,31 @@
+# Reduction manifest for the lindal profile (SPEC_00 section 7.1).
+# Written by casspian-lindal-inputs. Pointers and declared choices only; every number the reduction
+# consumes is in the files named below.
+
+[profile]
+slug        = "lindal"
+description = "Voyager 2 ingress, Lindal, Sweetnam and Eshleman 1985, Table I"
+
+[inputs]
+thermo      = "lindal_thermo.nc"
+composition = "lindal_composition.nc"
+geodesy     = "lindal_geodesy.nc"
+gravity     = "lindal_gravity.nc"
+rotation    = "lindal_rotation.nc"
+wind        = "lindal_wind.nc"
+
+[anchor_isobar]
+pressure_Pa = 10000
+
+[anchor_latitude]
+fixed_point_tolerance_deg = 1e-06
+max_iterations            = 20
+
+[geoid]
+anchor_surface_Pa = 10000
+anchor_quantity   = "radius_polar_m"
+anchor_rule       = "mean_polar_radius"   # SPEC_01 v0.16: how the one constant of Eq. B3 is fixed
+convergence_m     = 1
+
+[output]
+product = "lindal_refractivity.nc"

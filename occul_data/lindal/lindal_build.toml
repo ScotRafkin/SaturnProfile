@@ -77,3 +77,29 @@ he_fraction_of_remainder = 0.06
 
 nh3_fill_rule = "linear in pressure through the tabulated Table I values, extrapolated beyond them by scipy.interpolate.interp1d(fill_value='extrapolate'), then clamped at zero; ammonia is assigned first and the remainder is split by the two shares above"
 vertical_coordinate = "pressure_Pa"
+
+[stage_two]
+# Stage two: the two files nobody else writes, and the manifest that names all six.
+# Pointers and declared choices only.
+raw_bundle       = "raw/lindal_raw.nc"
+prefix           = "lindal"
+description      = "Voyager 2 ingress, Lindal, Sweetnam and Eshleman 1985, Table I"
+thermo_output    = "lindal_thermo.nc"
+geodesy_output   = "lindal_geodesy.nc"
+manifest         = "lindal_reduction.toml"
+product          = "lindal_refractivity.nc"
+
+# The four files the other tools wrote; verified present and valid, not rebuilt here.
+gravity_file     = "lindal_gravity.nc"
+rotation_file    = "lindal_rotation.nc"
+wind_file        = "lindal_wind.nc"
+composition_file = "lindal_composition.nc"
+
+# The reduction's declared choices, carried into the manifest.
+anchor_isobar_Pa          = 1.0e4     # the surface the source fitted a geoid on
+fixed_point_tolerance_deg = 1.0e-6
+max_iterations            = 20
+geoid_anchor_surface_Pa   = 1.0e4
+geoid_anchor_quantity     = "radius_polar_m"
+geoid_anchor_rule         = "mean_polar_radius"   # how the one constant of Eq. B3 is fixed
+geoid_convergence_m       = 1.0

@@ -93,12 +93,17 @@ period_hms                = "10h 39m 22.4s"
 period_s                  = 38362.4
 value_source              = "Table II ('System III rotation period (Davies et al. 1983)') and Fig. 9 caption ('10h 39m 22.4s magnetic field or system III rotation period (Desch and Kaiser 1981; Davies et al. 1983)')"
 
+[gravity_used_by_source]
+citations                 = "Null et al. 1981; Campbell 1984 (personal communication)"
+value_source              = "Appendix p. 1144: 'Equations (1)-(5) together with data on the external gravity field (Null et al. 1981; Campbell 1984)'"
+pole_vector               = "Kozai 1957; Null et al. 1981; Simpson et al. 1983 (same sentence)"
+
 [wind_used_by_source]
 citations                 = "Smith et al. 1982; Ingersoll and Pollard 1982 (Appendix p. 1144); Garneau 1984 added in the Fig. 9 caption"
 latitude_convention       = "planetographic (Appendix p. 1144: 'Published zonal-wind data ... give V_w as a function of the planetographic latitude')"
 vertical_structure        = "assumed independent of altitude (Appendix p. 1144: 'the altitude variation was assumed to be negligible'; p. 1141)"
 frame                     = "System III (Appendix Eq. 4: omega = omega_III + V_w / (r cos phi))"
-how_combined              = "not stated; project reading: Smith et al. 1982 Fig. 4 as the baseline table, others as cross-checks"
+how_combined              = "not stated; project reading (SPEC_01 v0.14): the Ingersoll and Pollard 1982 Fig. 5 curve as the wind, the Smith et al. 1982 Fig. 4 points as its uncertainty"
 
 [top_boundary]
 statement                 = "not stated numerically. p. 1138: pressure profiles obtained 'by utilizing the equation for hydrostatic equilibrium and integrating the density from the top of the detectable atmosphere and downward'; the top of Table I is 0.20 mbar at 376.7 km, 138.7 K."
