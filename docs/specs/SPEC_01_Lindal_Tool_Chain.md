@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.7, 10 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 5 accepted. See §13 for the revision history.
+Version 0.8, 11 September 2026. Author of record: S. Rafkin. Status: in work; Steps 0 to 6 accepted. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.6, which it does not repeat.
 
 ---
@@ -335,20 +335,30 @@ not prescribed.
 
 - `planetocentric_from_ellipsoid(phi_g, flattening)`: the seed, `tan φ_c = (1−f)² tan φ_g`.
 - `planetocentric_fixed_point(phi_g, surface, u_of_phi, Omega, GM, J, degrees, R_norm,
-  tol_deg, max_iter)`: iterate `φ_c ← φ_g − ψ(φ_c)` with ψ from Step 4 evaluated at
+  tol_rad, max_iter, flattening)`: iterate `φ_c ← φ_g − ψ(φ_c)` with ψ from Step 4 evaluated at
   `r = surface(φ_c)`, where `surface` is a Step 5 construction solved at the current
   iterate's latitude (for the no-wind geoid, a direct Newton solve at that latitude; for the
   wind geoid, a march with that latitude inserted as a node), not an interpolated radius
-  (Step 5 review, v0.7). Seeded from the ellipsoid. Returns `φ_c`, ψ, the iterates, and the count. Vectorized over `phi_g` for the
+  (Step 5 review, v0.7). Seeded from the ellipsoid `tan φ_c = (1−f)² tan φ_g` with `f` the
+  100 mbar oblateness of the geodesy scalars (0.09822), the surface the Fig. 4 label refers
+  to; the converged value does not depend on the seed, only the count does. Every angle in
+  `lib` is in radians, the tolerance included (`tol_rad`; v0.7 said `tol_deg`, the only
+  degree valued quantity in `lib`, corrected at the Step 6 review). Returns `φ_c`, ψ, the iterates, and the count. Vectorized over `phi_g` for the
   wind tool.
 - The inverse, `planetographic_from_planetocentric`, which is a direct evaluation.
 
-**Acceptance.** For `phi_g` = 36.3 on the no-wind reference geoid of Step 5 with Null's set:
-`φ_c` = 30.8185 ± 0.001°, ψ = 5.4815 ± 0.001°, converging from the ellipsoid seed 30.8526 in
-three or four iterations (handoff §9A.8 lists the iterates). Round trip: the inverse applied to
-the result returns 36.3 to 1e-9. For `phi_g` = 36.5 the result is 31.005 (handoff §9A.2), which
-demonstrates the sensitivity. With the Step 6 wind included, the value **moves**, by an amount
-to be reported; that value, not 30.8185, is the one the reduction will freeze.
+**Acceptance.** For `phi_g` = 36.3 on the no-wind reference geoid of Step 5 with Null's set
+and Null's GM: `φ_c` = 30.8185 ± 0.001°, ψ = 5.4815 ± 0.001° (Null's GM gives 30.81819 and
+5.48181, the modern GM 30.81846 and 5.48154; the handoff numbers were computed with the
+modern GM, as at Step 5, and the reduction uses Null's), converging from the ellipsoid seed
+30.8524 (handoff: 30.8526) in three iterations to 1e-3°, four to 1e-4°, and no more than
+eight to 1e-9° (handoff §9A.8 lists the iterates). Round trip: the inverse applied to the
+result returns 36.3 to 1e-9°. For `phi_g` = 36.5 the result is 31.005 (handoff §9A.2); the
+0.2° change in the label moves `φ_c` by 0.187°, so the label's uncertainty passes through the
+conversion almost one for one and the frozen anchor latitude is known no better than the
+figure label (the swath in `lindal_scalars.toml` is the record of that). With the Step 7 wind
+included, the value **moves**, by an amount to be reported (the Step 5 stand-in moves it
+0.016° equatorward); that value, not 30.8185, is the one the reduction will freeze.
 
 ---
 
@@ -532,3 +542,4 @@ acceptance number will be the wind-included `phi_c` reported in Step 6 and the w
 | 0.5 | 2026-09-10 | Uncertainty companion names spelled out in Step 9; Step 2 housekeeping commit moving reports and reviews to `reports/`; this section added | REPORT_01_step1 §6; author request |
 | 0.6 | 2026-09-10 | Step 4: `G_φ` sign convention ruled (along increasing latitude; ψ = arctan2(−G_φ, g)); Null GM tolerance 1e-3; wrong coefficient values paired with their no-wind counterparts; GM read from `iess2019.toml`; the 45° check placed on the equatorial 1 bar sphere with a repeat on the Step 5 surface | REPORT_01_step4 §3 |
 | 0.7 | 2026-09-10 | Step 5: `radius_at` scheme changed to `1/r²` linear in `sin² φ_c` with bracketing in `φ_c`; anchor radius solved or marched, never interpolated; closure diagnostic fixed as the no-wind potential departure, pseudo-potential excluded; stand-in bulge figure dropped, 60,367 comparison moved to Step 7; Null GM stated for the reduction geoid; `U_rigid` sign claim about Lindal Eq. 11 withdrawn; unused arguments removed from `wind_geoid` | REPORT_01_step5 §3; author direction on the interpolant |
+| 0.8 | 2026-09-11 | Step 6: `tol_rad` replaces `tol_deg`; seed flattening stated (100 mbar oblateness); iteration counts tied to tolerances; Null GM values recorded beside the handoff values; label uncertainty pass-through noted | REPORT_01_step6 §3 |
