@@ -2,11 +2,10 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.3, 12 September 2026. Author of record: S. Rafkin. Status: **draft for author
-markup; not yet accepted.** Step 1 was built ahead of acceptance on a misreading of the
-author's instruction and has been reviewed and accepted on its own merits; **Steps 2 to 6 are
-not to begin until this draft is accepted.** See §9 for the revision history.
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.11 and on the closed
+Version 0.5, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
+at v0.4 (12 September 2026); Steps 1 and 2 accepted; Steps 3 to 5 proceed in order. See §8 for
+the revision history.
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.12 and on the closed
 `SPEC_01_Lindal_Tool_Chain.md` v0.18 (commit `ece58d2`), which it does not repeat.
 
 ---
@@ -94,10 +93,11 @@ manifest)` returning a record, built from `lib` only:
 
 **Acceptance.** No-wind reference values: `phi_c` = 30.8182 ± 0.001° and `r0` = 58,453.1 ±
 0.5 km with Null's GM (SPEC_01 Steps 5 and 6). Wind-included values reported: an independent
-march with the SPEC_01 v0.16 wind and anchoring gives `r0` near 58,518 km (about 65 km above
-the no-wind value, the dynamical height at the anchor) and a `phi_c` within 0.02° of the
-no-wind value, since the wind at 36.3° N is 2 m/s; these are expected figures, to be
-reproduced, not prescribed. Convergence of the fixed point in at most eight iterations to the
+march with the SPEC_01 v0.16 wind and anchoring gives the wind surface near 58,518.5 km at the
+no-wind latitude (about 65 km of dynamical height); the frozen `phi_c` itself moves about
+0.013° equatorward under the wind and the surface rises about 1.3 km over that shift, so the
+frozen `r0` lands near 58,519.9 km (REPORT_02_step2: 58,519.883 km, `phi_c` = 30.804949°);
+these are expected figures, to be reproduced, not prescribed. Convergence of the fixed point in at most eight iterations to the
 manifest tolerance; the iterates listed. The anchoring residual below 1e-3 m. Polar radii and
 asymmetry as REPORT_01_step7 §6 (54,423.6 and 54,452.4 km; 28.7 km) to 0.1 km, since the
 inputs are the same files.
@@ -112,21 +112,48 @@ inputs are the same files.
 (orchestration):
 
 1. **B3.1.** `number_density(p_Pa, T_K)` = `p / (k_B T)` with `k_B` from `lib.constants`
-   (CODATA release recorded). Uncertainty by first-order propagation from the thermo
-   companions; NaN where they are NaN (Lindal states none).
+   (CODATA release recorded).
 2. **B1.** `absolute_radius(h_m, h_ref_m, r0_m)` = `r0 + (h − h_ref)`, with `h_ref` the
-   tabulated height at the anchor isobar (Step 1 guarantees the level exists). Uncertainty:
-   `r0` carries the anchor's declared uncertainty from kind D (`radius_polar_uncertainty_m`,
-   10 km for Lindal) passed through with unit sensitivity, which the Step 7 march showed is
-   the case; the anchor-rule spread (±19 km) is recorded in `reduction_record`, not folded
-   in, because it is a choice, not a measurement error.
+   tabulated height at the anchor isobar (Step 1 guarantees the level exists).
 3. **B3.3.** From the composition file and its species group: `mean_refractivity_m3(level)`
    = Σ x_i ℛ_i and `mean_molar_mass_kg_mol(level)` = Σ x_i M_i, with the per-molecule ℛ_i in
-   m³ as the species group carries them; `refractivity(level)` = `n ℛ̄`. Uncertainty from the
-   declared composition uncertainty (`x_H2_uncertainty` = 0.03 for Lindal, the remainder
-   moving with it) through ℛ̄, added in quadrature with the number-density term. For Lindal
-   the composition term is about 2.3 percent of N (0.03 × (ℛ_H2 − ℛ_He) / ℛ̄), which is the
-   "several percent" of §B3.3 and is the largest term in the file.
+   m³ as the species group carries them; `refractivity(level)` = `n ℛ̄`.
+
+**Uncertainty companions (v0.4): first-order propagation of the declared input uncertainties,
+and nothing else.** The companions of kind N are the linearized (first-order Taylor)
+propagation of the uncertainties the input files declare, through the algebra above, added in
+quadrature, with no covariance assumed between different inputs. This is bookkeeping: the
+partial derivatives are properties of the algebra at the solution and involve no choice.
+Everything beyond it (covariance between inputs, asymmetry, nonlinearity, alternative rules,
+Monte Carlo) is the job of the generic Monte Carlo wrapper of §7, which perturbs input files
+and reruns the pipeline; nothing of that kind lives in `refrac`.
+
+- `n`: `(δn/n)² = (δp/p)² + (δT/T)²` from the thermo companions.
+- `ℛ̄` and `m̄`: the derivative is taken **with the closure Σ x_i = 1 applied**, never by
+  treating the mole fractions as independent. For a composition declared as a share `s` of a
+  remainder (Lindal: `x_H2 = s (1 − x_NH3)`, `x_He = (1 − s)(1 − x_NH3)`, `x_H2_uncertainty`
+  = δs = 0.03), `δℛ̄ = (1 − x_NH3)(ℛ_H2 − ℛ_He) δs` and likewise for `m̄` with the molar
+  masses. A stated per-molecule uncertainty `δℛ_i` from the species group enters as `x_i δℛ_i`
+  in quadrature (the `lindal1985` set states none). A stated uncertainty on a species mole
+  fraction that is not the closure species enters through the same constrained derivative.
+- `N`: `(δN/N)² = (δn/n)² + (δℛ̄/ℛ̄)²`.
+- `r`: `δr² = δr0² + δh² + δh_ref²`, with `δr0` from two independent declared sources added
+  in quadrature: the anchor radius uncertainty of kind D (`radius_polar_uncertainty_m`, 10 km
+  for Lindal) through `∂r0/∂r_anchor`, evaluated by a central difference on the anchored march
+  (two extra marches, deterministic, expected near unity), and the label latitude uncertainty
+  of kind T (0.2° for Lindal) through `∂φ_c/∂φ_g` (from the fixed point, about 0.93) and
+  `∂r0/∂φ_c = r0 G_φ / g` from Eq. B3 itself at the solution (−5,630 km per radian at the
+  frozen pair, REPORT_02_step2 finding 2; v0.4 said about −6,700 from a rough ellipse. With
+  `∂φ_c/∂φ_g` = 0.923 and the 0.2° label uncertainty the label term is about 18 km, still
+  larger than the 10 km anchor term). The scalars `phi_c`, `psi` and `r0`
+  carry the corresponding companions.
+- **Unstated terms are left out, not set to zero, and the file says so.** Each companion is
+  the quadrature of the stated terms only; two attributes on each, `uncertainty_terms_included`
+  and `uncertainty_terms_unstated`, list which inputs entered and which were NaN, so a reader
+  knows that Lindal's `N` uncertainty is composition and anchor and nothing else, not that the
+  temperature contributes zero. A companion with no stated term at all is NaN.
+- The anchor-rule spread (about ±19 km) is a choice, not a declared uncertainty, and is not
+  in the companions; it is recorded as a number in `reduction_record`.
 
 **Acceptance.** At the 1 bar level (p = 100,000.0 Pa, T = 134.8 K): `n` = 5.3731e25 m⁻³
 (Phase 1 check; 5.373124e25 with CODATA 2018 k_B), `N` = 2.59856e-4 with the tabulated 10.9
@@ -138,8 +165,11 @@ dry value). `radius_m` at the anchor level equals `r0` exactly and at the 1 bar 
 `r0 − h_ref` (the 1 bar height is zero by the table's datum). Fractional uncertainty of `N` at
 every level equals the composition term, 0.0233 ± 0.0002 (0.03 × (136 − 35) / 129.94; v0.2
 said 0.0227, an arithmetic slip), and is constant across levels because ammonia dilutes H2 and
-He by the same factor; the thermo uncertainties are NaN and are excluded rather than
-propagated as zero, and the report states that rule. Recovering
+He by the same factor; `uncertainty_terms_included` on `refractivity` reads composition only
+and `uncertainty_terms_unstated` reads pressure and temperature. `radius_uncertainty_m` is the
+same at every level (the height companions are NaN) and equals the quadrature of the anchor
+term (about 10 km times the measured `∂r0/∂r_anchor`) and the label term (about 18 km), with
+both partials and both terms reported. Recovering
 `T = p ℛ̄ / (k_B N)` from the products returns the tabulated temperature to 1e-12 relative at
 every level (the inverse closes).
 
@@ -163,8 +193,9 @@ forward model reads from the reduction.
   `inputs/rotation`, `inputs/wind`, verbatim copies; `manifest` with `text` and `sha256`;
   `reduction_record` with attributes: the fixed-point iterates, `anchor_rule`, north polar
   start, both polar radii, polar asymmetry, anchoring residual, no-wind `phi_c` and `r0`,
-  the anchor-rule spread if Step 6 has run, the CODATA release, `casspian_version`,
-  `casspian_git_commit`.
+  the anchor-rule spread (`r0` under `north_pole` and `south_pole` anchoring, two extra
+  marches, recorded as a choice), the partial derivatives of the Step 3 propagation, the
+  CODATA release, `casspian_version`, `casspian_git_commit`.
 - Global `input_hashes` over the six inputs and the manifest.
 
 **Acceptance.** The file reads back as kind N (a DataTree); `read` refuses a copy missing the
@@ -242,13 +273,8 @@ inputs and says so in the panel title.
   `p_hydro / p_tab − 1` against `p`, with the declared boundary pressure and its level marked.
   This is the panel that says whether the source profile, the gravity and the composition are
   mutually consistent, and it is the first honest estimate of the profile's internal error.
-- **F7, uncertainty** (renders when the file carries the Step 6 sensitivity attributes):
-  fractional contributions to `N` and to `r0` from the composition, the anchor radius, the
-  anchor rule, the label latitude and the wind, as horizontal bars, with the Monte Carlo
-  spread where it exists.
-
 **Acceptance.** `casspian-refrac` with `figures = true` writes F1 to F4 and the combined PDF
-for `lindal_refractivity.nc` and reports F5 to F7 skipped with the field each needs;
+for `lindal_refractivity.nc` and reports F5 and F6 skipped with the field each needs;
 `casspian-plots` on the same file by hand writes identical figures (byte-identical PNGs apart
 from the generation time in the footer, which the acceptance strips before comparing); every
 figure carries the footer; `casspian-plots lindal_wind.nc` writes the single-figure wind
@@ -259,59 +285,24 @@ them by eye, which is the only check a figure can finally have.
 
 ---
 
-## 6. Step 6: reduction sensitivity and the wind Monte Carlo
-
-**Purpose.** The numbers SPEC_01 queued for this specification, made into a record the file
-carries and F7 draws.
-
-**Deliverable: `src/casspian/refrac/sensitivity.py`**, run by `casspian-refrac` when the
-manifest section
-
-```toml
-[sensitivity]
-enabled       = true
-wind_draws    = 200
-wind_draw_seed = 12345
-```
-
-is present, writing its results as attributes of `reduction_record` and as a small table in
-the report:
-
-1. **Anchor rule.** `phi_c` and `r0` under `north_pole` and `south_pole` anchoring against
-   the default; the spread (about ±19 km in `r0`, REPORT_01_step7 §6).
-2. **Label latitude.** `phi_c` and `r0` at the ends of the planetographic swath in kind T
-   (36.3 and 36.7) and at 36.3 ± 0.2; the pass-through (0.187° per 0.2°, SPEC_01 Step 6).
-3. **Gap and polar rules of the wind.** `r0` with `gap_rule = reflect_north_then_bins` and
-   with `polar_rule = linear_to_zero`, each as a difference (REPORT_01_step7 §6 gives 1.8 and
-   0.2 km at the equator; at the anchor they will be smaller).
-4. **Wind Monte Carlo.** `wind_draws` realizations of `u(φ)` formed by adding to the curve,
-   per 2° bin, a Gaussian draw with the bin's 1σ from the kind W uncertainty (independent
-   per bin; NaN bins draw zero), interpolated linearly between bin centers, poles held at
-   zero; for each draw the wind geoid, `phi_c` and `r0` are rebuilt; the mean and standard
-   deviation of `phi_c`, `r0` and the equatorial radius are recorded, with the seed. A
-   declared alternative `wind_draw_correlation = "neighbor"` (adjacent bins drawn with
-   correlation 0.5) is available and is not the default.
-
-**Acceptance.** The four items reported with their numbers; the Monte Carlo standard
-deviation of `r0` is reported and compared with the ±10 km anchor uncertainty and the ±19 km
-anchor-rule spread (the expectation from the bulge scaling of SPEC_01 is a few km; report,
-do not prescribe); rerunning with the same seed reproduces every number bit for bit; the
-attributes appear in `reduction_record` and F7 renders.
-
----
-
-## 7. What comes after
+## 6. What comes after
 
 SPEC_03 opens the forward model with the round trip: B5 (geopotential from the effective
 gravity along the profile, the numerics and the level-versus-layer accounting stated before
 coding), B7.1 and B7.2 at the source latitude with the source's own inputs and `p_b` at the
 top tabulated level, recovering the tabulated pressure and temperature; F5 and F6 render for
 the first time on that product. Then the forward-inputs specification (generic wind tool,
-composition scenario generator) and the transfer.
+composition scenario generator) and the transfer. **The Monte Carlo wrapper (v0.4)** is a
+generic tool, specified after the forward model exists so that it covers the whole chain from
+input files to delivered temperature and pressure: it draws perturbed input files from their
+declared uncertainties and from declared alternative rules into a scratch profile or run
+directory, reruns the pipeline, and collects the products. Nothing in `refrac` or `forward`
+carries a sensitivity study; the pipeline's job is to be deterministic, file-driven and fast
+enough to be wrapped.
 
 ---
 
-## 8. Decisions made in this document
+## 7. Decisions made in this document
 
 1. `refrac` ends at kind N; geopotential and hydrostatic pressure are forward-model quantities
    and arrive with the round trip in SPEC_03. The diagnostics module is specified in full here
@@ -320,16 +311,21 @@ composition scenario generator) and the transfer.
    and uncommitted.
 3. Kind N gains `mean_refractivity_m3` and `mean_molar_mass_kg_mol` (SPEC_00 v0.10) because
    every consumer of the file needs them and they are cheap to carry.
-4. Thermo uncertainties that the source does not state are excluded from the propagation,
-   not treated as zero; the file says which terms entered.
+4. Kind N's uncertainty companions are first-order propagation of declared input
+   uncertainties only, uncorrelated between inputs, with the closure constraint applied inside
+   the composition; unstated terms are left out, not zeroed, and the file lists which entered.
 5. The anchor-rule spread is recorded as a choice, not folded into the radius uncertainty.
+6. No sensitivity study or Monte Carlo lives in the pipeline; a generic wrapper over input
+   files does that, specified after the forward model (v0.4; the v0.1 Step 6 is withdrawn).
 
 ---
 
-## 9. Revision history
+## 8. Revision history
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
 | 0.1 | 2026-09-12 | First draft: Steps 1 to 6 with acceptance numbers; diagnostics as a pipeline feature after the kind N product | SPEC_01 closed; author direction on standard output figures |
 | 0.2 | 2026-09-12 | Diagnostics placed under `tools/plots/` as a generic, kind-dispatching tool (entry point `casspian-plots`), with single-figure views of input kinds | author direction |
 | 0.3 | 2026-09-12 | Status remains draft (Step 1 built ahead and accepted on its own; no further step before acceptance); step directories `reports/step02_<N>/`; Step 3 acceptance corrected (composition term 0.0233; N at 1 bar with the tabulated NH3, dry check moved to 794.33 mbar) | REPORT_02_step1 §3 |
+| 0.4 | 2026-09-12 | Accepted by the author. Step 6 (sensitivity and wind Monte Carlo) withdrawn in favor of a generic Monte Carlo wrapper after the forward model; Step 3 uncertainty companions specified as first-order propagation with the closure constraint and the label and anchor terms on `r0`; F7 dropped; `[sensitivity]` removed from the manifest | author discussion of sensitivity philosophy |
+| 0.5 | 2026-09-12 | Step 2 accepted; Step 2 expected values split into the fixed-latitude dynamical height and the latitude shift; Step 3 slope and label term corrected to −5,630 km/rad and about 18 km | REPORT_02_step2 findings 1 and 2 |
