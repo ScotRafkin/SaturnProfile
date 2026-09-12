@@ -247,4 +247,4 @@ Step 1 acceptance reads it from here.
 
 | File | Kind | SHA-256 |
 |---|---|---|
-HASH_ROW_PENDING
+| `lindal_composition.nc` | composition | `a1250b60c4b68c42109bb1fbe22244b218af9866aa1e3007f442a9d2ba26654f` |
