@@ -136,9 +136,11 @@ _INTEGER = "integer"
 _TEXT = "text"
 _FLAG = "flag"
 
-#: SPEC_00 section 7.1 (v0.11). Section name -> (section required, {key: (type, required)}).
-#: Inside the two optional sections the keys a switched-on feature needs are enforced in
+#: SPEC_00 section 7.1 (v0.12). Section name -> (section required, {key: (type, required)}).
+#: Inside the optional section the keys a switched-on feature needs are enforced in
 #: `_check_optional_sections`, not here, because their requirement depends on the switch.
+#: v0.12 removed `[sensitivity]`: no sensitivity study lives in the pipeline, so a manifest
+#: carrying one is refused as an unknown section.
 _VOCABULARY = {
     "profile": (True, {"slug": (_TEXT, True), "description": (_TEXT, True)}),
     "inputs": (True, {key: (_TEXT, True) for key in INPUT_KINDS}),
@@ -158,11 +160,6 @@ _VOCABULARY = {
         "figures": (_FLAG, False),
         "format": (_TEXT, False),
         "dpi": (_INTEGER, False),
-    }),
-    "sensitivity": (False, {
-        "enabled": (_FLAG, False),
-        "wind_draws": (_INTEGER, False),
-        "wind_draw_seed": (_INTEGER, False),
     }),
 }
 
@@ -191,7 +188,6 @@ class ReductionManifest:
     convergence_m: float
     product: Path
     diagnostics: MappingProxyType
-    sensitivity: MappingProxyType
 
 
 def _is_type(value, kind: str) -> bool:
@@ -218,7 +214,7 @@ def _check_positive(path, section, key, value, integer=False):
         )
 
 
-def _check_optional_sections(path, document) -> tuple[dict, dict]:
+def _check_optional_sections(path, document) -> dict:
     diagnostics = dict(document.get("diagnostics", {}))
     diagnostics.setdefault("figures", False)       # SPEC_00 section 7.1: default false
     if diagnostics["figures"]:
@@ -234,19 +230,7 @@ def _check_optional_sections(path, document) -> tuple[dict, dict]:
                 f"allows {sorted(_DIAGNOSTIC_FORMATS)}."
             )
         _check_positive(path, "diagnostics", "dpi", diagnostics["dpi"], integer=True)
-
-    sensitivity = dict(document.get("sensitivity", {}))
-    sensitivity.setdefault("enabled", False)        # SPEC_00 section 7.1: default false
-    if sensitivity["enabled"]:
-        for key in ("wind_draws", "wind_draw_seed"):
-            if key not in sensitivity:
-                raise ControlFileError(
-                    f"{path}: [sensitivity] enabled = true requires {key!r}; no default is "
-                    "declared for it."
-                )
-        _check_positive(path, "sensitivity", "wind_draws", sensitivity["wind_draws"],
-                        integer=True)
-    return diagnostics, sensitivity
+    return diagnostics
 
 
 def read_reduction_manifest(path) -> ReductionManifest:
@@ -321,7 +305,7 @@ def read_reduction_manifest(path) -> ReductionManifest:
             f"{sorted(_MANIFEST_ANCHOR_RULES)}. The 'latitude' rule of lib.geoid needs an anchor "
             "latitude, and SPEC_00 section 7.1 has no key to carry one."
         )
-    diagnostics, sensitivity = _check_optional_sections(path, document)
+    diagnostics = _check_optional_sections(path, document)
 
     directory = path.parent
 
@@ -359,7 +343,6 @@ def read_reduction_manifest(path) -> ReductionManifest:
         convergence_m=float(geoid["convergence_m"]),
         product=product,
         diagnostics=MappingProxyType(diagnostics),
-        sensitivity=MappingProxyType(sensitivity),
     )
 
 

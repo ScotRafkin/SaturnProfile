@@ -19,14 +19,12 @@ reviewed against the specification.
 
 ## SPEC_02, `refrac` and the standard diagnostics
 
-SPEC_02 is a draft awaiting the author's markup. Step 1 was built ahead of acceptance and is
-accepted on its own; no further step begins until the draft is accepted.
+SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 proceed in order.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | `lib.control`: reduction manifest and input loading | accepted | `reports/REPORT_02_step1.md`, `reports/REVIEW_02_step1.md` | 2026-09-12 |
-| 2 | `refrac/anchor.py`: frozen `phi_c` and `r0` | not started | | |
+| 2 | `refrac/anchor.py`: frozen `phi_c` and `r0` | accepted | `reports/REPORT_02_step2.md`, `reports/REVIEW_02_step2.md` | 2026-09-12 |
 | 3 | `lib.reduction`, `refrac/reduce.py`: B3.1, B1, B3.3 | not started | | |
 | 4 | `refrac/product.py`, `casspian-refrac`: kind N | not started | | |
 | 5 | `tools/plots/`, `casspian-plots`: standard diagnostics | not started | | |
-| 6 | `refrac/sensitivity.py`: sensitivities and wind Monte Carlo | not started | | |
