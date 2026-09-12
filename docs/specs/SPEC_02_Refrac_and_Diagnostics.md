@@ -2,10 +2,11 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.5, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
-at v0.4 (12 September 2026); Steps 1 and 2 accepted; Steps 3 to 5 proceed in order. See §8 for
+Version 0.6, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
+at v0.4 (12 September 2026); Steps 1 to 3 accepted (Step 3 with the v0.6 changes); Steps 4
+and 5 proceed in order. See §8 for
 the revision history.
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.12 and on the closed
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.13 and on the closed
 `SPEC_01_Lindal_Tool_Chain.md` v0.18 (commit `ece58d2`), which it does not repeat.
 
 ---
@@ -137,16 +138,20 @@ and reruns the pipeline; nothing of that kind lives in `refrac`.
   in quadrature (the `lindal1985` set states none). A stated uncertainty on a species mole
   fraction that is not the closure species enters through the same constrained derivative.
 - `N`: `(δN/N)² = (δn/n)² + (δℛ̄/ℛ̄)²`.
-- `r`: `δr² = δr0² + δh² + δh_ref²`, with `δr0` from two independent declared sources added
-  in quadrature: the anchor radius uncertainty of kind D (`radius_polar_uncertainty_m`, 10 km
-  for Lindal) through `∂r0/∂r_anchor`, evaluated by a central difference on the anchored march
-  (two extra marches, deterministic, expected near unity), and the label latitude uncertainty
-  of kind T (0.2° for Lindal) through `∂φ_c/∂φ_g` (from the fixed point, about 0.93) and
-  `∂r0/∂φ_c = r0 G_φ / g` from Eq. B3 itself at the solution (−5,630 km per radian at the
-  frozen pair, REPORT_02_step2 finding 2; v0.4 said about −6,700 from a rough ellipse. With
-  `∂φ_c/∂φ_g` = 0.923 and the 0.2° label uncertainty the label term is about 18 km, still
-  larger than the 10 km anchor term). The scalars `phi_c`, `psi` and `r0`
-  carry the corresponding companions.
+- `r`: `δr² = δr0² + δh² + δh_ref²` (at the anchor level `h − h_ref` is identically zero and
+  carries no height term), with `δr0` from two independent declared sources added in
+  quadrature after conversion to one standard deviation (SPEC_00 §5 v0.13): the anchor radius
+  uncertainty of kind D (`radius_polar_uncertainty_m`, 10 km `1sigma` for Lindal) through the
+  **total** derivative `dr0/dr_anchor`, which includes the coupling through `phi_c` since
+  `psi` depends on radius (v0.6; the latitude-held partial 1.217 plus the coupling 0.020 gives
+  1.237 for Lindal, REPORT_02_step3 findings 1 and 2; it is not near unity because raising the
+  anchor also raises the oblateness), evaluated by a central difference on the anchored march
+  with the fixed point rerun; and the label latitude uncertainty of kind T (0.2° declared
+  `range`, so 0.115° as one standard deviation) through `dφ_c/dφ_g` (0.9456 on the wind geoid
+  at the frozen pair; 0.934 on the no-wind geoid) and `∂r0/∂φ_c = r0 G_φ / g` from Eq. B3 at
+  the solution (−5,630 km per radian). The scalars `phi_c`, `psi` and `r0` carry the
+  corresponding companions, all `1sigma`, with `uncertainty_kind_conversions` listing the
+  range conversion.
 - **Unstated terms are left out, not set to zero, and the file says so.** Each companion is
   the quadrature of the stated terms only; two attributes on each, `uncertainty_terms_included`
   and `uncertainty_terms_unstated`, list which inputs entered and which were NaN, so a reader
@@ -168,8 +173,12 @@ said 0.0227, an arithmetic slip), and is constant across levels because ammonia 
 He by the same factor; `uncertainty_terms_included` on `refractivity` reads composition only
 and `uncertainty_terms_unstated` reads pressure and temperature. `radius_uncertainty_m` is the
 same at every level (the height companions are NaN) and equals the quadrature of the anchor
-term (about 10 km times the measured `∂r0/∂r_anchor`) and the label term (about 18 km), with
-both partials and both terms reported. Recovering
+term (10 km × 1.237 = 12.37 km) and the label term (0.115° × 0.9456 × 5,630 km/rad = 10.73
+km), 16.38 km, with both partials, both terms and the range conversion reported; `phi_c`
+carries 0.109°. Step 3 also computes `mean_refractivity_uncertainty_m3` and
+`mean_molar_mass_uncertainty_kg_mol` for kind N to carry (SPEC_00 §6.7 v0.13), and reads the
+closure declaration of kind C (SPEC_00 §6.2 v0.13) rather than inferring it, checking the
+declaration against the values. Recovering
 `T = p ℛ̄ / (k_B N)` from the products returns the tabulated temperature to 1e-12 relative at
 every level (the inverse closes).
 
@@ -329,3 +338,4 @@ enough to be wrapped.
 | 0.3 | 2026-09-12 | Status remains draft (Step 1 built ahead and accepted on its own; no further step before acceptance); step directories `reports/step02_<N>/`; Step 3 acceptance corrected (composition term 0.0233; N at 1 bar with the tabulated NH3, dry check moved to 794.33 mbar) | REPORT_02_step1 §3 |
 | 0.4 | 2026-09-12 | Accepted by the author. Step 6 (sensitivity and wind Monte Carlo) withdrawn in favor of a generic Monte Carlo wrapper after the forward model; Step 3 uncertainty companions specified as first-order propagation with the closure constraint and the label and anchor terms on `r0`; F7 dropped; `[sensitivity]` removed from the manifest | author discussion of sensitivity philosophy |
 | 0.5 | 2026-09-12 | Step 2 accepted; Step 2 expected values split into the fixed-latitude dynamical height and the latitude shift; Step 3 slope and label term corrected to −5,630 km/rad and about 18 km | REPORT_02_step2 findings 1 and 2 |
+| 0.6 | 2026-09-12 | Step 3 accepted with changes: total derivative `dr0/dr_anchor`; uncertainty kinds converted before quadrature (label `range` divided by √3); measured partials recorded; closure read from kind C's declaration; mean refractivity and molar mass companions carried into kind N | REPORT_02_step3 findings 1 to 6 |

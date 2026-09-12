@@ -25,6 +25,6 @@ SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 procee
 |---|---|---|---|---|
 | 1 | `lib.control`: reduction manifest and input loading | accepted | `reports/REPORT_02_step1.md`, `reports/REVIEW_02_step1.md` | 2026-09-12 |
 | 2 | `refrac/anchor.py`: frozen `phi_c` and `r0` | accepted | `reports/REPORT_02_step2.md`, `reports/REVIEW_02_step2.md` | 2026-09-12 |
-| 3 | `lib.reduction`, `refrac/reduce.py`: B3.1, B1, B3.3 | not started | | |
+| 3 | `lib.reduction`, `refrac/reduce.py`: B3.1, B1, B3.3 | accepted with changes (SPEC_02 v0.6; SPEC_01 Step 8 amendment first) | `reports/REPORT_02_step3.md`, `reports/REVIEW_02_step3.md` | 2026-09-12 |
 | 4 | `refrac/product.py`, `casspian-refrac`: kind N | not started | | |
 | 5 | `tools/plots/`, `casspian-plots`: standard diagnostics | not started | | |

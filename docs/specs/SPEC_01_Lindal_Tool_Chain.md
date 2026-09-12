@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.18, 11 September 2026. Author of record: S. Rafkin. Status: Steps 0 to 9 accepted; the Lindal tool chain is complete pending the clean rebuild. See §13 for the revision history.
+Version 0.19, 12 September 2026. Author of record: S. Rafkin. Status: closed at commit ece58d2; Step 8 amended at v0.19 (closure declaration, NaN per-molecule uncertainties) with a rebuild of the composition product. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.9, which it does not repeat.
 
 ---
@@ -562,6 +562,15 @@ read from the `[is_polar]` table of the master file (v0.17; it was per refractiv
 absent from the `lindal1985` NH3 entry, which would have written ammonia as nonpolar);
 `temperature_dependence` stays per set, since it describes the value.
 
+**Amendment after closure (v0.19, from REPORT_02_step3 findings 4 and 5).** The tool writes
+the closure declaration of SPEC_00 §6.2 v0.13, `closure_rule = "share_of_remainder"` and
+`closure_species = "H2 He"`, and writes the species group's `refractivity_uncertainty_m3` as
+NaN where the master table states no uncertainty (the `lindal1985` set states none), with
+`uncertainty_method` saying so, instead of 0.0. `lindal_composition.nc` is rebuilt and its new
+hash recorded; nothing else under `occul_data/lindal/` depends on it until kind N exists.
+Acceptance of the amendment: the two attributes read back; `refractivity_uncertainty_m3` is
+NaN for all three species; every other Step 8 acceptance number is unchanged.
+
 **Acceptance.** Mole fractions sum to one at every level to 1e-12. NH3 is exactly zero at
 and above 794.33 mbar, the first grid level above the highest tabulated value, flagged
 `assumed`; 2.6 ppm at 831.76 mbar, `measured`; 15.9 ± 0.1 ppm at the 1047.13 mbar interior gap, and the
@@ -668,3 +677,4 @@ same Monte Carlo; and the pass-through of the 0.2° label uncertainty into `phi_
 | 0.16 | 2026-09-11 | Step 5 `wind_geoid`: one continuous march from pole to pole with a declared `anchor_rule` (default mean polar radius), returning the polar asymmetry; Step 7 acceptance: anchor rule sensitivity, Eq. 18 anchored the same way, expected figures from an independent march; sample check excludes the join window | REPORT_01_step7 (v0.15) Figure 2 discontinuity |
 | 0.17 | 2026-09-11 | Step 8: NH3 rule restated (zero above the tabulated range by assumption with the saturation reason, no upward extrapolation or clamp; interior interpolation and downward extrapolation kept); `is_polar` moved to a molecular table in `species_master.toml`; `x_H2_uncertainty` from the raw bundle; `<dimension>_absent_meaning` spelled out; per-level `nh3_provenance` | REPORT_01_step8 §3 and author question |
 | 0.18 | 2026-09-11 | Step 9 accepted; §0 rebuild rule restated as a directory sweep; header dependency to SPEC_00 v0.9; `gravity_used_by_source` added to `lindal_scalars.toml` by the author (raw bundle and all downstream products to be rebuilt) | REPORT_01_step9 §3 |
+| 0.19 | 2026-09-12 | Step 8 amendment: kind C closure declaration attributes; per-molecule refractivity uncertainty NaN where unstated; composition product rebuilt | REPORT_02_step3 findings 4 and 5 |
