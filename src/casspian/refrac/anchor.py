@@ -21,6 +21,7 @@ point on `lib.geoid.reference_geoid`, solved at each iterate, which are the hand
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 
@@ -29,7 +30,14 @@ from casspian.lib import latitude as lat
 from casspian.lib.control import ReductionInputs, ReductionManifest
 from casspian.lib.gravity import g_eff_vector
 
-__all__ = ["AnchorConvergenceError", "FrozenAnchor", "freeze_anchor", "wind_of_latitude"]
+__all__ = [
+    "AnchorConvergenceError",
+    "FrozenAnchor",
+    "GeoidSetup",
+    "freeze_anchor",
+    "geoid_setup",
+    "wind_of_latitude",
+]
 
 
 class AnchorConvergenceError(RuntimeError):
@@ -49,6 +57,7 @@ class FrozenAnchor:
     iteration_count: int
     final_step_rad: float
     tolerance_rad: float
+    fixed_point_closure_rad: float
     anchor_rule: str
     anchor_surface_Pa: float
     anchor_quantity: str
@@ -62,6 +71,29 @@ class FrozenAnchor:
     nowind_psi_rad: float
     nowind_r0_m: float
     nowind_iterates_rad: np.ndarray
+
+
+@dataclass(frozen=True)
+class GeoidSetup:
+    """What every anchored march of a reduction shares, read once from the inputs."""
+
+    constants: tuple
+    r_anchor_m: float
+    flattening: float
+    anchor_rule: str
+    tol_m: float
+    u_of_phi: Callable
+
+    def march(self, phi, r_anchor_m=None):
+        """One anchored march of Eq. B3 with `phi` (radians) inserted as nodes.
+
+        `r_anchor_m` overrides the anchor radius, which the propagation of SPEC_02 Step 3 uses
+        for its central difference; the anchor radius of the reduction itself is never
+        overridden.
+        """
+        anchor = self.r_anchor_m if r_anchor_m is None else float(r_anchor_m)
+        return gd.wind_geoid(np.atleast_1d(np.asarray(phi, dtype="float64")), anchor,
+                             self.anchor_rule, self.u_of_phi, *self.constants, tol_m=self.tol_m)
 
 
 def wind_of_latitude(wind):
@@ -87,6 +119,28 @@ def wind_of_latitude(wind):
     return u_of_phi
 
 
+def geoid_setup(inputs: ReductionInputs, manifest: ReductionManifest) -> GeoidSetup:
+    """The harmonic set, rotation, anchor radius, seed flattening and wind of a reduction."""
+    gravity, geodesy = inputs.gravity, inputs.geodesy
+    constants = (
+        float(inputs.rotation["angular_rate_rad_s"]),
+        float(gravity["GM_m3s2"]),
+        np.asarray(gravity["J"].values, dtype="float64"),
+        np.asarray(gravity["degree"].values),
+        float(gravity["normalization_radius_m"]),
+    )
+    surfaces = np.asarray(geodesy["surface_pressure_Pa"].values, dtype="float64")
+    row = int(np.flatnonzero(surfaces == manifest.anchor_surface_Pa)[0])
+    return GeoidSetup(
+        constants=constants,
+        r_anchor_m=float(geodesy[manifest.anchor_quantity].values[row]),
+        flattening=float(geodesy["oblateness"].values[row]),
+        anchor_rule=manifest.anchor_rule,
+        tol_m=manifest.convergence_m,
+        u_of_phi=wind_of_latitude(inputs.wind),
+    )
+
+
 def _final_step(iterates):
     """The size of the last fixed point update, in radians."""
     if len(iterates) < 2:
@@ -103,49 +157,31 @@ def freeze_anchor(inputs: ReductionInputs, manifest: ReductionManifest) -> Froze
     3. `phi_c` by `lib.latitude.planetocentric_fixed_point` from the kind T label, the surface
        marched at each iterate, seeded on the anchor surface's oblateness, to the manifest
        tolerance in radians within `max_iterations`.
-    4. `r0` from one final march with `phi_c` a node, and `psi` evaluated there.
+    4. `r0` from one final march with `phi_c` a node, and `psi` evaluated there. The departure
+       of `phi_c + psi` from the label is kept as `fixed_point_closure_rad` (REVIEW_02_step2).
     5. The no wind pair by the same fixed point on the reference geoid, for the record.
 
     Refuses, with `AnchorConvergenceError`, a fixed point that exhausts `max_iterations`.
     """
-    gravity, rotation, geodesy, thermo = (inputs.gravity, inputs.rotation, inputs.geodesy,
-                                          inputs.thermo)
-    degrees = np.asarray(gravity["degree"].values)
-    J = np.asarray(gravity["J"].values, dtype="float64")
-    GM = float(gravity["GM_m3s2"])
-    R_norm = float(gravity["normalization_radius_m"])
-    Omega = float(rotation["angular_rate_rad_s"])
-    constants = (Omega, GM, J, degrees, R_norm)
+    setup = geoid_setup(inputs, manifest)
+    constants, u_of_phi = setup.constants, setup.u_of_phi
 
-    surfaces = np.asarray(geodesy["surface_pressure_Pa"].values, dtype="float64")
-    row = int(np.flatnonzero(surfaces == manifest.anchor_surface_Pa)[0])
-    r_anchor = float(geodesy[manifest.anchor_quantity].values[row])
-    flattening = float(geodesy["oblateness"].values[row])
-
-    # The refrac boundary: the only degree to radian conversions of the reduction.
-    phi_g = np.radians(np.array([float(thermo.attrs["latitude_planetographic_deg"])]))
+    # The refrac boundary: the degree to radian conversions of the anchor.
+    phi_g = np.radians(np.array([float(inputs.thermo.attrs["latitude_planetographic_deg"])]))
     tolerance = float(np.radians(manifest.fixed_point_tolerance_deg))
     max_iter = manifest.max_iterations
-    rule = manifest.anchor_rule
-    tol_m = manifest.convergence_m
-
-    u_of_phi = wind_of_latitude(inputs.wind)
-
-    def march(phi):
-        return gd.wind_geoid(np.atleast_1d(np.asarray(phi, dtype="float64")), r_anchor, rule,
-                             u_of_phi, *constants, tol_m=tol_m)
 
     def wind_surface(phi):
         # A full anchored march with these latitudes as nodes; wind_geoid returns the radius
         # at a node exactly, so nothing here interpolates the anchor radius.
-        return march(phi).radius
+        return setup.march(phi).radius
 
     def zero_wind(phi):
         return np.zeros_like(np.asarray(phi, dtype="float64"))
 
     def reference_surface(phi):
         radius, _, _ = gd.reference_geoid(np.atleast_1d(np.asarray(phi, dtype="float64")),
-                                          r_anchor, *constants, tol_m=tol_m)
+                                          setup.r_anchor_m, *constants, tol_m=setup.tol_m)
         return radius
 
     solved = {}
@@ -153,7 +189,7 @@ def freeze_anchor(inputs: ReductionInputs, manifest: ReductionManifest) -> Froze
                                  ("no wind", reference_surface, zero_wind)):
         phi_c, _, iterates, count = lat.planetocentric_fixed_point(
             phi_g, surface, wind, *constants, tol_rad=tolerance, max_iter=max_iter,
-            flattening=flattening)
+            flattening=setup.flattening)
         step = _final_step(iterates)
         if not step < tolerance:
             raise AnchorConvergenceError(
@@ -164,7 +200,7 @@ def freeze_anchor(inputs: ReductionInputs, manifest: ReductionManifest) -> Froze
         solved[label] = (phi_c, iterates, int(count[0]), step)
 
     phi_c, iterates, count, step = solved["wind"]
-    final = march(phi_c)
+    final = setup.march(phi_c)
     r0 = final.radius
     psi = g_eff_vector(u_of_phi(phi_c), r0, phi_c, *constants)[3]
 
@@ -182,10 +218,11 @@ def freeze_anchor(inputs: ReductionInputs, manifest: ReductionManifest) -> Froze
         iteration_count=count,
         final_step_rad=step,
         tolerance_rad=tolerance,
-        anchor_rule=rule,
+        fixed_point_closure_rad=float(phi_c[0] + psi[0] - phi_g[0]),
+        anchor_rule=setup.anchor_rule,
         anchor_surface_Pa=manifest.anchor_surface_Pa,
         anchor_quantity=manifest.anchor_quantity,
-        r_anchor_m=r_anchor,
+        r_anchor_m=setup.r_anchor_m,
         north_start_m=final.north_start_m,
         polar_north_m=final.polar_north_m,
         polar_south_m=final.polar_south_m,
