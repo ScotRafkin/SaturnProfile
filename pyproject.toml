@@ -23,6 +23,7 @@ casspian-wind-from-curve = "casspian.tools.wind.build_wind:main"
 casspian-composition-lindal = "casspian.tools.composition.build_composition:main"
 casspian-lindal-inputs = "casspian.tools.lindal.build_inputs:main"
 casspian-refrac = "casspian.refrac.product:main"
+casspian-plots = "casspian.tools.plots.render:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

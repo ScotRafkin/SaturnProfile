@@ -19,7 +19,7 @@ reviewed against the specification.
 
 ## SPEC_02, `refrac` and the standard diagnostics
 
-SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 proceed in order. Current: SPEC_00 v0.14, SPEC_01 v0.19, SPEC_02 v0.7.
+SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 proceed in order. Current: SPEC_00 v0.15, SPEC_01 v0.20, SPEC_02 v0.8. Step 6 is a comparison step; the author decides the default anchor rule from its report (SPEC_02 decision 9).
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
@@ -27,4 +27,5 @@ SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 procee
 | 2 | `refrac/anchor.py`: frozen `phi_c` and `r0` | accepted | `reports/REPORT_02_step2.md`, `reports/REVIEW_02_step2.md` | 2026-09-12 |
 | 3 | `lib.reduction`, `refrac/reduce.py`: B3.1, B1, B3.3 | accepted with changes, applied (SPEC_02 v0.6; SPEC_01 Step 8 amended first) | `reports/REPORT_02_step3.md`, `reports/REVIEW_02_step3.md` | 2026-09-12 |
 | 4 | `refrac/product.py`, `casspian-refrac`: kind N | accepted with one change, applied (SPEC_02 v0.7: anchor-rule spread by full rerun) | `reports/REPORT_02_step4.md`, `reports/REVIEW_02_step4.md` | 2026-09-12 |
-| 5 | `tools/plots/`, `casspian-plots`: standard diagnostics | not started | | |
+| 5 | `tools/plots/`, `casspian-plots`: standard diagnostics | accepted with two figure changes, applied (SPEC_02 v0.8) | `reports/REPORT_02_step5.md`, `reports/REVIEW_02_step5.md` | 2026-09-12 |
+| 6 | equatorial anchoring: `equatorial_radius` rule, manifest `[diagnostics]`, comparison report | not started (SPEC_02 v0.8; begins after the Step 5 commit and sweep) | | |

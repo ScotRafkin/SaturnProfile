@@ -17,3 +17,6 @@ occul_data/*/raw/*.nc
 # Only the per step working directories are ignored, holding each step's acceptance
 # scripts and their printed output, deletable after acceptance (SPEC_00 section 2).
 reports/step*/
+
+# Standard diagnostic figures are regenerable from their product (SPEC_02 Step 5).
+occul_data/*/figures/

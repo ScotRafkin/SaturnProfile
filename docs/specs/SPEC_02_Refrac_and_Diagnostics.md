@@ -2,12 +2,13 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.7, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
-at v0.4 (12 September 2026); Steps 1 to 4 accepted (Step 3 with the v0.6 changes, Step 4 with
-the v0.7 change); Step 5 proceeds. See §8 for the revision history.
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.14 and on the closed
-`SPEC_01_Lindal_Tool_Chain.md` v0.19 (closed at commit `ece58d2`, Step 8 amended at
-`31c30ef`), which it does not repeat.
+Version 0.8, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
+at v0.4 (12 September 2026); Steps 1 to 5 accepted (Step 3 with the v0.6 changes, Step 4 with
+the v0.7 change, Step 5 with two figure changes); Step 6 (v0.8, equatorial anchoring) proceeds
+after the Step 5 acceptance commit and sweep. See §9 for the revision history.
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.15 and on the closed
+`SPEC_01_Lindal_Tool_Chain.md` v0.20 (closed at commit `ece58d2`; Step 8 amended at v0.19,
+Steps 5 and 9 amended at v0.20), which it does not repeat.
 
 ---
 
@@ -126,7 +127,7 @@ propagation of the uncertainties the input files declare, through the algebra ab
 quadrature, with no covariance assumed between different inputs. This is bookkeeping: the
 partial derivatives are properties of the algebra at the solution and involve no choice.
 Everything beyond it (covariance between inputs, asymmetry, nonlinearity, alternative rules,
-Monte Carlo) is the job of the generic Monte Carlo wrapper of §7, which perturbs input files
+Monte Carlo) is the job of the generic Monte Carlo wrapper of §7 (What comes after), which perturbs input files
 and reruns the pipeline; nothing of that kind lives in `refrac`.
 
 - `n`: `(δn/n)² = (δp/p)² + (δT/T)²` from the thermo companions.
@@ -304,7 +305,88 @@ them by eye, which is the only check a figure can finally have.
 
 ---
 
-## 6. What comes after
+## 6. Step 6: anchoring the geoid on the equatorial radius (v0.8)
+
+**Why.** Lindal's Fig. 9 caption states the 100 mbar equatorial radius as 60,367 ± 4 km and
+the *mean* polar radius as 54,438 ± 10 km, and adds that the south polar radius may be of the
+order of 10 km greater than the north. The word "mean" confirms the `mean_polar_radius` rule
+as the reading of his polar number. But the equator is a single point of the surface, stated
+with the smaller uncertainty, and anchoring there removes any reading of the polar number
+from the construction: the two polar radii and their asymmetry become predictions of the
+march, checkable against the caption. Step 4 established `dr0/dr_anchor` = 1.237 for the polar
+anchor, so its ±10 km is 12.4 km of the 16.4 km on `r0`; the equatorial ±4 km enters with a
+sensitivity a little below `r0/r_eq` = 0.969 and should give an anchor term near 3.5 to
+3.9 km. The cost is that the march from the equator to the profile latitude integrates
+through the equatorial jet, where the wind is largest and least certain, so a wind term that
+was negligible under polar anchoring becomes one that must be measured. This step measures
+both and reports them side by side. **It is a comparison step: the default rule is decided
+by the author from the report, and either outcome is a declared choice in the manifest, so
+nothing is discarded.**
+
+**Deliverables.**
+
+1. **`lib.geoid.wind_geoid` gains the rule `equatorial_radius`** (SPEC_01 v0.20 Step 5
+   amendment): `r_anchor` is the radius at planetocentric latitude zero. It is the existing
+   `latitude` rule with the equator as a node, exposed under its own name so the manifest
+   needs no latitude key. The equator is inserted as an exact node (0.0, not the nearest
+   dense grid point) and the anchoring residual is measured there. The shooting is on the
+   north polar start as for the other rules.
+2. **SPEC_00 §7.1 (v0.15):** `anchor_rule` may be `equatorial_radius`, with
+   `anchor_quantity = "radius_equatorial_m"`. `lib.control` accepts the pair and refuses
+   `equatorial_radius` with a polar quantity or a polar rule with the equatorial quantity.
+   The `[diagnostics]` section is unchanged.
+3. **`lindal_build.toml` `[stage_two]`** (SPEC_01 v0.20 Step 9 amendment): the geoid anchor
+   becomes `geoid_anchor_quantity = "radius_equatorial_m"`, `geoid_anchor_rule =
+   "equatorial_radius"`, and three new keys `diagnostics_figures = true`,
+   `diagnostics_format = "png"`, `diagnostics_dpi = 150` are carried into the manifest as its
+   `[diagnostics]` section. `casspian-lindal-inputs` rewrites `lindal_reduction.toml`; kind T
+   and kind D are unchanged and are verified, not rewritten, unless their hashes differ.
+4. **`refrac`:** nothing structural. `anchor_partials` already differentiates with respect to
+   whatever the manifest anchors on; the declared uncertainty and kind now come from
+   `radius_equatorial_uncertainty_m` (±4 km, as kind D declares it). The anchor-rule spread
+   in `reduction_record` is rerun under the three other rules (`mean_polar_radius`,
+   `north_pole`, `south_pole`), each a full fixed point as v0.7 requires, recording `r0` and
+   `phi_c` under each. The record also carries, under the rule in force, both polar radii,
+   their mean and the asymmetry, which under equatorial anchoring are predictions.
+5. **A wind-scaling diagnostic, report only, no product and no code path in `refrac`.** In
+   the acceptance script, rerun the whole reduction on in-memory copies of the inputs with
+   the kind W `u_total_ms` scaled by 0.95 and by 1.05 (the ±21 m/s RMS scatter of the Smith
+   points about the Ingersoll and Pollard curve is 4.4 percent of the 490 m/s peak; scaling
+   keeps the poles at zero), under both `equatorial_radius` and `mean_polar_radius`. Report
+   `r0`, `phi_c`, both polar radii and the equatorial radius under each of the four runs.
+   This is the number that decides whether the equatorial anchor is better conditioned once
+   the wind is allowed to be wrong; it is not an uncertainty study and is not written into
+   any file. The Sanchez-Lavega profile is not used here; that is a later study.
+
+**Expected values (ranges, first anchoring at the equator).** Shape is unchanged by the
+anchor, so the asymmetry stays 28.745 km to 1 m and the equatorial dynamical height 127 km.
+The surface moves down by about 4.04 km at the equator (the Step 7 margin over 60,367), so
+`r0` falls by 3.5 to 3.9 km to 58,516.0 to 58,516.5 km, `phi_c` moves by less than 0.002°,
+the predicted mean polar radius comes out 3.0 to 3.3 km below 54,438 (about 54,435, inside
+his ±10 km), and the north and south polar radii near 54,420.6 and 54,449.3 km. The anchor
+term on `r0` is 3.4 to 3.9 km (`dr0/dr_anchor` between 0.85 and 0.97, total derivative), the
+label term stays 10.73 km, and `radius_uncertainty_m` comes to 11.2 to 11.4 km, with
+`phi_c` near 0.109°. The wind-scaling shift of `r0` is expected to be a few kilometers under
+equatorial anchoring and under one kilometer under polar anchoring; both are to be reported
+as measured, and a value outside these ranges is a finding, not a failure.
+
+**Acceptance.** The rule is refused with a mismatched quantity and accepted with the right
+one; the anchoring residual at the equator is below 1e-3 m; the equator is a march node
+(the radius there is not interpolated); under `equatorial_radius` the fixed point converges
+in at most eight iterations and the product's `anchor_isobar_radius_m` equals the march at
+`phi_c`; the asymmetry equals the Step 7 value to 1 m; the manifest carries the new
+`[geoid]` and `[diagnostics]` sections and `casspian-refrac` renders F1 to F4 without being
+asked by hand; the SPEC_00 §2.2 listing is complete; the report carries the comparison table
+(the four rules, and the four wind-scaling runs) with every number above beside its measured
+value. **The author decides the default rule from that table.** If the default stays
+`equatorial_radius`, the product and manifest as built stand; if it reverts to
+`mean_polar_radius`, `lindal_build.toml` is changed back, the manifest and product rebuilt,
+and the rule stays in the code as an alternative. Either way the decision and the table go
+into decision 9 of §8 with the numbers.
+
+---
+
+## 7. What comes after
 
 SPEC_03 opens the forward model with the round trip: B5 (geopotential from the effective
 gravity along the profile, the numerics and the level-versus-layer accounting stated before
@@ -321,7 +403,7 @@ enough to be wrapped.
 
 ---
 
-## 7. Decisions made in this document
+## 8. Decisions made in this document
 
 1. `refrac` ends at kind N; geopotential and hydrostatic pressure are forward-model quantities
    and arrive with the round trip in SPEC_03. The diagnostics module is specified in full here
@@ -347,10 +429,18 @@ enough to be wrapped.
 8. The `input_hashes` consistency warning of SPEC_00 §8 is implemented for kind N, whose
    inputs are embedded. Extending it to the other derived kinds is deferred to the reader work
    SPEC_03 will need (REPORT_02_step4 finding 3).
+9. (v0.8, open) The geoid anchor for Lindal: `mean_polar_radius` (the rule his caption's
+   wording supports) or `equatorial_radius` (the better-conditioned point of the same fit,
+   with a wind term to be measured). Decided from the Step 6 comparison table; the numbers
+   and the decision are recorded here when made. The rule not chosen stays in the code and
+   is exercised by the Monte Carlo wrapper.
+10. (v0.8) F5 and F6 field names the plotting code already understands, for SPEC_03 to adopt
+   or rename in both places: `geopotential_m2s2(level)`, `pressure_hydrostatic_Pa(level)`,
+   attribute `boundary_pressure_Pa`.
 
 ---
 
-## 8. Revision history
+## 9. Revision history
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
@@ -361,3 +451,4 @@ enough to be wrapped.
 | 0.5 | 2026-09-12 | Step 2 accepted; Step 2 expected values split into the fixed-latitude dynamical height and the latitude shift; Step 3 slope and label term corrected to −5,630 km/rad and about 18 km | REPORT_02_step2 findings 1 and 2 |
 | 0.6 | 2026-09-12 | Step 3 accepted with changes: total derivative `dr0/dr_anchor`; uncertainty kinds converted before quadrature (label `range` divided by √3); measured partials recorded; closure read from kind C's declaration; mean refractivity and molar mass companions carried into kind N | REPORT_02_step3 findings 1 to 6 |
 | 0.7 | 2026-09-12 | Step 4 accepted with one change: the anchor-rule spread by a full fixed-point rerun under each rule, `r0` and `phi_c` recorded; decisions 7 and 8; dependency lines updated to SPEC_00 v0.14 and SPEC_01 v0.19 | REPORT_02_step4 findings 1 and 3, decisions 2 and 5 |
+| 0.8 | 2026-09-12 | Step 5 accepted with two figure changes (F4 fractional uncertainty on a top axis; F1 inset axis label); new Step 6, equatorial anchoring, as a comparison step with a report-only wind-scaling diagnostic; Lindal manifest gains `[diagnostics]` at the Step 6 rebuild; decisions 9 (open) and 10; sections renumbered | REPORT_02_step5; author direction on the Fig. 9 caption and the equatorial anchor |

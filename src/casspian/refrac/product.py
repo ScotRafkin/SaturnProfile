@@ -273,7 +273,19 @@ def main(argv=None) -> int:
         prog=TOOL, description="Reduce one profile to its kind N refractivity product.")
     parser.add_argument("manifest", help="path to <profile>_reduction.toml")
     args = parser.parse_args(argv)
-    print(f"wrote {build_product(args.manifest)}")
+    manifest = ctl.read_reduction_manifest(args.manifest)
+    product = build_product(manifest.path)
+    print(f"wrote {product}")
+    diagnostics = manifest.diagnostics
+    if diagnostics.get("figures"):
+        # SPEC_02 Step 5: the standard figures, drawn from the file just written, never from
+        # this run's memory. Imported here so refrac does not load matplotlib unless asked.
+        from casspian.tools.plots import describe, render
+
+        result = render(product, product.parent / "figures", diagnostics["format"],
+                        int(diagnostics["dpi"]))
+        for line in describe(result):
+            print(line)
     return 0
 
 
