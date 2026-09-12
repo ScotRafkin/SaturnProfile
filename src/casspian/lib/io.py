@@ -342,4 +342,65 @@ def read(path, kind: str):
     if not spec.grouped:
         return root
     root.close()
-    return xr.open_datatree(path, engine="netcdf4")
+    tree = xr.open_datatree(path, engine="netcdf4")
+    if kind == "refractivity":
+        try:
+            _check_refractivity_hashes(tree, path)
+        except Exception:
+            tree.close()
+            raise
+    return tree
+
+
+#: The inputs whose hashes kind N records, in `reduction_record` and in `input_hashes`.
+_REFRACTIVITY_HASHED = ("thermo", "composition", "geodesy", "gravity", "rotation", "wind",
+                        "manifest")
+
+
+def _check_refractivity_hashes(tree, path: Path) -> None:
+    """Refuse a kind N file whose `input_hashes` disagrees with its reduction record.
+
+    SPEC_02 Step 4. `refrac` records the SHA-256 of each input twice: in the global
+    `input_hashes` (SPEC_00 section 5) and as `input_sha256_<input>` in `reduction_record`. A
+    global entry that no longer lists the recorded hash means the file was altered after it was
+    written, and it is refused, naming the input. An entry that no longer matches the file now
+    on disk at that path only warns (SPEC_00 section 8): the embedded copy is authoritative.
+    """
+    import warnings
+
+    where = path.name
+    record = tree["reduction_record"].attrs
+    entries = {}
+    for line in str(tree.attrs.get("input_hashes", "")).splitlines():
+        if " sha256:" in line:
+            name, digest = line.rsplit(" sha256:", 1)
+            entries[name.strip()] = digest.strip()
+    listed = set(entries.values())
+    for key in _REFRACTIVITY_HASHED:
+        recorded = record.get(f"input_sha256_{key}")
+        if recorded is None:
+            raise CasspianSchemaError(
+                f"{where}: reduction_record carries no input_sha256_{key} (SPEC_02 Step 4)."
+            )
+        if str(recorded) not in listed:
+            raise CasspianSchemaError(
+                f"{where}: input_hashes does not list the {key} hash the reduction recorded "
+                f"({str(recorded)[:16]}...). The file has been altered since refrac wrote it."
+            )
+    if len(entries) != len(_REFRACTIVITY_HASHED):
+        raise CasspianSchemaError(
+            f"{where}: input_hashes lists {len(entries)} entries; kind N lists the six inputs "
+            "and the manifest (SPEC_00 section 6.7)."
+        )
+    resolved = path.resolve()
+    root_dir = next((c for c in [resolved, *resolved.parents] if (c / ".git").exists()), None)
+    if root_dir is None:
+        return
+    for name, digest in entries.items():
+        candidate = root_dir / name
+        if candidate.exists() and sha256(candidate) != digest:
+            warnings.warn(
+                f"{where}: input_hashes entry {name} does not match the file now on disk. The "
+                "embedded copy remains authoritative (SPEC_00 section 8).",
+                stacklevel=3,
+            )

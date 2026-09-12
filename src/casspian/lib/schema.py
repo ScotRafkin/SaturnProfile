@@ -106,7 +106,8 @@ VERTICAL_COORDINATE_HINTS = ("pressure", "geopotential", "height", "radius")
 
 #: Unit suffixes a variable name may carry. Used only to place `_uncertainty`; longest match
 #: wins, so `GM_m3s2` resolves on `_m3s2` and not on `_m`.
-UNIT_SUFFIXES = ("_m3s2", "_m2s2", "_rad_s", "_deg", "_m3", "_ms", "_Pa", "_K", "_m", "_s")
+UNIT_SUFFIXES = ("_m3s2", "_m2s2", "_rad_s", "_kg_mol", "_deg", "_m3", "_ms", "_Pa", "_K",
+                 "_m", "_s")
 
 
 def uncertainty_companion(name: str) -> str:
@@ -329,15 +330,22 @@ _REFRACTIVITY = KindSpec(
     required_dimensions=("level",),
     variables=(
         VarSpec("radius_m", dims=("level",), units="m", needs_uncertainty=True),
-        VarSpec("height_above_anchor_isobar_m", dims=("level",), units="m"),
+        VarSpec("height_above_anchor_isobar_m", dims=("level",), units="m",
+                needs_uncertainty=True),
         VarSpec("number_density_m3", dims=("level",), units="m-3", needs_uncertainty=True),
         VarSpec("refractivity", dims=("level",), units="1", needs_uncertainty=True),
+        # SPEC_00 section 6.7 v0.13: every consumer needs these two, with their companions.
+        VarSpec("mean_refractivity_m3", dims=("level",), units="m3", needs_uncertainty=True),
+        VarSpec("mean_molar_mass_kg_mol", dims=("level",), units="kg mol-1",
+                needs_uncertainty=True),
+        # "Scalars with uncertainties" (SPEC_00 section 6.7): each of the six has a companion.
         VarSpec("latitude_planetocentric_deg", dims=(), units="degrees_north", needs_uncertainty=True),
-        VarSpec("psi_deg", dims=(), units="degrees"),
-        VarSpec("latitude_planetographic_deg", dims=(), units="degrees_north"),
-        VarSpec("anchor_isobar_pressure_Pa", dims=(), units="Pa"),
+        VarSpec("psi_deg", dims=(), units="degrees", needs_uncertainty=True),
+        VarSpec("latitude_planetographic_deg", dims=(), units="degrees_north",
+                needs_uncertainty=True),
+        VarSpec("anchor_isobar_pressure_Pa", dims=(), units="Pa", needs_uncertainty=True),
         VarSpec("anchor_isobar_radius_m", dims=(), units="m", needs_uncertainty=True),
-        VarSpec("anchor_isobar_height_m", dims=(), units="m"),
+        VarSpec("anchor_isobar_height_m", dims=(), units="m", needs_uncertainty=True),
     ),
     groups_required=(
         "inputs/thermo",

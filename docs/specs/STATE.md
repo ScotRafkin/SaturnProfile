@@ -19,12 +19,12 @@ reviewed against the specification.
 
 ## SPEC_02, `refrac` and the standard diagnostics
 
-SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 proceed in order.
+SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 proceed in order. Current: SPEC_00 v0.14, SPEC_01 v0.19, SPEC_02 v0.7.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | `lib.control`: reduction manifest and input loading | accepted | `reports/REPORT_02_step1.md`, `reports/REVIEW_02_step1.md` | 2026-09-12 |
 | 2 | `refrac/anchor.py`: frozen `phi_c` and `r0` | accepted | `reports/REPORT_02_step2.md`, `reports/REVIEW_02_step2.md` | 2026-09-12 |
 | 3 | `lib.reduction`, `refrac/reduce.py`: B3.1, B1, B3.3 | accepted with changes, applied (SPEC_02 v0.6; SPEC_01 Step 8 amended first) | `reports/REPORT_02_step3.md`, `reports/REVIEW_02_step3.md` | 2026-09-12 |
-| 4 | `refrac/product.py`, `casspian-refrac`: kind N | not started | | |
+| 4 | `refrac/product.py`, `casspian-refrac`: kind N | accepted with one change, applied (SPEC_02 v0.7: anchor-rule spread by full rerun) | `reports/REPORT_02_step4.md`, `reports/REVIEW_02_step4.md` | 2026-09-12 |
 | 5 | `tools/plots/`, `casspian-plots`: standard diagnostics | not started | | |

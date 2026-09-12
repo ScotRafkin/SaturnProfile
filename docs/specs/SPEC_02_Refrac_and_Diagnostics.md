@@ -2,12 +2,12 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.6, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
-at v0.4 (12 September 2026); Steps 1 to 3 accepted (Step 3 with the v0.6 changes); Steps 4
-and 5 proceed in order. See §8 for
-the revision history.
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.13 and on the closed
-`SPEC_01_Lindal_Tool_Chain.md` v0.18 (commit `ece58d2`), which it does not repeat.
+Version 0.7, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
+at v0.4 (12 September 2026); Steps 1 to 4 accepted (Step 3 with the v0.6 changes, Step 4 with
+the v0.7 change); Step 5 proceeds. See §8 for the revision history.
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.14 and on the closed
+`SPEC_01_Lindal_Tool_Chain.md` v0.19 (closed at commit `ece58d2`, Step 8 amended at
+`31c30ef`), which it does not repeat.
 
 ---
 
@@ -202,9 +202,18 @@ forward model reads from the reduction.
   `inputs/rotation`, `inputs/wind`, verbatim copies; `manifest` with `text` and `sha256`;
   `reduction_record` with attributes: the fixed-point iterates, `anchor_rule`, north polar
   start, both polar radii, polar asymmetry, anchoring residual, no-wind `phi_c` and `r0`,
-  the anchor-rule spread (`r0` under `north_pole` and `south_pole` anchoring, two extra
-  marches, recorded as a choice), the partial derivatives of the Step 3 propagation, the
-  CODATA release, `casspian_version`, `casspian_git_commit`.
+  the anchor-rule spread (v0.7: the whole Step 2 fixed point rerun under `north_pole` and
+  under `south_pole` anchoring, recording `r0` and `phi_c` under each rule; not the
+  latitude-held march, for the same reason the Step 3 anchor term is the total derivative;
+  recorded as a choice), the partial derivatives of the Step 3 propagation, the CODATA
+  release, `casspian_version`, `casspian_git_commit`.
+
+**Expected values (v0.7).** With the anchor radius effectively moved by half the polar
+asymmetry, 14.37 km, and the total derivative 1.237, the spread is about ±17.8 km at the
+anchor: `r0` near 58,537.7 km under `north_pole` and 58,502.1 km under `south_pole` (each
+±0.1 km), against 58,519.883 km under `mean_polar_radius`; `phi_c` moves by
+∓0.0030° (the coupling `dphi_c/dr_anchor` = −3.62e-9 rad/m), to about 30.8020° and 30.8079°.
+The latitude-held values the v0.6 build recorded, ±17.5 km, differ by the coupling term.
 - Global `input_hashes` over the six inputs and the manifest.
 
 **Acceptance.** The file reads back as kind N (a DataTree); `read` refuses a copy missing the
@@ -212,7 +221,8 @@ forward model reads from the reduction.
 every embedded input group is byte-identical in variables and attributes to the file it came
 from (compare through `xarray.Dataset.identical`); the six scalars match Step 2 and Step 3;
 `lindal_refractivity.nc` appears in `occul_data/lindal/` and the SPEC_00 §2.2 listing is now
-complete for the profile.
+complete for the profile; the anchor-rule spread in `reduction_record` matches the expected
+values above (v0.7).
 
 ---
 
@@ -324,8 +334,19 @@ enough to be wrapped.
    uncertainties only, uncorrelated between inputs, with the closure constraint applied inside
    the composition; unstated terms are left out, not zeroed, and the file lists which entered.
 5. The anchor-rule spread is recorded as a choice, not folded into the radius uncertainty.
+   It is measured by rerunning the fixed point under each rule (v0.7), so that the recorded
+   spread is the whole effect of the choice, latitude shift included. At the anchor it is
+   about ±17.8 km, larger than the 16.4 km the declared uncertainties propagate to; the
+   anchor rule is the largest single term in where the profile sits in radius, and the Monte
+   Carlo wrapper is where that choice is exercised (REPORT_02_step4 finding 1).
 6. No sensitivity study or Monte Carlo lives in the pipeline; a generic wrapper over input
    files does that, specified after the forward model (v0.4; the v0.1 Step 6 is withdrawn).
+7. A companion copied from an input (the planetographic label and its `range`) keeps the kind
+   its source declared; the SPEC_00 §5 conversion applies to companions that combine terms
+   (REPORT_02_step4 decision 2).
+8. The `input_hashes` consistency warning of SPEC_00 §8 is implemented for kind N, whose
+   inputs are embedded. Extending it to the other derived kinds is deferred to the reader work
+   SPEC_03 will need (REPORT_02_step4 finding 3).
 
 ---
 
@@ -339,3 +360,4 @@ enough to be wrapped.
 | 0.4 | 2026-09-12 | Accepted by the author. Step 6 (sensitivity and wind Monte Carlo) withdrawn in favor of a generic Monte Carlo wrapper after the forward model; Step 3 uncertainty companions specified as first-order propagation with the closure constraint and the label and anchor terms on `r0`; F7 dropped; `[sensitivity]` removed from the manifest | author discussion of sensitivity philosophy |
 | 0.5 | 2026-09-12 | Step 2 accepted; Step 2 expected values split into the fixed-latitude dynamical height and the latitude shift; Step 3 slope and label term corrected to −5,630 km/rad and about 18 km | REPORT_02_step2 findings 1 and 2 |
 | 0.6 | 2026-09-12 | Step 3 accepted with changes: total derivative `dr0/dr_anchor`; uncertainty kinds converted before quadrature (label `range` divided by √3); measured partials recorded; closure read from kind C's declaration; mean refractivity and molar mass companions carried into kind N | REPORT_02_step3 findings 1 to 6 |
+| 0.7 | 2026-09-12 | Step 4 accepted with one change: the anchor-rule spread by a full fixed-point rerun under each rule, `r0` and `phi_c` recorded; decisions 7 and 8; dependency lines updated to SPEC_00 v0.14 and SPEC_01 v0.19 | REPORT_02_step4 findings 1 and 3, decisions 2 and 5 |

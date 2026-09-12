@@ -351,6 +351,9 @@ def reduce_profile(inputs: ReductionInputs, manifest: ReductionManifest,
         "anchor_height": anchor_height_term,
     })
     radius_table = dict(scalar_table, height=convert_h, anchor_height=convert_h)
+    # The height above the anchor isobar, h - h_ref, carries the two height terms only.
+    height_unc, height_included, height_unstated = red.quadrature({
+        "height": height_term, "anchor_height": anchor_height_term})
 
     companions = {
         "number_density_uncertainty_m3": Companion(
@@ -359,6 +362,9 @@ def reduce_profile(inputs: ReductionInputs, manifest: ReductionManifest,
         "refractivity_uncertainty": Companion(N * N_rel, N_included, N_unstated, N_conversions),
         "radius_uncertainty_m": Companion(r_unc, r_included, r_unstated,
                                           _conversions(r_included, radius_table)),
+        "height_above_anchor_isobar_uncertainty_m": Companion(
+            height_unc, height_included, height_unstated,
+            _conversions(height_included, radius_table)),
         "mean_refractivity_uncertainty_m3": R_bar_companion,
         "mean_molar_mass_uncertainty_kg_mol": m_bar_companion,
         "anchor_isobar_radius_uncertainty_m": scalar["r0"],
