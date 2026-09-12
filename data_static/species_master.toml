@@ -46,7 +46,7 @@ NH3 = { value = 17.0305e-3,  status = "verified", source = "IUPAC 2013 standard 
 # ---------------------------------------------------------------- set: lindal1985
 [refractivity.lindal1985.H2]
 refractivity_stp_e6 = 136.0
-uncertainty_e6      = 0.0        # not stated; enter from Essen 1953 when read
+uncertainty_e6      = nan        # not stated; enter from Essen 1953 when read
 frequency_Hz        = 2.4e10     # Essen 1953 measured near 24 GHz (24,000 Mc/s); confirm on the page
 status              = "verified_secondary"
 source              = "Essen 1953, Proc. Phys. Soc. B 66, 189; value as used by Lindal et al. 1981"
@@ -55,7 +55,7 @@ temperature_dependence = "none (nonpolar)"
 
 [refractivity.lindal1985.He]
 refractivity_stp_e6 = 35.0
-uncertainty_e6      = 0.0
+uncertainty_e6      = nan
 frequency_Hz        = 2.4e10
 status              = "verified_secondary"
 source              = "Essen 1953, as used by Lindal et al. 1981"
@@ -75,7 +75,7 @@ source              = "Lindal et al. 1985: the Fig. 3 caption states the number 
 # ---------------------------------------------------------------- set: modern
 [refractivity.modern.H2]
 refractivity_stp_e6 = 135.77
-uncertainty_e6      = 0.0        # enter from Newell and Baird 1965 when read
+uncertainty_e6      = nan        # enter from Newell and Baird 1965 when read
 frequency_Hz        = 0.0        # enter from Newell and Baird 1965 (microwave cavity, ~ GHz)
 status              = "verified_secondary"
 source              = "Newell and Baird 1965, J. Appl. Phys. 36, 3751 (not read; cited by Gupta et al. 2022 note a)"
@@ -84,7 +84,7 @@ temperature_dependence = "none; Gupta et al. 2022 sec. 3.2, citing Spilker 1990:
 
 [refractivity.modern.He]
 refractivity_stp_e6 = 34.51
-uncertainty_e6      = 0.0
+uncertainty_e6      = nan
 frequency_Hz        = 0.0
 status              = "verified_secondary"
 source              = "Newell and Baird 1965, J. Appl. Phys. 36, 3751 (not read; cited by Gupta et al. 2022 note a)"
@@ -93,7 +93,7 @@ temperature_dependence = "none"
 
 [refractivity.modern.CH4]
 refractivity_stp_e6 = 437.98
-uncertainty_e6      = 0.0
+uncertainty_e6      = nan
 frequency_Hz        = 0.0        # Asmar 2022: radio frequency nearest the Voyager bands; confirm
 status              = "verified_secondary"
 source              = "Asmar 2022, as cited by Gupta et al. 2022 note a (not read)"
@@ -103,7 +103,7 @@ note                = "Published values for CH4 spread from about 395 to 445 (ha
 
 [refractivity.modern.NH3]
 refractivity_stp_e6 = 0.0
-uncertainty_e6      = 0.0
+uncertainty_e6      = nan
 frequency_Hz        = 0.0
 status              = "unverified"
 source              = "Mohammed and Steffes 2003, Icarus 166, 425 (Ka band); Mohammed and Steffes 2004, JGR 109, E07S03 (W band)"

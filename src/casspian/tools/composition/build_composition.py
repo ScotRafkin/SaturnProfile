@@ -230,6 +230,11 @@ def build(control_path, section: str = "composition") -> Path:
             f"ammonia assigned first from Table I under the declared rule, then the remainder "
             f"split {h2_share} H2 to {he_share} He"
         ),
+        # SPEC_00 section 6.2 v0.13: the closure is declared, so refrac reads it rather than
+        # inferring it. Ammonia is assigned first and H2 and He share the remainder, the share
+        # species named first.
+        "closure_rule": "share_of_remainder",
+        "closure_species": "H2 He",
         "nh3_fill_rule": control["nh3_fill_rule"],
         "nh3_aloft_assumption": (
             "Above the highest tabulated level Table I is blank, which is 'not measured', not "
@@ -278,8 +283,11 @@ def build(control_path, section: str = "composition") -> Path:
         [float(property_of(n, "refractivity_stp_e6")) * 1e-6 / LOSCHMIDT_CONSTANT
          for n in species], dtype="float64"
     )
+    # An uncertainty the master table does not state is NaN, never 0.0 (SPEC_00 section 5,
+    # v0.7; SPEC_01 v0.19): the table writes it as nan, or omits the key, and both arrive here
+    # as NaN, so a stated zero and an unstated value stay distinguishable in the product.
     per_molecule_uncertainty = np.array(
-        [float(property_of(n, "uncertainty_e6")) * 1e-6 / LOSCHMIDT_CONSTANT
+        [float(property_of(n, "uncertainty_e6", float("nan"))) * 1e-6 / LOSCHMIDT_CONSTANT
          for n in species], dtype="float64"
     )
     species_group = xr.Dataset(
@@ -302,7 +310,8 @@ def build(control_path, section: str = "composition") -> Path:
                 ("species",), per_molecule_uncertainty,
                 attrs("m3", "uncertainty on the per molecule refractivity", "derived",
                       uncertainty_kind="stated",
-                      uncertainty_method="zero where the source states none; see status"),
+                      uncertainty_method=("NaN where the master table states no uncertainty "
+                                          "(SPEC_00 section 5); see status")),
             ),
             "refractivity_frequency_Hz": (
                 ("species",),

@@ -195,3 +195,56 @@ the product.
 | Species group | **Pass**, `is_polar = [0, 0, 1]`, `master_table = "data_static/species_master.toml"` with its hash |
 
 Seven of seven.
+
+
+---
+
+## 7. Addendum after closure: the v0.19 amendment
+
+Added 12 September 2026, per `REVIEW_02_step3.md` findings 4 and 5 and SPEC_01 v0.19 Step 8.
+SPEC_02 Step 3 found two things the reduction needs from this file that it did not carry.
+
+**What changed.**
+
+1. **The closure is declared.** The composition file now carries `closure_rule =
+   "share_of_remainder"` and `closure_species = "H2 He"` (SPEC_00 section 6.2 v0.13), with the
+   share species first. `refrac` reads them and checks them against the values; it no longer
+   infers the structure.
+2. **Unstated per molecule uncertainties are NaN.** `refractivity_uncertainty_m3` is now NaN for
+   all three species, with `uncertainty_method` saying NaN is written where the master table
+   states no uncertainty. It used to be 0.0.
+
+**Two decisions.**
+
+1. **The master table says `nan`, not the tool.** `data_static/species_master.toml` wrote an
+   unstated uncertainty as `uncertainty_e6 = 0.0`, with a comment saying it was not stated. A
+   tool reading that table cannot tell a stated zero from a placeholder, so the fix belongs in
+   the table. Every `uncertainty_e6 = 0.0` placeholder is now `nan`, a TOML float, with its
+   comment kept. That is two entries in `lindal1985` (H2, He) and four in `modern`. The `modern`
+   set feeds no product yet; it was changed so the table follows one rule. A species with no
+   `uncertainty_e6` key at all (the `lindal1985` NH3 entry) also becomes NaN in the tool, so
+   leaving a value out cannot turn it into a zero. A finite value, zero included, still passes
+   through as stated.
+2. **The closure attributes are constants of the tool, not control file keys.** The tool always
+   assigns ammonia first and splits the remainder between H2 and He. The declaration describes
+   what the code does, so it is written from the code, like `remainder_split` beside it. The
+   split ratio stays a control file choice, as before.
+
+**Acceptance.** `reports/step8/accept_step8.py`, nine of nine.
+
+| Check | Measured |
+|---|---|
+| 1 to 7, the original Step 8 checks | **Pass, every number unchanged.** The only line of output that differs from the pre-amendment run is `master_table_hash`, which moved from `dc667eaa...` to `a1a16e33...` because the table itself changed. |
+| 8. The closure declaration reads back and agrees with the values | **Pass.** `closure_rule = 'share_of_remainder'`, `closure_species = 'H2 He'`. `x_H2 / (x_H2 + x_He)` runs 0.94 to 0.9400000000000001, spread 1.1e-16. |
+| 9. `refractivity_uncertainty_m3` is NaN for all three species | **Pass.** `[nan, nan, nan]` for H2, He, NH3. |
+
+**Nothing else was rebuilt.** Of the files under `occul_data/lindal/`, only the composition
+hashes the master table or depends on the composition. The others still carry `ece58d2`.
+
+**The new hash.** The composition was rebuilt on a clean tree after the amendment was committed.
+This row supersedes the `lindal_composition.nc` row of REPORT_01_step9 section 6, and the SPEC_02
+Step 1 acceptance reads it from here.
+
+| File | Kind | SHA-256 |
+|---|---|---|
+HASH_ROW_PENDING
