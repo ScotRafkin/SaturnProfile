@@ -28,7 +28,7 @@ import numpy as np
 import xarray as xr
 
 from casspian.lib import io as cio
-from casspian.tools.gravity.control import ControlFileError, load_section
+from casspian.lib.control import ControlFileError, load_section
 
 TOOL = "casspian-lindal-inputs"
 

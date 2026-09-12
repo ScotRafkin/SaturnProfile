@@ -19,7 +19,7 @@ from pathlib import Path
 import xarray as xr
 
 from casspian.lib import io as cio
-from casspian.tools.gravity.control import (
+from casspian.lib.control import (
     ControlFileError,
     load_section,
     reject_physical_values,

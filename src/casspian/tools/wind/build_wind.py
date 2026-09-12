@@ -37,7 +37,7 @@ import xarray as xr
 from casspian.lib import geoid as gd
 from casspian.lib import io as cio
 from casspian.lib import latitude as latmod
-from casspian.tools.gravity.control import ControlFileError, load_section
+from casspian.lib.control import ControlFileError, load_section
 from casspian.tools.wind.curve import EXTENDED, AssembledCurve, read_curve
 
 TOOL = "casspian-wind-from-curve"

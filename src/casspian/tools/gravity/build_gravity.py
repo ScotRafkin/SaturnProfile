@@ -26,7 +26,7 @@ import xarray as xr
 
 from casspian.lib import io as cio
 from casspian.lib.schema import HARMONIC_CONVENTION
-from casspian.tools.gravity.control import (
+from casspian.lib.control import (
     ControlFileError,
     load_section,
     reject_physical_values,

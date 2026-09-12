@@ -32,7 +32,7 @@ from scipy.interpolate import interp1d
 
 from casspian.lib import io as cio
 from casspian.lib.constants import CODATA_RELEASE, LOSCHMIDT_CONSTANT
-from casspian.tools.gravity.control import ControlFileError, load_section
+from casspian.lib.control import ControlFileError, load_section
 
 TOOL = "casspian-composition-lindal"
 
