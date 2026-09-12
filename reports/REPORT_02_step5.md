@@ -205,4 +205,4 @@ The Step 4 regression suite had rewritten it from the working tree, so it carrie
 
 | File | Kind | SHA-256 |
 |---|---|---|
-HASH_ROW_PENDING
+| `lindal_refractivity.nc` | refractivity | `a91f75a804ba4bf905be6df3c05049b773cdfbbb532e6aa1f0871b528db3a740` |
