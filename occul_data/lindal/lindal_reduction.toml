@@ -23,9 +23,14 @@ max_iterations            = 20
 
 [geoid]
 anchor_surface_Pa = 10000
-anchor_quantity   = "radius_polar_m"
-anchor_rule       = "mean_polar_radius"   # SPEC_01 v0.16: how the one constant of Eq. B3 is fixed
+anchor_quantity   = "radius_equatorial_m"
+anchor_rule       = "equatorial_radius"   # SPEC_01 v0.16: how the one constant of Eq. B3 is fixed
 convergence_m     = 1
 
 [output]
 product = "lindal_refractivity.nc"
+
+[diagnostics]
+figures = true
+format  = "png"
+dpi     = 150

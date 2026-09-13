@@ -100,6 +100,11 @@ anchor_isobar_Pa          = 1.0e4     # the surface the source fitted a geoid on
 fixed_point_tolerance_deg = 1.0e-6
 max_iterations            = 20
 geoid_anchor_surface_Pa   = 1.0e4
-geoid_anchor_quantity     = "radius_polar_m"
-geoid_anchor_rule         = "mean_polar_radius"   # how the one constant of Eq. B3 is fixed
+geoid_anchor_quantity     = "radius_equatorial_m"   # SPEC_02 v0.8 Step 6: the equatorial radius
+geoid_anchor_rule         = "equatorial_radius"     # how the one constant of Eq. B3 is fixed
 geoid_convergence_m       = 1.0
+
+# The standard diagnostics, carried into the manifest's [diagnostics] section (SPEC_02 Step 5).
+diagnostics_figures       = true
+diagnostics_format        = "png"
+diagnostics_dpi           = 150

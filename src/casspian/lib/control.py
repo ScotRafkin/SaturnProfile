@@ -165,7 +165,17 @@ _VOCABULARY = {
 
 #: The anchor rules a manifest may name. `lib.geoid.wind_geoid` also knows "latitude", but that
 #: rule needs an anchor latitude and the section 7.1 vocabulary has no key to carry one.
-_MANIFEST_ANCHOR_RULES = frozenset({"mean_polar_radius", "north_pole", "south_pole"})
+_MANIFEST_ANCHOR_RULES = frozenset({"mean_polar_radius", "north_pole", "south_pole",
+                                    "equatorial_radius"})
+
+#: SPEC_00 section 7.1 v0.15: the kind D quantity each manifest anchor rule anchors on. A rule
+#: and a quantity that do not belong together are refused, here and by the build tool.
+ANCHOR_QUANTITY_FOR_RULE = MappingProxyType({
+    "mean_polar_radius": "radius_polar_m",
+    "north_pole": "radius_polar_m",
+    "south_pole": "radius_polar_m",
+    "equatorial_radius": "radius_equatorial_m",
+})
 _DIAGNOSTIC_FORMATS = frozenset({"png", "pdf"})
 
 
@@ -304,6 +314,13 @@ def read_reduction_manifest(path) -> ReductionManifest:
             f"{path}: [geoid] anchor_rule = {geoid['anchor_rule']!r}; a manifest may name "
             f"{sorted(_MANIFEST_ANCHOR_RULES)}. The 'latitude' rule of lib.geoid needs an anchor "
             "latitude, and SPEC_00 section 7.1 has no key to carry one."
+        )
+    expected_quantity = ANCHOR_QUANTITY_FOR_RULE[geoid["anchor_rule"]]
+    if geoid["anchor_quantity"] != expected_quantity:
+        raise ControlFileError(
+            f"{path}: [geoid] anchor_rule = {geoid['anchor_rule']!r} anchors on "
+            f"{expected_quantity!r}, but anchor_quantity = {geoid['anchor_quantity']!r}. "
+            "SPEC_00 section 7.1 v0.15 refuses a rule and a quantity that do not belong together."
         )
     diagnostics = _check_optional_sections(path, document)
 

@@ -28,7 +28,8 @@ import numpy as np
 import xarray as xr
 
 from casspian.lib import io as cio
-from casspian.lib.control import ControlFileError, load_section
+from casspian.lib.control import ANCHOR_QUANTITY_FOR_RULE, ControlFileError, load_section
+from casspian.lib.schema import WRITER_FILLED_GLOBALS, CasspianSchemaError
 
 TOOL = "casspian-lindal-inputs"
 
@@ -51,7 +52,44 @@ SECTION_KEYS = {
     "geoid_anchor_quantity": True,
     "geoid_anchor_rule": True,
     "geoid_convergence_m": True,
+    # SPEC_01 v0.20 Step 9 amendment: carried into the manifest's [diagnostics] section.
+    "diagnostics_figures": False,
+    "diagnostics_format": False,
+    "diagnostics_dpi": False,
 }
+
+#: Attributes that record the writing of a file rather than its content. A kind T or D file
+#: that differs from what this run would write only in these is the same file, verified and
+#: kept (SPEC_01 v0.20 Step 9): the control file hash changes whenever a manifest choice does.
+_WRITING_ATTRIBUTES = frozenset(WRITER_FILLED_GLOBALS) | {"history", "control_file",
+                                                        "input_hashes"}
+
+
+def _content(dataset):
+    kept = dataset.copy()
+    kept.attrs = {k: v for k, v in dataset.attrs.items() if k not in _WRITING_ATTRIBUTES}
+    return kept
+
+
+def _write_unless_unchanged(path: Path, dataset, kind: str) -> Path:
+    """Write kind T or D, unless the file on disk already holds exactly this content.
+
+    SPEC_01 v0.20 Step 9: a manifest choice changes nothing in kinds T and D, so they are
+    verified and kept rather than rewritten, and their hashes and commits stand.
+    """
+    if path.exists():
+        try:
+            handle = cio.read(path, kind)
+            try:
+                existing = handle.load()
+            finally:
+                handle.close()
+        except CasspianSchemaError:
+            existing = None
+        if existing is not None and _content(existing).identical(_content(dataset)):
+            print(f"kept {path}: content unchanged, verified against what this run would write")
+            return path
+    return cio.write(path, dataset, kind, created_by=TOOL)
 
 PATH_KEYS = (
     "raw_bundle", "thermo_output", "geodesy_output", "manifest",
@@ -88,6 +126,20 @@ def build(control_path, section: str = "stage_two"):
     """Write kinds T and D and the reduction manifest. Returns the three paths."""
     control = load_section(control_path, section, SECTION_KEYS, path_keys=PATH_KEYS)
     prefix = control["prefix"]
+    expected_quantity = ANCHOR_QUANTITY_FOR_RULE.get(control["geoid_anchor_rule"])
+    if expected_quantity is None or control["geoid_anchor_quantity"] != expected_quantity:
+        raise ControlFileError(
+            f"{control_path}: [{section}] geoid_anchor_rule = {control['geoid_anchor_rule']!r} "
+            f"and geoid_anchor_quantity = {control['geoid_anchor_quantity']!r} do not belong "
+            f"together; the manifest rules are {dict(ANCHOR_QUANTITY_FOR_RULE)} (SPEC_00 "
+            "section 7.1 v0.15)."
+        )
+    if control.get("diagnostics_figures") and not all(
+            k in control for k in ("diagnostics_format", "diagnostics_dpi")):
+        raise ControlFileError(
+            f"{control_path}: [{section}] diagnostics_figures = true needs diagnostics_format "
+            "and diagnostics_dpi; no default is declared for them."
+        )
     root_dir = _repository_root(Path(control["raw_bundle"]))
     control_path = Path(control_path)
 
@@ -211,7 +263,7 @@ def build(control_path, section: str = "stage_two"):
         "uncertainties present and NaN, the source states none; no composition and no geodesy "
         "in this file (SPEC_00 section 6.1)",
     )
-    thermo_path = cio.write(Path(control["thermo_output"]), thermo, "thermo", created_by=TOOL)
+    thermo_path = _write_unless_unchanged(Path(control["thermo_output"]), thermo, "thermo")
 
     # ---- kind D ----------------------------------------------------------------------
     order = ["surface_100mbar", "surface_1bar"]
@@ -279,8 +331,8 @@ def build(control_path, section: str = "stage_two"):
         "the fit residual is stated by the source as a range across its fits, so the per "
         "surface variable is NaN and the range is in fit_residual_range_m",
     )
-    geodesy_path = cio.write(Path(control["geodesy_output"]), geodesy_ds, "geodesy",
-                             created_by=TOOL)
+    geodesy_path = _write_unless_unchanged(Path(control["geodesy_output"]), geodesy_ds,
+                                           "geodesy")
 
     # ---- the manifest, SPEC_00 section 7.1 -------------------------------------------
     manifest_path = Path(control["manifest"])
@@ -336,6 +388,16 @@ def build(control_path, section: str = "stage_two"):
         f'product = "{Path(control["product"]).name}"',
         "",
     ]
+    if "diagnostics_figures" in control:
+        lines += [
+            "[diagnostics]",
+            f"figures = {'true' if control['diagnostics_figures'] else 'false'}",
+        ]
+        if "diagnostics_format" in control:
+            lines.append(f'format  = "{control["diagnostics_format"]}"')
+        if "diagnostics_dpi" in control:
+            lines.append(f"dpi     = {int(control['diagnostics_dpi'])}")
+        lines.append("")
     manifest_path.write_bytes("\n".join(lines).encode("utf-8"))
     return thermo_path, geodesy_path, manifest_path
 
@@ -349,7 +411,7 @@ def main(argv=None) -> int:
     parser.add_argument("--section", default="stage_two", help="section (default stage_two)")
     args = parser.parse_args(argv)
     for written in build(args.control, args.section):
-        print(f"wrote {written}")
+        print(f"ready {written}")
     return 0
 
 

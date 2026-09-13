@@ -2,10 +2,11 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.8, 12 September 2026. Author of record: S. Rafkin. Status: accepted by the author
-at v0.4 (12 September 2026); Steps 1 to 5 accepted (Step 3 with the v0.6 changes, Step 4 with
-the v0.7 change, Step 5 with two figure changes); Step 6 (v0.8, equatorial anchoring) proceeds
-after the Step 5 acceptance commit and sweep. See §9 for the revision history.
+Version 0.9, 13 September 2026. Author of record: S. Rafkin. Status: accepted by the author
+at v0.4 (12 September 2026); Steps 1 to 6 accepted (Step 3 with the v0.6 changes, Step 4 with
+the v0.7 change, Step 5 with two figure changes, Step 6 with the decision recorded at v0.9).
+**SPEC_02 is closed at the Step 6 acceptance commit and sweep.** The Lindal default anchor
+rule is `equatorial_radius` (decision 9). See §9 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.15 and on the closed
 `SPEC_01_Lindal_Tool_Chain.md` v0.20 (closed at commit `ece58d2`; Step 8 amended at v0.19,
 Steps 5 and 9 amended at v0.20), which it does not repeat.
@@ -358,8 +359,9 @@ nothing is discarded.**
    the wind is allowed to be wrong; it is not an uncertainty study and is not written into
    any file. The Sanchez-Lavega profile is not used here; that is a later study.
 
-**Expected values (ranges, first anchoring at the equator).** Shape is unchanged by the
-anchor, so the asymmetry stays 28.745 km to 1 m and the equatorial dynamical height 127 km.
+**Expected values (ranges, first anchoring at the equator).** The shape is unchanged by the
+anchor apart from the `r³` scaling above (4.7 m on the asymmetry), and the equatorial
+dynamical height stays 127 km.
 The surface moves down by about 4.04 km at the equator (the Step 7 margin over 60,367), so
 `r0` falls by 3.5 to 3.9 km to 58,516.0 to 58,516.5 km, `phi_c` moves by less than 0.002°,
 the predicted mean polar radius comes out 3.0 to 3.3 km below 54,438 (about 54,435, inside
@@ -374,7 +376,11 @@ as measured, and a value outside these ranges is a finding, not a failure.
 one; the anchoring residual at the equator is below 1e-3 m; the equator is a march node
 (the radius there is not interpolated); under `equatorial_radius` the fixed point converges
 in at most eight iterations and the product's `anchor_isobar_radius_m` equals the march at
-`phi_c`; the asymmetry equals the Step 7 value to 1 m; the manifest carries the new
+`phi_c`; the asymmetry equals the Step 7 value scaled by the cube of the ratio of mean polar
+radii, to 1 m (v0.9: the slope of Eq. B3 carries accelerations in `r` over gravity in
+`1/r²`, so the asymmetry scales as `r³` with the size of the surface; 28,745.045 m ×
+(54,435.014/54,438)³ = 28,740.31 m against 28,740.37 m measured; the v0.8 wording
+"unchanged to 1 m" was wrong); the manifest carries the new
 `[geoid]` and `[diagnostics]` sections and `casspian-refrac` renders F1 to F4 without being
 asked by hand; the SPEC_00 §2.2 listing is complete; the report carries the comparison table
 (the four rules, and the four wind-scaling runs) with every number above beside its measured
@@ -429,11 +435,33 @@ enough to be wrapped.
 8. The `input_hashes` consistency warning of SPEC_00 §8 is implemented for kind N, whose
    inputs are embedded. Extending it to the other derived kinds is deferred to the reader work
    SPEC_03 will need (REPORT_02_step4 finding 3).
-9. (v0.8, open) The geoid anchor for Lindal: `mean_polar_radius` (the rule his caption's
-   wording supports) or `equatorial_radius` (the better-conditioned point of the same fit,
-   with a wind term to be measured). Decided from the Step 6 comparison table; the numbers
-   and the decision are recorded here when made. The rule not chosen stays in the code and
-   is exercised by the Monte Carlo wrapper.
+9. (v0.9, decided 13 September 2026) **The Lindal geoid is anchored on the equatorial radius,
+   `anchor_rule = "equatorial_radius"`, `anchor_quantity = "radius_equatorial_m"`.** From the
+   Step 6 comparison (REPORT_02_step6 §1, §2, §5):
+
+   | | `mean_polar_radius` | `equatorial_radius` |
+   |---|---|---|
+   | `r0` (km) | 58,519.883 | 58,516.188 |
+   | `phi_c` (deg) | 30.804949 | 30.805568 |
+   | declared uncertainty propagated to `r0` (km) | 16.38 (anchor 12.37, label 10.73) | 11.35 (anchor 3.70, label 10.73) |
+   | `r0` shift for a ±5 percent wind scaling (km) | 3.38 | 2.60 |
+   | Lindal's other radius, predicted | equator 60,371.0, 4.0 km above 60,367 ± 4 | mean polar 54,435.0, 3.0 km below 54,438 ± 10 |
+   | polar asymmetry (km) | 28.745 | 28.740 |
+
+   Reasons. The equator is a single point of the surface stated with the smaller uncertainty
+   (±4 against ±10 km), so the anchor term on `r0` falls from 12.4 to 3.7 km. Zero wind at the
+   pole does not make the polar anchor wind-free: `r0` at 30.8° is the integral of the Eq. B3
+   slope from the anchor to the profile, and the mean-polar rule needs the whole pole-to-pole
+   march, jet included, to fix the mean; measured, the polar anchor is the more wind-sensitive
+   of the two. The equatorial anchor predicts his mean polar radius well inside his bar; the
+   polar anchor predicts his equator at the edge of its bar. Both radii come from the same
+   ellipse fit, so the switch adds no information; it chooses the better-constrained end of
+   one fit. The polar rules stay in `lib.geoid` and in the manifest vocabulary, the spread
+   under them is recorded in `reduction_record`, and the Monte Carlo wrapper exercises the
+   rule and the wind under both. The 28.7 km asymmetry against the caption's order of 10 km
+   is a question about the southern wind field, unchanged by the anchor, deferred to the wind
+   uncertainty study. **The acceptance values quoted in Steps 2 to 4 are values under
+   `mean_polar_radius`; those suites pin that rule in memory (REPORT_02_step6 decision 5).**
 10. (v0.8) F5 and F6 field names the plotting code already understands, for SPEC_03 to adopt
    or rename in both places: `geopotential_m2s2(level)`, `pressure_hydrostatic_Pa(level)`,
    attribute `boundary_pressure_Pa`.
@@ -452,3 +480,4 @@ enough to be wrapped.
 | 0.6 | 2026-09-12 | Step 3 accepted with changes: total derivative `dr0/dr_anchor`; uncertainty kinds converted before quadrature (label `range` divided by √3); measured partials recorded; closure read from kind C's declaration; mean refractivity and molar mass companions carried into kind N | REPORT_02_step3 findings 1 to 6 |
 | 0.7 | 2026-09-12 | Step 4 accepted with one change: the anchor-rule spread by a full fixed-point rerun under each rule, `r0` and `phi_c` recorded; decisions 7 and 8; dependency lines updated to SPEC_00 v0.14 and SPEC_01 v0.19 | REPORT_02_step4 findings 1 and 3, decisions 2 and 5 |
 | 0.8 | 2026-09-12 | Step 5 accepted with two figure changes (F4 fractional uncertainty on a top axis; F1 inset axis label); new Step 6, equatorial anchoring, as a comparison step with a report-only wind-scaling diagnostic; Lindal manifest gains `[diagnostics]` at the Step 6 rebuild; decisions 9 (open) and 10; sections renumbered | REPORT_02_step5; author direction on the Fig. 9 caption and the equatorial anchor |
+| 0.9 | 2026-09-13 | Step 6 accepted; decision 9 made: `equatorial_radius` is the Lindal default; asymmetry acceptance restated as the `r³` scaling; SPEC_02 closed at the Step 6 acceptance commit and sweep | REPORT_02_step6 findings 1 to 3; author decision |

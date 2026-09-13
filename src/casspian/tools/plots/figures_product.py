@@ -172,7 +172,10 @@ def figure_3(pr: _Product):
     r_anchor = float(pr.record["anchor_radius_m"])
     rule = str(pr.record["anchor_rule"])
     tol_m = float(pr.manifest.get("geoid", {}).get("convergence_m", 1.0))
-    r_ref, _, _ = gd.reference_geoid(phi, r_anchor, *pr.constants, tol_m=tol_m)
+    # The no wind surface passes through the anchor radius where the rule anchors it.
+    reference_latitude = 0.0 if rule == "equatorial_radius" else np.pi / 2
+    r_ref, _, _ = gd.reference_geoid(phi, r_anchor, *pr.constants, tol_m=tol_m,
+                                     anchor_latitude=reference_latitude)
     marched = gd.wind_geoid(phi, r_anchor, rule, u_of_phi, *pr.constants, tol_m=tol_m)
     r_wind = marched.radius
     u = u_of_phi(phi)

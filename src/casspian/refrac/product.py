@@ -69,16 +69,19 @@ def _copied(variable_or_value, attrs_from, units, long_name, default_kind="state
 
 
 def _anchor_rule_spread(inputs, manifest):
-    """The frozen pair under each single pole anchor rule. A choice, recorded.
+    """The frozen pair under every other manifest anchor rule. A choice, recorded.
 
-    SPEC_02 v0.7 Step 4: the whole Step 2 fixed point is rerun under `north_pole` and under
-    `south_pole` anchoring, so the recorded spread is the whole effect of the choice. A rule
-    that moves the surface also moves the frozen latitude, through `dphi_c/dr_anchor`; the
-    v0.6 build held the latitude and so left that coupling out.
+    SPEC_02 v0.7 Step 4 and v0.8 Step 6: the whole Step 2 fixed point is rerun under each rule
+    other than the one in force, each anchored on its own kind D quantity, so the recorded
+    spread is the whole effect of the choice. A rule that moves the surface also moves the
+    frozen latitude, through `dphi_c/dr_anchor`.
     """
     spread = {}
-    for rule in ("north_pole", "south_pole"):
-        frozen = freeze_anchor(inputs, dataclasses.replace(manifest, anchor_rule=rule))
+    for rule, quantity in ctl.ANCHOR_QUANTITY_FOR_RULE.items():
+        if rule == manifest.anchor_rule:
+            continue
+        frozen = freeze_anchor(inputs, dataclasses.replace(manifest, anchor_rule=rule,
+                                                           anchor_quantity=quantity))
         spread[rule] = (frozen.r0_m, frozen.phi_c_rad)
     return spread
 
@@ -227,23 +230,27 @@ def build_product(manifest_path) -> Path:
         "nowind_psi_deg": float(deg(anchor.nowind_psi_rad)),
         "nowind_anchor_isobar_radius_m": float(anchor.nowind_r0_m),
         "nowind_fixed_point_iterates_deg": deg(anchor.nowind_iterates_rad),
-        "anchor_rule_spread_r0_north_pole_m": float(spread["north_pole"][0]),
-        "anchor_rule_spread_r0_south_pole_m": float(spread["south_pole"][0]),
-        "anchor_rule_spread_latitude_planetocentric_north_pole_deg":
-            float(deg(spread["north_pole"][1])),
-        "anchor_rule_spread_latitude_planetocentric_south_pole_deg":
-            float(deg(spread["south_pole"][1])),
+        "polar_radius_mean_m": float(0.5 * (anchor.polar_north_m + anchor.polar_south_m)),
+        "equatorial_radius_marched_m": float(anchor.equator_radius_m),
+        "polar_radii_note": (
+            "Both polar radii, their mean and asymmetry, and the equatorial radius are those of "
+            "the final march under the rule in force. Whichever quantity the rule does not "
+            "anchor on is a prediction of the march, to compare with the source (SPEC_02 v0.8 "
+            "Step 6)."),
         "anchor_rule_spread_note": (
-            "r0 and phi_c under north_pole and under south_pole anchoring, each from the whole "
-            "anchor fixed point rerun under that rule, so the latitude shift the rule causes is "
-            "included (SPEC_02 v0.7 Step 4). A choice of rule, not a declared uncertainty, so "
-            "it enters no companion (SPEC_02 decision 5)."),
+            "r0 and phi_c under every other manifest anchor rule, each from the whole anchor "
+            "fixed point rerun under that rule on its own kind D quantity, so the latitude "
+            "shift the rule causes is included (SPEC_02 v0.7 Step 4, v0.8 Step 6). A choice of "
+            "rule, not a declared uncertainty, so it enters no companion (SPEC_02 decision 5)."),
         "closure_rule": red.closure["rule"],
         "closure_species": f"{red.closure['share']} {red.closure['partner']}",
         "codata_release": red.codata_release,
         "casspian_version": cio.package_version(),
         "casspian_git_commit": cio.git_commit(),
     }
+    for rule, (r0_rule, phi_rule) in spread.items():
+        record[f"anchor_rule_spread_r0_{rule}_m"] = float(r0_rule)
+        record[f"anchor_rule_spread_latitude_planetocentric_{rule}_deg"] = float(deg(phi_rule))
     for key, value in red.partials.items():
         record[f"partial_{key}"] = value if isinstance(value, str) else float(value)
     for key, value in red.terms.items():

@@ -67,6 +67,7 @@ class FrozenAnchor:
     polar_south_m: float
     polar_asymmetry_m: float
     anchor_residual_m: float
+    equator_radius_m: float
     nowind_phi_c_rad: float
     nowind_psi_rad: float
     nowind_r0_m: float
@@ -83,6 +84,9 @@ class GeoidSetup:
     anchor_rule: str
     tol_m: float
     u_of_phi: Callable
+    #: Where the no wind reference geoid passes through the anchor radius: the pole for the
+    #: polar rules, the equator for `equatorial_radius` (SPEC_02 v0.8 Step 6).
+    reference_anchor_latitude_rad: float = float(np.pi / 2)
 
     def march(self, phi, r_anchor_m=None):
         """One anchored march of Eq. B3 with `phi` (radians) inserted as nodes.
@@ -138,6 +142,8 @@ def geoid_setup(inputs: ReductionInputs, manifest: ReductionManifest) -> GeoidSe
         anchor_rule=manifest.anchor_rule,
         tol_m=manifest.convergence_m,
         u_of_phi=wind_of_latitude(inputs.wind),
+        reference_anchor_latitude_rad=0.0 if manifest.anchor_rule == "equatorial_radius"
+        else float(np.pi / 2),
     )
 
 
@@ -180,8 +186,9 @@ def freeze_anchor(inputs: ReductionInputs, manifest: ReductionManifest) -> Froze
         return np.zeros_like(np.asarray(phi, dtype="float64"))
 
     def reference_surface(phi):
-        radius, _, _ = gd.reference_geoid(np.atleast_1d(np.asarray(phi, dtype="float64")),
-                                          setup.r_anchor_m, *constants, tol_m=setup.tol_m)
+        radius, _, _ = gd.reference_geoid(
+            np.atleast_1d(np.asarray(phi, dtype="float64")), setup.r_anchor_m, *constants,
+            tol_m=setup.tol_m, anchor_latitude=setup.reference_anchor_latitude_rad)
         return radius
 
     solved = {}
@@ -228,6 +235,7 @@ def freeze_anchor(inputs: ReductionInputs, manifest: ReductionManifest) -> Froze
         polar_south_m=final.polar_south_m,
         polar_asymmetry_m=final.polar_asymmetry_m,
         anchor_residual_m=final.anchor_residual_m,
+        equator_radius_m=final.equator_radius_m,
         nowind_phi_c_rad=float(nw_phi_c[0]),
         nowind_psi_rad=float(nw_psi[0]),
         nowind_r0_m=float(nw_r0[0]),

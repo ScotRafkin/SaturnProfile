@@ -81,7 +81,8 @@ def ellipsoid_seed(phi_c, r_polar, Omega, GM, J, degrees):
 
 
 def reference_geoid(
-    phi_c_grid, r_polar, Omega, GM, J, degrees, R_norm, tol_m=1.0, max_iter=50
+    phi_c_grid, r_polar, Omega, GM, J, degrees, R_norm, tol_m=1.0, max_iter=50,
+    anchor_latitude=np.pi / 2,
 ):
     """The no wind reference geoid through `r_polar`. Lindal Appendix Eqs. 12 to 14.
 
@@ -93,13 +94,26 @@ def reference_geoid(
     convention of `U_rigid`, so the Newton step in the convention of this package is
     `r <- r - (U - U_ref) / g`. The two are the same update written twice.
 
+    `anchor_latitude` (radians, default the pole) is where the surface passes through the
+    given radius, so `U_ref = U_rigid(r_polar, anchor_latitude)`. The default keeps the polar
+    anchor of Lindal Eq. 12; `0.0` anchors the no wind surface on an equatorial radius, the
+    no wind counterpart of the `equatorial_radius` rule of `wind_geoid` (SPEC_02 v0.8 Step 6).
+    The argument keeps its name `r_polar` because the default is the pole.
+
     Returns `(r_ref, iterations, residual_U)`: the radius at each latitude, the number of
     Newton steps that latitude took, and `|U(r_ref, phi) - U_ref|` there.
     """
     phi = np.asarray(phi_c_grid, dtype="float64")
-    U_ref = float(U_rigid(r_polar, np.pi / 2, Omega, GM, J, degrees, R_norm))
+    U_ref = float(U_rigid(r_polar, anchor_latitude, Omega, GM, J, degrees, R_norm))
 
-    r = np.array(ellipsoid_seed(phi, r_polar, Omega, GM, J, degrees), dtype="float64")
+    # The seed ellipsoid is parameterized by its polar radius. Away from the pole that radius
+    # is estimated by scaling, so the seed passes near the anchor; Newton does the rest.
+    seed_polar = float(r_polar)
+    if float(anchor_latitude) != np.pi / 2:
+        at_anchor = float(ellipsoid_seed(np.array(float(anchor_latitude)), seed_polar, Omega,
+                                         GM, J, degrees))
+        seed_polar = seed_polar * seed_polar / at_anchor
+    r = np.array(ellipsoid_seed(phi, seed_polar, Omega, GM, J, degrees), dtype="float64")
     r = np.broadcast_to(r, phi.shape).astype("float64").copy()
     iterations = np.zeros(phi.shape, dtype="int64")
     active = np.ones(phi.shape, dtype=bool)
@@ -168,6 +182,11 @@ class WindGeoidResult:
     anchor_residual_m: float
     north_start_m: float
     anchor_rule: str
+    #: The marched radius at the exact equator node, whatever the rule.
+    equator_radius_m: float = float("nan")
+    #: The node the anchor was read at: 0.0 for `equatorial_radius`, the poles for the pole
+    #: rules, `anchor_latitude` for `latitude`, None for `mean_polar_radius` (two nodes).
+    anchor_node_latitude_rad: float | None = None
 
     def __iter__(self):
         """Unpack as `(radius, closure)`, which is what most callers want."""
@@ -198,6 +217,9 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
     * `"north_pole"` or `"south_pole"`: `r_anchor` is the radius at that pole.
     * `"latitude"`: `r_anchor` is the radius at `anchor_latitude` (radians), for a surface
       anchored on an observed radius.
+    * `"equatorial_radius"`: `r_anchor` is the radius at planetocentric latitude zero, the
+      `latitude` rule at the equator under its own name, so a manifest needs no latitude key
+      (SPEC_01 v0.20 Step 5 amendment).
 
     The root find is a secant on the north polar start. The map from start to outcome is very
     nearly affine, because Eq. B3 is linear in `r0` to the accuracy that matters here, so it
@@ -218,7 +240,10 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
     # never depends on the caller's grid. A caller who passes a single hemisphere would
     # otherwise get one enormous step across the other one, which is silent and wrong.
     dense = np.radians(np.arange(-90.0, 90.0 + 0.5 * march_step_deg, march_step_deg))
-    wanted = [phi, dense, [-pole, pole]]
+    # The equator is always an exact node, 0.0 and not the floating point neighbor the dense
+    # grid lands on, so a radius read there is marched and never interpolated (SPEC_01 v0.20).
+    dense = dense[np.abs(dense) > 1.0e-9]
+    wanted = [phi, dense, [-pole, 0.0, pole]]
     if anchor_rule == "latitude":
         if anchor_latitude is None:
             raise ValueError("anchor_rule 'latitude' needs anchor_latitude in radians")
@@ -229,6 +254,7 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
     nodes = np.unique(np.concatenate(wanted))
     order = np.argsort(-nodes)          # north pole first, south pole last
     march_nodes = nodes[order]
+    equator_index = int(np.flatnonzero(march_nodes == 0.0)[0])
 
     def march(start):
         return _march_nodes(march_nodes, start, u_of_phi, Omega, GM, J, degrees,
@@ -245,9 +271,11 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
             if anchor_latitude is None:
                 raise ValueError("anchor_rule 'latitude' needs anchor_latitude in radians")
             return float(np.interp(float(anchor_latitude), march_nodes[::-1], radii[::-1]))
+        if anchor_rule == "equatorial_radius":
+            return float(radii[equator_index])
         raise ValueError(
-            f"unknown anchor_rule {anchor_rule!r}; SPEC_01 v0.16 Step 5 defines "
-            "'mean_polar_radius', 'north_pole', 'south_pole' and 'latitude'"
+            f"unknown anchor_rule {anchor_rule!r}; SPEC_01 v0.20 Step 5 defines "
+            "'mean_polar_radius', 'north_pole', 'south_pole', 'latitude' and 'equatorial_radius'"
         )
 
     start = float(r_anchor)
@@ -255,7 +283,12 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
     residual = outcome(radii) - float(r_anchor)
     if anchor_rule != "north_pole":
         previous_start, previous_residual = start, residual
-        start = start - residual
+        # The first correction scales the start rather than shifting it. Eq. B3 is nearly
+        # homogeneous of degree one in r0, so every radius of the march scales with the start;
+        # shifting by the residual assumes the anchored radius moves one for one with the north
+        # polar start, which holds at a pole and is about 10 percent wrong at the equator
+        # (SPEC_02 v0.8 Step 6). The secant then finishes from a start already close.
+        start = start * float(r_anchor) / outcome(radii)
         for _ in range(int(max_iter)):
             radii = march(start)
             residual = outcome(radii) - float(r_anchor)
@@ -280,6 +313,10 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
         anchor_residual_m=float(residual),
         north_start_m=float(start),
         anchor_rule=anchor_rule,
+        equator_radius_m=float(radii[equator_index]),
+        anchor_node_latitude_rad={"equatorial_radius": 0.0, "north_pole": pole,
+                                  "south_pole": -pole,
+                                  "latitude": anchor_latitude}.get(anchor_rule),
     )
 
 
