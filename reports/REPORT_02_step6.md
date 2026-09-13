@@ -239,7 +239,7 @@ default; it supersedes `a91f75a8...` of REPORT_02_step5 section 7.
 | `lindal_reduction.toml` | manifest | `97e542d6665f525002d2a144a52da5633892f007beb28f778434af245a88dfee` |
 | `lindal_thermo.nc` | thermo | `ff9c12991399f94c08caaae80b1a6a91f45a45feaebc4d059ad563b45a720e85` |
 | `lindal_geodesy.nc` | geodesy | `16e0c7d551c3026ce5623141b1a2f86187c013a2dbf929f3e330f79f410f787e` |
-PRODUCT_HASH_ROW_PENDING
+| `lindal_refractivity.nc` | refractivity | `888517ccdea0688ea9059f434f07b1384ee117eb57d3c58a5f45ea2094f82a12` |
 
 ## 8. Regression
 
