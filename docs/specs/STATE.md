@@ -37,7 +37,7 @@ SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.7). Step 0 a
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 0 | pressure grid and Eq. B1 tilt amendments; whole reduction chain rebuilt and swept | accepted (`2149b64`; 13 of 13 as restated at SPEC_03 v0.6; swept, hashes in REPORT_03_step0 section 7) | `reports/REPORT_03_step0.md`, `reports/REVIEW_03_step0.md` | 2026-09-14 |
-| 1 | `lib.geopotential` | reported (9 of 9; finding 1 on the Step 4 negative control) | `reports/REPORT_03_step1.md` | 2026-09-14 |
+| 1 | `lib.geopotential` | accepted (`b3efc3d`; 9 of 9; finding 1 restated the Step 4 negative control at SPEC_03 v0.7; no product changed) | `reports/REPORT_03_step1.md`, `reports/REVIEW_03_step1.md` | 2026-09-14 |
 | 2 | `lib.hydrostatic` | not started | | |
 | 3 | run directory and inputs (`casspian-run-inputs`), `read_run_namelist`, kind `profile`, `input_hashes` warning for every derived kind | not started | | |
 | 4 | `forward/production.py`, `casspian-forward`, the closure run, F5 and F6 | not started | | |

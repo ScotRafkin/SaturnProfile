@@ -132,7 +132,14 @@ Step 1 changes nothing it tests.
 
 No em dash or en dash appears in any file written in this step.
 
+**Sweep** (REVIEW_03_step1 order of work, item 3), after the acceptance commit `b3efc3d`: no input
+or product changed in this step. The `-dirty` scan over `occul_data/lindal/` finds every product
+clean and unchanged from REPORT_03_step0 section 7: `lindal_raw.nc`, `lindal_thermo.nc`,
+`lindal_geodesy.nc`, `lindal_wind.nc`, `lindal_composition.nc` and `lindal_refractivity.nc` carry
+`2149b64`; `lindal_gravity.nc` and `lindal_rotation.nc` carry `ece58d2`, kept at Step 0
+(REVIEW_03_step0 decision 5). SHA-256 prefixes 07e0727c, 5705f1dc, 51c545a6, 26fe83a3, 6af9dbfb,
+64c5d01a, 6db0129c, a5c72017, each equal to section 7 of REPORT_03_step0. Nothing to rebuild.
+
 ## 6. Next step
 
-The review. Nothing is committed and Step 2 does not start until the review is in and the author
-says go.
+Step 1 is accepted (`b3efc3d`). Step 2, `lib.hydrostatic`, starts when the author says go.
