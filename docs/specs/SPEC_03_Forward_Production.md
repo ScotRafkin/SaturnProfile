@@ -2,10 +2,11 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.6, 14 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.7, 14 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
 Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
-(REVIEW_03_step0); Step 1 proceeds after the Step 0 acceptance commit and sweep. Steps 1 to 4 proceed in order, each after the
+(REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1); Step 2 proceeds
+after the Step 1 acceptance commit. Steps 1 to 4 proceed in order, each after the
 review of the one before.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.16, the closed
@@ -510,9 +511,14 @@ levels after Step 0 and 3.9e-6 at the bottom row; discretization a few 1e-4 (Ste
 Systematic terms: the harmonic set Lindal actually used against Null 1981, bounded near 1e-5 in
 `g` by the Campbell and Anderson comparison in manuscript B2; ammonia in `m̄`, up to 4.7e-4 at
 the bottom if his mass excluded it; his own integration numerics, unknown. **The negative
-control:** the same run with `Φ` built from the radial component and the radial increment
-(`g_k`, `(h_{k+1} − h_k) cos ψ`), computed in the acceptance script only with no code path in
-`forward`, gives a residual with mean −5.1e-3 below 10 mbar and −7.8e-3 at the bottom row.
+control (v0.7, REPORT_03_step1 finding 1):** the same run with `Φ` built as the radial
+component times the tabulated altitude increment, `g_k (h_{k+1} − h_k)`, which is the
+manuscript's present reading of B1 and B2 and the construction §0's finding exposed, computed
+in the acceptance script only with no code path in `forward`; it gives a residual with mean
+−5.1e-3 below 10 mbar and −7.8e-3 at the bottom row (one factor of `1 / cos ψ`). The fully
+radial reading, `g_k (r_{k+1} − r_k)` with `r` the projected radius, is reported beside it
+(two factors; mean about −9.6e-3, bottom about −1.2e-2, measured by the reviewing agent) and
+must fail the same bound.
 
 **Acceptance.** `casspian-forward forward/lindal_closure/lindal_closure.toml` writes
 `output/lindal_closure_profile.nc`, which reads back as kind `profile` with the anchor and the
@@ -523,8 +529,8 @@ equals `p_b` exactly and `p_b` equals the anchor's top tabulated pressure; `Φ` 
 gauge level; the residual is within 3e-3 in magnitude at every level from 10 mbar down,
 excluding the bottom row, within 1.5e-3 in the top decade, within 4e-3 at the bottom row, and
 its mean below 10 mbar is within ±1.5e-3; the temperature residual equals the pressure
-residual to 1e-12 at every level; the negative control's mean below 10 mbar is below −4e-3
-(it must fail the mean bound, which is what shows the bound has teeth); F5 and F6 are rendered
+residual to 1e-12 at every level; the negative control's mean below 10 mbar is below −4e-3, and so is the fully radial
+reading's (both must fail the mean bound, which is what shows the bound has teeth; v0.7); F5 and F6 are rendered
 by the driver and by `casspian-plots` by hand, byte-identical apart from the footer, and the
 residual drawn in F6 sits inside the envelope band at every snapped level; the author views
 F5 and F6 (attached to the report) and accepts them by eye. A residual outside the ranges
@@ -635,6 +641,14 @@ ammonia fill: recorded, no action. Finding 5 and decision 1: the in-memory candi
 rule for any step that changes an input, now in §0. Decision 5: gravity and rotation kept.
 Decisions 2, 3, 4, 6, 7: accepted as reported.
 
+**Rulings on REPORT_03_step1 (REVIEW_03_step1, 14 September 2026).** Finding 1: correct; the
+Step 4 negative control as written at v0.6 was the two-factor construction, while the numbers
+quoted were the one-factor construction measured before Step 0. The control is the one-factor
+construction, the manuscript's mixture, because that is the error the closure was written to
+detect; the two-factor reading is reported beside it and must fail too (Step 4 restated).
+Finding 2: noted, no action; the bound holds with a factor of three to spare. Decisions 1 to
+6 accepted as reported.
+
 ## 9. Revision history
 
 | Version | Date | Change | Cause |
@@ -642,6 +656,7 @@ Decisions 2, 3, 4, 6, 7: accepted as reported.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.7 | 2026-09-14 | Step 4: the negative control defined as the one-factor construction `g_k (h_{k+1} − h_k)`, the fully radial reading reported beside it; status line: Step 1 accepted; §8 rulings on REPORT_03_step1 | REVIEW_03_step1 |
 | 0.6 | 2026-09-14 | Step 0: `k` run endpoints 236 and 268; gravity bound 6e-5 with its decomposition; keep-by-content through `raw_bundle`; G and R not rebuilt; §0: the in-memory candidate rule for a step that changes an input; §8 rulings on REPORT_03_step0 | REVIEW_03_step0 |
 | 0.5 | 2026-09-14 | Step 0: the snap rule restated once more so that adjacent ambiguous rows resolve one at a time from the fixed side; basis count corrected to 48; SPEC_01 v0.23 carries the same | coding agent's second reading of v0.4 |
 | 0.4 | 2026-09-14 | Step 0: the grid snap rule restated (equal spacing with fixed neighbors, no spacing numbers in code), the basis count corrected to 62; Step 1: gauge match exact; Step 3: twelfth refusal case (geodesy key), compensated composition edit, `inputs/*.nc` ignored pending the author's decision, the Step 5 skipped-figures check retired; Step 0 acceptance: every affected suite; §8 rulings added, revision history moved to §9; SPEC_01 v0.22 carries the same snap rule | coding agent's pre-execution review |
