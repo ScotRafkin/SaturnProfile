@@ -94,9 +94,10 @@ Run by `reports/step03_0/accept_step03_0.py`; full output in `reports/step03_0/o
 | 11b. Beyond the specification: commit and hash of every file now | **Pass.** Provisional; section 7. |
 
 The candidate's F1 to F4 were rendered to `reports/step03_0/candidate/figures/` and looked at: F2
-and F4 are as before apart from the moved radii. They carry the `-dirty` candidate in their
-footer, so none is attached; figures for the record will be rendered from the clean product at
-the sweep if the review wants them.
+and F4 are as before apart from the moved radii. F2 and F4 from the clean product of the sweep
+(footer `2149b64`, SHA-256 `64c5d01a...`) are attached as REVIEW_03_step0 asked:
+`reports/figures/step03_0_lindal_diag_F2_gravity_profile.png` and
+`reports/figures/step03_0_lindal_diag_F4_product.png`.
 
 ## 3. Findings
 
@@ -198,7 +199,7 @@ Steps 02_1, 02_4, 02_5 and 02_6 are run after the acceptance commit and the swee
 - 02_4, 02_5 and 02_6 run `casspian-refrac` in a subprocess on the on-disk inputs, which refuses
   them until they are clean, and 02_4 to 02_6 rewrite `occul_data/lindal/lindal_refractivity.nc`.
 
-Their results will be added to section 8 with the sweep.
+They were run after the sweep; results in section 8.
 
 ## 6. Manuscript notes carried (SPEC_03 decision 3)
 
@@ -212,20 +213,26 @@ anchoring is rewritten to SPEC_02 decision 9.
 
 ## 7. Hashes
 
-Provisional, from the working tree (`5529459...-dirty`), for the review only; they are not in the
-row format the Step 02_1 suite reads. The registered hashes are recorded here after the sweep.
+The sweep, after the acceptance commit `2149b64`, on a clean tree (`reports/step03_0/sweep.sh`,
+log in `reports/step03_0/sweep.txt`): `casspian-lindal-raw`, the wind and composition tools,
+`casspian-lindal-inputs` (T and D rebuilt, the manifest rewritten with the same hash), then
+`casspian-refrac` with its figures. Every rebuilt product carries commit `2149b64` and none
+`-dirty`; gravity and rotation are kept at `ece58d2` (REVIEW_03_step0, decision 5). These rows
+supersede REPORT_01_step9 section 6, REPORT_01_step8 and REPORT_02_step6 section 7 for every file
+they name, and the Step 02_1 suite reads them. The provisional working tree hashes of the review
+are superseded.
 
-| File | Kind | SHA-256 (provisional) | Commit |
-|---|---|---|---|
-| lindal_raw.nc | raw | a2a276badd6a05849751c4a9916eec553e07913af19d91a0f3e4047a83f2f5e0 | 5529459-dirty |
-| lindal_thermo.nc | thermo | 50d66213e3624d3ad7f8e38c2130dab506e4c1c485ea594bb428c29ef6a1f763 | 5529459-dirty |
-| lindal_geodesy.nc | geodesy | 8eab8172f418dbe4b522031910db77a851a35a2d9286c5c29728f94279590b8b | 5529459-dirty |
-| lindal_wind.nc | wind | 8a046ca2bbfca1b3d09eb81357ab44464a49ed6999135b32e82ab7ed58c7ab99 | 5529459-dirty |
-| lindal_composition.nc | composition | 304556765c8393209aa120cb3cf90e76c2184d49240898baee287e19665401bf | 5529459-dirty |
-| lindal_gravity.nc | gravity | 6db0129cefd01bc9c151020e604cf4563a82381e61c97381d0a7ee383826911e | ece58d2, unchanged |
-| lindal_rotation.nc | rotation | a5c72017a423c50f2a952ddcbc4ccf777c1e94683fa6965ee96f7f43d949a424 | ece58d2, unchanged |
-| lindal_reduction.toml | manifest | 97e542d6665f525002d2a144a52da5633892f007beb28f778434af245a88dfee | unchanged |
-| candidate lindal_refractivity.nc | refractivity | e72011d0f3502d82c75656c8fc17bcd0700e496fbcd8820247bd1356a791df1f | 5529459-dirty |
+| File | Kind | SHA-256 |
+|---|---|---|
+| `lindal_reduction.toml` | manifest | `97e542d6665f525002d2a144a52da5633892f007beb28f778434af245a88dfee` |
+| `lindal_raw.nc` | raw | `07e0727c9ef07b468722ad9d62f565309dedfa28e7c6bcef84e395a9d428c713` |
+| `lindal_thermo.nc` | thermo | `5705f1dc153b9c7b956e2414c21b3fe2e14e3e30ba2c768598402b1edbab73f4` |
+| `lindal_geodesy.nc` | geodesy | `51c545a6c6e8843b81e82ba2bb3ebf13f93c44179e2b22eed4b98d952d2d100a` |
+| `lindal_gravity.nc` | gravity | `6db0129cefd01bc9c151020e604cf4563a82381e61c97381d0a7ee383826911e` |
+| `lindal_rotation.nc` | rotation | `a5c72017a423c50f2a952ddcbc4ccf777c1e94683fa6965ee96f7f43d949a424` |
+| `lindal_wind.nc` | wind | `26fe83a3d90fa9eab97b82c94a89c923c13664a645621955fb0bd80434e0fd57` |
+| `lindal_composition.nc` | composition | `6af9dbfbcc7599161dce5ad892716182ae96b47ce75f69c017f34121e9a23717` |
+| `lindal_refractivity.nc` | refractivity | `64c5d01a98692fba49c264b890c88949503ee16e98c45abaa74095ac92f0a1ab` |
 
 ## 8. Regression
 
@@ -243,10 +250,25 @@ Steps 2 and 3.
 No suite wrote into `occul_data/`; the SPEC_01 Step 3 suite writes its gravity file into its own
 directory.
 
+**After the sweep** (`reports/step03_0/post_sweep_suites.sh`, results in
+`reports/step03_0/post_sweep.txt`), on the clean products of section 7: **Step 02_1 6 of 6,
+Step 02_4 9 of 9, Step 02_5 7 of 7, Step 02_6 7 of 7.**
+- Step 02_1 matched every input and the manifest against the rows of section 7.
+- Step 02_6 first read **6 of 7**: its check 1 compared the hashes of kinds T and D with
+  REPORT_01_step9 only, which the Step 0 rebuild supersedes, although the tool kept both files by
+  content as it should. Its `recorded_hashes` now reads the rows of REPORT_01_step9,
+  REPORT_01_step8, REPORT_02_step6 and REPORT_03_step0, a later row overriding an earlier one, as
+  the Step 02_1 suite does; rerun, 7 of 7. The check's "was" figure for the manifest now shows the
+  latest recorded hash, the same file.
+- Steps 02_4 to 02_6 rewrite `lindal_refractivity.nc` and its figures from the working tree, and
+  Step 02_5 recopies the committed Step 5 report figures. The swept product and figures were
+  copied aside before the suites and restored after them; the product's SHA-256 after the restore
+  is `64c5d01a...`, equal to section 7, with commit `2149b64`. `reports/figures/` was restored from
+  git.
+
 No em dash or en dash appears in any file written in this step.
 
 ## 9. Next step
 
-The review. Nothing is committed and Step 1 does not start until the review is in and the author
-says go. After it: the acceptance commit, the clean rebuild of the chain and the product, the
-sweep with hashes recorded in section 7, then Steps 02_1, 02_4, 02_5 and 02_6.
+Step 0 is accepted (`2149b64`) and swept. Step 1, `lib.geopotential`, starts when the author says
+go.
