@@ -105,6 +105,17 @@ vertical_structure        = "assumed independent of altitude (Appendix p. 1144: 
 frame                     = "System III (Appendix Eq. 4: omega = omega_III + V_w / (r cos phi))"
 how_combined              = "not stated; project reading (SPEC_01 v0.14): the Ingersoll and Pollard 1982 Fig. 5 curve as the wind, the Smith et al. 1982 Fig. 4 points as its uncertainty"
 
+[pressure_grid]
+# The pressures of Table I are rounded representations of a grid (SPEC_03 v0.5 Step 0, author
+# decision 2 of 14 September 2026). lindal_table1.csv stays the transcription of what is printed;
+# the stage one tool places each row on this grid under the rule stated in SPEC_01 v0.23 Step 2.
+rule                         = "10^(k/100) mbar"
+denominator                  = 100
+unit                         = "mbar"
+excluded_printed_values_mbar = [1298.48]
+basis                        = "62 of the 65 rows admit exactly one grid value within their printed precision, 48 of them printed to four, five or six figures; the three rows printed to two figures that admit two grid values (0.20, 0.25, 0.32 mbar) are resolved one at a time by the equal spacing of the fixed rows below them; the spacing is 10, 8, 6, 4, 2 hundredths of a decade in succession"
+value_source                 = "Table I, inferred by the reviewing agent, 14 September 2026; not stated by the source. If the source's level list is ever found it replaces this inference."
+
 [top_boundary]
 statement                 = "not stated numerically. p. 1138: pressure profiles obtained 'by utilizing the equation for hydrostatic equilibrium and integrating the density from the top of the detectable atmosphere and downward'; the top of Table I is 0.20 mbar at 376.7 km, 138.7 K."
 uv_constraint_noted       = "p. 1141: ultraviolet data indicated 120 +/- 30 K at 0.05 microbar (Smith et al. 1983); above 0.2 mbar the temperature may decrease again."

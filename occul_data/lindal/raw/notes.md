@@ -25,6 +25,22 @@ for its hydrostatic integration (only "from the top of the detectable atmosphere
 downward", p. 1138); the `[top_boundary]` entry records that as a statement, not a number. The
 Fig. 9 caption names a third wind source, Garneau (1984), beyond the two named in the Appendix.
 
+## The pressure grid
+
+Table I prints its pressures to two decimals of a millibar, and every row from 0.20 to 1258.93
+mbar lies on the grid `10^(k/100)` mbar within that precision. Of the 65 rows above the last, 62
+admit exactly one grid value (48 of them printed to four, five or six figures, 10 to three and 4
+to two). Three rows printed to two figures admit two: 0.20 (`k` = −70 or −69), 0.25 (−61 or
+−60) and 0.32 (−50 or −49). They are adjacent, so they are resolved one at a time from below by
+continuing the spacing of the two nearest fixed rows: 0.32 takes −50 from 0.40 and 0.50, then
+0.25 takes −60, then 0.20 takes −70. The spacing along the table is then 10 hundredths of a
+decade to 20 mbar, and 8, 6, 4 and 2 below that. The last row, 1298.48 mbar, is the end of the
+data rather than a grid level and stays as printed. This is an inference by the reviewing agent
+(14 September 2026), not a statement of the source, adopted by the author; it is declared in the
+`[pressure_grid]` table of `lindal_scalars.toml`, and the CSV is not changed. Both the printed and
+the grid values are carried in the raw bundle and in kind T. If the source's level list is ever
+found, it replaces the inference.
+
 ## The anchor latitude
 
 Carried as 36.5 degrees through the project record until 9 September 2026, when the Fig. 4

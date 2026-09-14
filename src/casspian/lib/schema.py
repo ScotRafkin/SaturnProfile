@@ -216,6 +216,9 @@ _THERMO = KindSpec(
     variables=(
         VarSpec("temperature_K", dims=None, units="K", needs_uncertainty=True),
         VarSpec("pressure_Pa", required=False, units="Pa", needs_uncertainty=True),
+        # Source profiles only (SPEC_00 v0.16 section 6.1): the pressure as printed, beside a
+        # `pressure_Pa` placed on the grid the global `pressure_grid_rule` declares.
+        VarSpec("pressure_printed_Pa", required=False, units="Pa"),
         VarSpec("geopotential_m2s2", required=False, units="m2 s-2"),
         # Source profiles only. The measured quantity, above the datum in `height_datum`.
         VarSpec("height_m", required=False, units="m", needs_uncertainty=True),
@@ -473,6 +476,12 @@ def _check_globals(dataset, spec: KindSpec, writer_filled: bool, where: str) -> 
             raise CasspianSchemaError(
                 f"{where}: thermo_instance is {instance!r}; SPEC_00 section 6.1 allows "
                 f"{sorted(THERMO_INSTANCES)}."
+            )
+        if "pressure_printed_Pa" in dataset.variables and "pressure_grid_rule" not in attrs:
+            raise CasspianSchemaError(
+                f"{where}: pressure_printed_Pa is present, so the global attribute "
+                "'pressure_grid_rule' must say which grid pressure_Pa was placed on "
+                "(SPEC_00 section 6.1 v0.16)."
             )
         if instance == "source_profile":
             for name in SOURCE_PROFILE_GLOBALS:

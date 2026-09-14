@@ -75,14 +75,16 @@ def number_density(p_Pa, T_K):
     return p / (BOLTZMANN_CONSTANT * T)
 
 
-def absolute_radius(h_m, h_ref_m, r0_m):
-    """`r = r0 + (h - h_ref)`. Appendix B1.
+def absolute_radius(h_m, h_ref_m, r0_m, psi_rad):
+    """`r = r0 + (h - h_ref) cos psi`. Appendix B1 with the tilt (SPEC_02 v0.10 Step 3).
 
+    The tabulated altitude is a distance along the local vertical, and `psi` is the tilt of that
+    vertical from the radius at the anchor; `cos psi` projects the altitude onto the radius.
     Written with the difference taken first, so that at the anchor level, where `h` is `h_ref`
     exactly, the result is `r0` exactly.
     """
     h = np.asarray(h_m, dtype="float64")
-    return float(r0_m) + (h - float(h_ref_m))
+    return float(r0_m) + (h - float(h_ref_m)) * np.cos(float(psi_rad))
 
 
 def mean_over_species(x, per_molecule):

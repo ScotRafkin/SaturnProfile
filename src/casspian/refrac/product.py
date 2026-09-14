@@ -102,8 +102,8 @@ def build_product(manifest_path) -> Path:
     level_vars = {
         "height_above_anchor_isobar_m": (
             ("level",), red.height_above_anchor_isobar_m,
-            _attrs("m", "height above the anchor isobar, h - h_ref (Eq. B1)", "derived",
-                   positive="up")),
+            _attrs("m", "height above the anchor isobar, h - h_ref, the distance along the "
+                   "local vertical (Eq. B1)", "derived", positive="up")),
         "number_density_m3": (
             ("level",), red.number_density_m3,
             _attrs("m-3", "number density, p / (k_B T) (Eq. B3.1)", "derived")),
@@ -186,7 +186,8 @@ def build_product(manifest_path) -> Path:
     dataset = xr.Dataset(
         {**level_vars, **scalar_vars},
         coords={"radius_m": (("level",), red.radius_m,
-                             _attrs("m", "absolute radius from the center of mass (Eq. B1)",
+                             _attrs("m", "absolute planetocentric radius of the level, "
+                                    "r0 + (h - h_ref) cos psi (Eq. B1 with the tilt)",
                                     "derived", positive="up"))},
     )
     value, attrs = _propagated(C["radius_uncertainty_m"], "m",
@@ -242,6 +243,20 @@ def build_product(manifest_path) -> Path:
             "fixed point rerun under that rule on its own kind D quantity, so the latitude "
             "shift the rule causes is included (SPEC_02 v0.7 Step 4, v0.8 Step 6). A choice of "
             "rule, not a declared uncertainty, so it enters no companion (SPEC_02 decision 5)."),
+        # SPEC_02 v0.10 Step 4: the projection of the field-line altitude and what it neglects.
+        "radius_projection_rule": red.projection["rule"],
+        "radius_projection_residual_m": float(red.projection["residual_m"]),
+        "latitude_drift_neglected_deg": np.array(
+            [deg(v) for v in red.projection["latitude_drift_rad"]], dtype="float64"),
+        "radius_projection_note": (
+            "radius_m projects the field-line altitude by the tilt at the anchor. The residual "
+            "is the largest departure over the levels from radii integrated with the tilt of "
+            "each level, psi from "
+            f"{float(deg(red.projection['psi_bottom_rad'])):.6f} degrees at the bottom to "
+            f"{float(deg(red.projection['psi_top_rad'])):.6f} at the top. The drift is the "
+            "change in planetocentric latitude along the local vertical from the anchor, "
+            "sin psi dh / r integrated, at [top, bottom]; the profile is placed at phi_c at "
+            "every level (SPEC_03 decision 1)."),
         "closure_rule": red.closure["rule"],
         "closure_species": f"{red.closure['share']} {red.closure['partner']}",
         "codata_release": red.codata_release,

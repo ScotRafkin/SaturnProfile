@@ -89,6 +89,33 @@ class Reduction:
     terms: MappingProxyType
     closure: MappingProxyType
     codata_release: str
+    #: SPEC_02 v0.10 Step 4: the radius projection rule, its residual and the latitude drift.
+    projection: MappingProxyType
+
+
+#: SPEC_02 v0.10 Step 3: the tilt used to project the field-line altitude onto the radius.
+RADIUS_PROJECTION_RULE = "cos psi at the anchor"
+
+
+def _cumulative_from(index, x, y):
+    """`integral of y dx` from `x[index]` to every `x`, by the trapezoid on the given points."""
+    steps = 0.5 * (y[1:] + y[:-1]) * np.diff(x)
+    cumulative = np.concatenate(([0.0], np.cumsum(steps)))
+    return cumulative - cumulative[index]
+
+
+def field_line_projection(h, h_ref_index, radius, psi):
+    """What the projection by the anchor tilt neglects, measured on the levels.
+
+    `psi` is the tilt at each level. Along the local vertical `dr = cos psi dh` and the
+    planetocentric latitude drifts by `dphi_c = tan psi dr / r = sin psi dh / r`. Returns the
+    radii integrated with the tilt of each level, their largest departure in magnitude from
+    `radius` (the projection by the anchor tilt), and the drift in radians at every level, zero
+    at the anchor, by the trapezoid on the tabulated levels.
+    """
+    integrated = radius[h_ref_index] + _cumulative_from(h_ref_index, h, np.cos(psi))
+    drift = _cumulative_from(h_ref_index, h, np.sin(psi) / radius)
+    return integrated, float(np.max(np.abs(integrated - radius))), drift
 
 
 def _declared(values, kind, label, where):
@@ -299,8 +326,19 @@ def reduce_profile(inputs: ReductionInputs, manifest: ReductionManifest,
     if "composition" in N_included:
         N_conversions += tuple(c for c in R_bar_companion.conversions if c not in N_conversions)
 
-    # B1 and the anchor terms.
-    radius = red.absolute_radius(h, h_ref, anchor.r0_m)
+    # B1 with the tilt, and what the projection by the anchor tilt neglects.
+    radius = red.absolute_radius(h, h_ref, anchor.r0_m, anchor.psi_rad)
+    constants = geoid_setup(inputs, manifest).constants
+    psi_levels = g_eff_vector(np.full(p.shape, anchor.u_at_phi_c_ms), radius,
+                              np.full(p.shape, anchor.phi_c_rad), *constants)[3]
+    _, projection_residual, drift = field_line_projection(h, level, radius, psi_levels)
+    projection = {
+        "rule": RADIUS_PROJECTION_RULE,
+        "residual_m": projection_residual,
+        "latitude_drift_rad": (float(drift[0]), float(drift[-1])),
+        "psi_top_rad": float(psi_levels[0]),
+        "psi_bottom_rad": float(psi_levels[-1]),
+    }
     partials = anchor_partials(inputs, manifest, anchor)
     surfaces = np.asarray(geodesy["surface_pressure_Pa"].values, dtype="float64")
     row = int(np.flatnonzero(surfaces == manifest.anchor_surface_Pa)[0])
@@ -402,4 +440,5 @@ def reduce_profile(inputs: ReductionInputs, manifest: ReductionManifest,
                                   "assigned_first": tuple(n for i, n in enumerate(names)
                                                           if i not in (share, partner))}),
         codata_release=CODATA_RELEASE,
+        projection=MappingProxyType(projection),
     )

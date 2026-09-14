@@ -147,6 +147,15 @@ def build(control_path, section: str = "stage_two"):
     raw = cio.read(raw_path, "raw")
     try:
         table1 = raw["table1"].dataset
+        try:
+            pressure_printed = np.asarray(table1["pressure_printed_Pa"].values, dtype="float64")
+            pressure_grid = dict(raw["scalars/pressure_grid"].attrs)
+        except KeyError as exc:
+            raise ControlFileError(
+                f"{raw_path}: the raw bundle carries no pressure_printed_Pa or no "
+                "scalars/pressure_grid group; SPEC_01 v0.23 Step 9 needs both. Rebuild the raw "
+                "bundle with casspian-lindal-raw."
+            ) from exc
         pressure = np.asarray(table1["pressure_Pa"].values, dtype="float64")
         temperature = np.asarray(table1["temperature_K"].values, dtype="float64")
         height = np.asarray(table1["height_m"].values, dtype="float64")
@@ -189,9 +198,14 @@ def build(control_path, section: str = "stage_two"):
     thermo = xr.Dataset(
         {
             "pressure_Pa": (("level",), pressure,
-                            _attrs("Pa", "pressure of the source profile", "derived",
-                                   value_source="Table I", positive="down",
-                                   direction="increasing")),
+                            _attrs("Pa", "pressure of the source profile, on the declared grid",
+                                   "derived",
+                                   value_source="Table I, placed on the grid in "
+                                                "pressure_grid_rule",
+                                   positive="down", direction="increasing")),
+            "pressure_printed_Pa": (("level",), pressure_printed,
+                                    _attrs("Pa", "pressure of the source profile as printed",
+                                           "derived", value_source="Table I")),
             "pressure_uncertainty_Pa": (("level",), nan.copy(),
                                         _attrs("Pa", "uncertainty on pressure", "derived",
                                                uncertainty_kind="stated",
@@ -243,6 +257,12 @@ def build(control_path, section: str = "stage_two"):
             "altitude of the measurements relative to it"
         ),
         "source_top_boundary": top_boundary["statement"],
+        # SPEC_01 v0.23 Step 9: the grid declaration of the transcription, quoted.
+        "pressure_grid_rule": (
+            f"{pressure_grid['rule']}; rows printed as "
+            f"{np.asarray(pressure_grid['excluded_printed_values_mbar']).tolist()} mbar are "
+            f"excluded and kept as printed; basis: {pressure_grid['basis']}; value_source: "
+            f"{pressure_grid['value_source']}"),
         # From the dedicated table the Step 9 review added to the transcription. It used to be
         # cut from the prose of `fit_inputs`, which is still carried below as the source's own
         # statement of everything that went into the geoid fit.
@@ -259,9 +279,9 @@ def build(control_path, section: str = "stage_two"):
     })
     cio.history_append(
         thermo,
-        f"{TOOL}: pressure, temperature and height taken from the raw bundle table1 group; "
-        "uncertainties present and NaN, the source states none; no composition and no geodesy "
-        "in this file (SPEC_00 section 6.1)",
+        f"{TOOL}: pressure (on the declared grid, with the printed value beside it), temperature "
+        "and height taken from the raw bundle table1 group; uncertainties present and NaN, the "
+        "source states none; no composition and no geodesy in this file (SPEC_00 section 6.1)",
     )
     thermo_path = _write_unless_unchanged(Path(control["thermo_output"]), thermo, "thermo")
 
