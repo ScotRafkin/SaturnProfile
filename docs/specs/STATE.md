@@ -29,3 +29,15 @@ SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 procee
 | 4 | `refrac/product.py`, `casspian-refrac`: kind N | accepted with one change, applied (SPEC_02 v0.7: anchor-rule spread by full rerun) | `reports/REPORT_02_step4.md`, `reports/REVIEW_02_step4.md` | 2026-09-12 |
 | 5 | `tools/plots/`, `casspian-plots`: standard diagnostics | accepted with two figure changes, applied (SPEC_02 v0.8) | `reports/REPORT_02_step5.md`, `reports/REVIEW_02_step5.md` | 2026-09-12 |
 | 6 | equatorial anchoring: `equatorial_radius` rule, manifest `[diagnostics]`, comparison report | accepted (`2cf4457`); Lindal default anchor rule `equatorial_radius` (SPEC_02 v0.9 decision 9); SPEC_02 closed | `reports/REPORT_02_step6.md`, `reports/REVIEW_02_step6.md` | 2026-09-13 |
+
+## SPEC_03, the forward production and its hydrostatic closure
+
+SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.3). Step 0 proceeds; Steps 1 to 4 proceed in order, each after the review of the one before. Current: SPEC_00 v0.16, SPEC_01 v0.22, SPEC_02 v0.10, SPEC_03 v0.4 (coding agent's pre-execution review applied). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 0 | pressure grid and Eq. B1 tilt amendments; whole reduction chain rebuilt and swept | not started | | |
+| 1 | `lib.geopotential` | not started | | |
+| 2 | `lib.hydrostatic` | not started | | |
+| 3 | run directory and inputs (`casspian-run-inputs`), `read_run_namelist`, kind `profile`, `input_hashes` warning for every derived kind | not started | | |
+| 4 | `forward/production.py`, `casspian-forward`, the closure run, F5 and F6 | not started | | |

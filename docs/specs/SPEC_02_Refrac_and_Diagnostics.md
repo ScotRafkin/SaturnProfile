@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.9, 13 September 2026. Author of record: S. Rafkin. Status: accepted by the author
+Version 0.10, 14 September 2026. Author of record: S. Rafkin. Status: closed; Steps 3, 4 and 5 amended at v0.10 (Eq. B1 with the tilt `cos ψ`, the projection and drift recorded, F5 and F6 moved to kind `profile`) for SPEC_03 Step 0, with a rebuild of the product. Earlier: accepted by the author
 at v0.4 (12 September 2026); Steps 1 to 6 accepted (Step 3 with the v0.6 changes, Step 4 with
 the v0.7 change, Step 5 with two figure changes, Step 6 with the decision recorded at v0.9).
 **SPEC_02 is closed at the Step 6 acceptance commit and sweep.** The Lindal default anchor
@@ -116,8 +116,13 @@ inputs are the same files.
 
 1. **B3.1.** `number_density(p_Pa, T_K)` = `p / (k_B T)` with `k_B` from `lib.constants`
    (CODATA release recorded).
-2. **B1.** `absolute_radius(h_m, h_ref_m, r0_m)` = `r0 + (h − h_ref)`, with `h_ref` the
-   tabulated height at the anchor isobar (Step 1 guarantees the level exists).
+2. **B1.** `absolute_radius(h_m, h_ref_m, r0_m, psi_rad)` = `r0 + (h − h_ref) cos ψ` (v0.10),
+   with `h_ref` the tabulated height at the anchor isobar (Step 1 guarantees the level exists)
+   and ψ the frozen anchor tilt: the tabulated altitude is measured along the local vertical
+   (Lindal Eqs. 6 and 7) and its radial projection is `cos ψ` of it. The variation of ψ along
+   the profile changes the projected radius by about 12 m at the top level and is neglected;
+   the latitude drift along the field line, about +0.027° at the top and −0.010° at the
+   bottom, is neglected; both are recorded in `reduction_record` (SPEC_03 decision 1).
 3. **B3.3.** From the composition file and its species group: `mean_refractivity_m3(level)`
    = Σ x_i ℛ_i and `mean_molar_mass_kg_mol(level)` = Σ x_i M_i, with the per-molecule ℛ_i in
    m³ as the species group carries them; `refractivity(level)` = `n ℛ̄`.
@@ -166,10 +171,12 @@ and reruns the pipeline; nothing of that kind lives in `refrac`.
 (Phase 1 check; 5.373124e25 with CODATA 2018 k_B), `N` = 2.59856e-4 with the tabulated 10.9
 ppm of NH3 at that level (ℛ̄ = 4.836272e-30 × (1 − 10.9e-6) m³; v0.2 quoted the dry value
 2.59859e-4 by mistake). At the 794.33 mbar level, where NH3 is exactly zero by the SPEC_01
-v0.17 rule, `N / n` equals the dry ℛ̄ = 4.836272e-30 m³ to round-off. Top level (20 Pa, 138.7 K): `n` = 1.04441e22 m⁻³. Bottom level (129,848 Pa, 146.2
+v0.17 rule, `N / n` equals the dry ℛ̄ = 4.836272e-30 m³ to round-off. Top level (19.9526 Pa on the v0.10 grid, 138.7 K): `n` = 1.041934e22 m⁻³ (1.04441e22 on the printed 20 Pa); second level (25.1189 Pa, 143.2 K): 1.270497e22. Bottom level (129,848 Pa, 146.2
 K): `n` = 6.43287e25 m⁻³, `N` reported with the NH3-reduced ℛ̄ (a factor 1 − 79.3e-6 below the
-dry value). `radius_m` at the anchor level equals `r0` exactly and at the 1 bar level equals
-`r0 − h_ref` (the 1 bar height is zero by the table's datum). Fractional uncertainty of `N` at
+dry value). `radius_m` at the anchor level equals `r0` exactly, at the 1 bar level equals
+`r0 − h_ref cos ψ` (the 1 bar height is zero by the table's datum), and at the top level equals
+`r0 + (h_top − h_ref) cos ψ` to 1e-6 m (v0.10: 58,801,571.0 m under equatorial anchoring,
+1,317.2 m below the unprojected value). Fractional uncertainty of `N` at
 every level equals the composition term, 0.0233 ± 0.0002 (0.03 × (136 − 35) / 129.94; v0.2
 said 0.0227, an arithmetic slip), and is constant across levels because ammonia dilutes H2 and
 He by the same factor; `uncertainty_terms_included` on `refractivity` reads composition only
@@ -208,7 +215,8 @@ forward model reads from the reduction.
   under `south_pole` anchoring, recording `r0` and `phi_c` under each rule; not the
   latitude-held march, for the same reason the Step 3 anchor term is the total derivative;
   recorded as a choice), the partial derivatives of the Step 3 propagation, the CODATA
-  release, `casspian_version`, `casspian_git_commit`.
+  release, `casspian_version`, `casspian_git_commit`; v0.10: `radius_projection_rule`,
+  `radius_projection_residual_m`, `latitude_drift_neglected_deg`.
 
 **Expected values (v0.7).** With the anchor radius effectively moved by half the polar
 asymmetry, 14.37 km, and the total derivative 1.237, the spread is about ±17.8 km at the
@@ -288,12 +296,12 @@ inputs and says so in the panel title.
   `radius_m`; the recovered `T = p ℛ̄ / (k_B N)` against the tabulated `T` as a fractional
   difference, which must be at round-off and is drawn so that it would be visible if it were
   not.
-- **F5, geopotential** (renders when the file carries `geopotential_m2s2(level)`): `Φ(p)` with
-  `h(p)` on a twin axis; `Φ` on the anchor isobar against latitude.
-- **F6, hydrostatic closure** (renders when the file carries `pressure_hydrostatic_Pa(level)`):
-  `p_hydro / p_tab − 1` against `p`, with the declared boundary pressure and its level marked.
-  This is the panel that says whether the source profile, the gravity and the composition are
-  mutually consistent, and it is the first honest estimate of the profile's internal error.
+- **F5, geopotential** and **F6, hydrostatic closure** (v0.10): rendered for kind `profile`
+  only, as SPEC_03 Step 3 specifies (`pressure_Pa / pressure_tabulated_Pa − 1` against `p`
+  with the rounding envelope); the kind N placeholders written against `geopotential_m2s2` and
+  `pressure_hydrostatic_Pa` are removed and kind N reports nothing skipped. F6 is the panel
+  that says whether the source profile, the gravity and the composition are mutually
+  consistent, and it is the first honest estimate of the profile's internal error.
 **Acceptance.** `casspian-refrac` with `figures = true` writes F1 to F4 and the combined PDF
 for `lindal_refractivity.nc` and reports F5 and F6 skipped with the field each needs;
 `casspian-plots` on the same file by hand writes identical figures (byte-identical PNGs apart
@@ -464,7 +472,9 @@ enough to be wrapped.
    `mean_polar_radius`; those suites pin that rule in memory (REPORT_02_step6 decision 5).**
 10. (v0.8) F5 and F6 field names the plotting code already understands, for SPEC_03 to adopt
    or rename in both places: `geopotential_m2s2(level)`, `pressure_hydrostatic_Pa(level)`,
-   attribute `boundary_pressure_Pa`.
+   attribute `boundary_pressure_Pa`. **Superseded at v0.10 by SPEC_03 decision 4:** the
+   product kind `profile` carries `pressure_Pa` (hydrostatic) and `pressure_tabulated_Pa`, and
+   F5 and F6 render for that kind only.
 
 ---
 
@@ -480,4 +490,5 @@ enough to be wrapped.
 | 0.6 | 2026-09-12 | Step 3 accepted with changes: total derivative `dr0/dr_anchor`; uncertainty kinds converted before quadrature (label `range` divided by √3); measured partials recorded; closure read from kind C's declaration; mean refractivity and molar mass companions carried into kind N | REPORT_02_step3 findings 1 to 6 |
 | 0.7 | 2026-09-12 | Step 4 accepted with one change: the anchor-rule spread by a full fixed-point rerun under each rule, `r0` and `phi_c` recorded; decisions 7 and 8; dependency lines updated to SPEC_00 v0.14 and SPEC_01 v0.19 | REPORT_02_step4 findings 1 and 3, decisions 2 and 5 |
 | 0.8 | 2026-09-12 | Step 5 accepted with two figure changes (F4 fractional uncertainty on a top axis; F1 inset axis label); new Step 6, equatorial anchoring, as a comparison step with a report-only wind-scaling diagnostic; Lindal manifest gains `[diagnostics]` at the Step 6 rebuild; decisions 9 (open) and 10; sections renumbered | REPORT_02_step5; author direction on the Fig. 9 caption and the equatorial anchor |
+| 0.10 | 2026-09-14 | Step 3: Eq. B1 with the tilt `cos ψ`, projection residual and latitude drift recorded; acceptance values at the top levels restated for the v0.21 pressure grid; Step 4: three `reduction_record` attributes; Step 5: F5 and F6 moved to kind `profile`; decision 10 superseded; product rebuilt at SPEC_03 Step 0; decision 9 unchanged | SPEC_03 v0.3 decisions 1, 2 and 4 |
 | 0.9 | 2026-09-13 | Step 6 accepted; decision 9 made: `equatorial_radius` is the Lindal default; asymmetry acceptance restated as the `r³` scaling; SPEC_02 closed at the Step 6 acceptance commit and sweep | REPORT_02_step6 findings 1 to 3; author decision |

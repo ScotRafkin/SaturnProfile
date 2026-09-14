@@ -20,3 +20,6 @@ reports/step*/
 
 # Standard diagnostic figures are regenerable from their product (SPEC_02 Step 5).
 occul_data/*/figures/
+
+# Working notes from the chat assistant; not part of the build record.
+Claude outputs/
