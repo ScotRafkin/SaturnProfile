@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.23, 14 September 2026. Author of record: S. Rafkin. Status: closed at commit ece58d2; Steps 2, 8 and 9 amended at v0.21, the snap rule restated at v0.22 and v0.23 before Step 0 began (the Table I pressure grid: `pressure_printed_Pa` beside `pressure_Pa` on the declared `10^(k/100)` mbar grid, applied at stage one, read by every downstream tool) for SPEC_03 Step 0, with a rebuild of the whole chain; Step 8 amended at v0.19 (closure declaration, NaN per-molecule uncertainties) with a rebuild of the composition product; Steps 5 and 9 amended at v0.20 (the `equatorial_radius` anchor rule in `lib.geoid`; `[stage_two]` carries the anchor quantity and rule and the `[diagnostics]` keys into the manifest) for SPEC_02 Step 6. See §13 for the revision history.
+Version 0.24, 14 September 2026. Author of record: S. Rafkin. Status: closed at commit ece58d2; Steps 2, 8 and 9 amended at v0.21, the snap rule restated at v0.22 and v0.23 before Step 0 began, the `k` run endpoints corrected at v0.24 (REPORT_03_step0 finding 1) (the Table I pressure grid: `pressure_printed_Pa` beside `pressure_Pa` on the declared `10^(k/100)` mbar grid, applied at stage one, read by every downstream tool) for SPEC_03 Step 0, with a rebuild of the whole chain; Step 8 amended at v0.19 (closure declaration, NaN per-molecule uncertainties) with a rebuild of the composition product; Steps 5 and 9 amended at v0.20 (the `equatorial_radius` anchor rule in `lib.geoid`; `[stage_two]` carries the anchor quantity and rule and the `[diagnostics]` keys into the manifest) for SPEC_02 Step 6. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.15, which it does not repeat.
 
 ---
@@ -199,7 +199,7 @@ in km above the source's 1 bar level) and `occul_data/lindal/raw/lindal_scalars.
 row 19.9526 Pa on the grid with `pressure_printed_Pa` 20.0 Pa (v0.21; then 25.1189, 31.6228,
 39.8107, 50.1187, 63.0957, 79.4328, 100.0 Pa), 138.7 K, 376700.0 m; 65 rows snapped and the
 bottom row as printed; the `k` sequence −70, −60, ... to 130 by 10, then by 8 to 194, by 6 to
-230, by 4 to 270, by 2 to 310; a CSV copy with one printed value edited to something no grid
+236, by 4 to 268, by 2 to 310 (v0.24); a CSV copy with one printed value edited to something no grid
 value rounds to is refused with the row named; the bottom row 129848.0 Pa, 146.2 K, −14100.0 m; exactly
 nine finite NH3 values, from 831.76 mbar (2.6 ppm) to 1258.93 mbar (66.9 ppm), with NaN at
 1047.13 and 1298.48 mbar (those two are interior and end gaps that the composition tool fills
@@ -709,6 +709,7 @@ same Monte Carlo; and the pass-through of the 0.2° label uncertainty into `phi_
 | 0.17 | 2026-09-11 | Step 8: NH3 rule restated (zero above the tabulated range by assumption with the saturation reason, no upward extrapolation or clamp; interior interpolation and downward extrapolation kept); `is_polar` moved to a molecular table in `species_master.toml`; `x_H2_uncertainty` from the raw bundle; `<dimension>_absent_meaning` spelled out; per-level `nh3_provenance` | REPORT_01_step8 §3 and author question |
 | 0.18 | 2026-09-11 | Step 9 accepted; §0 rebuild rule restated as a directory sweep; header dependency to SPEC_00 v0.9; `gravity_used_by_source` added to `lindal_scalars.toml` by the author (raw bundle and all downstream products to be rebuilt) | REPORT_01_step9 §3 |
 | 0.19 | 2026-09-12 | Step 8 amendment: kind C closure declaration attributes; per-molecule refractivity uncertainty NaN where unstated; composition product rebuilt | REPORT_02_step3 findings 4 and 5 |
+| 0.24 | 2026-09-14 | Step 2 acceptance: `k` runs end at 236 and 268, not 230 and 270 | REPORT_03_step0 finding 1 |
 | 0.23 | 2026-09-14 | Step 2: the snap rule resolves adjacent ambiguous rows one at a time from the fixed side | coding agent's second reading of SPEC_03 v0.4 |
 | 0.22 | 2026-09-14 | Step 2: the grid snap rule restated as SPEC_03 v0.4 states it (equal spacing with fixed neighbors; three ambiguous rows named) | coding agent's pre-execution review of SPEC_03 v0.3 |
 | 0.21 | 2026-09-14 | Step 2 amendment: `pressure_printed_Pa` beside `pressure_Pa` on the declared `10^(k/100)` mbar grid, the `[pressure_grid]` transcription and its refusal rule; Step 8 reads the grid values; Step 9: kind T carries the printed values and the rule, keep-by-content includes `input_hashes`; whole chain rebuilt at SPEC_03 Step 0 | SPEC_03 v0.3 decision 2 |

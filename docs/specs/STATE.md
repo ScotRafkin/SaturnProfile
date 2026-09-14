@@ -32,11 +32,11 @@ SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 procee
 
 ## SPEC_03, the forward production and its hydrostatic closure
 
-SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.3). Step 0 proceeds; Steps 1 to 4 proceed in order, each after the review of the one before. Current: SPEC_00 v0.16, SPEC_01 v0.23, SPEC_02 v0.10, SPEC_03 v0.5 (coding agent's pre-execution review applied). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
+SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.6). Step 0 proceeds; Steps 1 to 4 proceed in order, each after the review of the one before. Current: SPEC_00 v0.16, SPEC_01 v0.24, SPEC_02 v0.10, SPEC_03 v0.6 (REVIEW_03_step0 applied). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 0 | pressure grid and Eq. B1 tilt amendments; whole reduction chain rebuilt and swept | not started | | |
+| 0 | pressure grid and Eq. B1 tilt amendments; whole reduction chain rebuilt and swept | reported (11 of 13; two specification numbers, findings 1 and 2; acceptance on an in-memory candidate by author ruling) | `reports/REPORT_03_step0.md` | 2026-09-14 |
 | 1 | `lib.geopotential` | not started | | |
 | 2 | `lib.hydrostatic` | not started | | |
 | 3 | run directory and inputs (`casspian-run-inputs`), `read_run_namelist`, kind `profile`, `input_hashes` warning for every derived kind | not started | | |

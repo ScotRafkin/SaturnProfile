@@ -2,13 +2,14 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.5, 14 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.6, 14 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
-Step 0 and Step 3 (rulings in §8). Step 0 proceeds. Steps 1 to 4 proceed in order, each after the
+Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
+(REVIEW_03_step0); Step 1 proceeds after the Step 0 acceptance commit and sweep. Steps 1 to 4 proceed in order, each after the
 review of the one before.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.16, the closed
-`SPEC_01_Lindal_Tool_Chain.md` v0.23 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.10,
+`SPEC_01_Lindal_Tool_Chain.md` v0.24 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.10,
 which it does not repeat. See §9 for the revision history.
 
 ---
@@ -21,7 +22,13 @@ of this document and `STATE.md` read before any step; acceptance script under
 `reports/REPORT_03_step<N>.md` and `reports/REVIEW_03_step<N>.md`; `STATE.md` updated; commit
 on acceptance, then the directory sweep of SPEC_00 §8 over `occul_data/` and now also
 `forward/`; the full regression (every SPEC_01 and SPEC_02 suite) after any change to `lib`,
-`refrac` or `tools`; do not implement ahead. Every angle in `lib` is in radians. No em dash or
+`refrac` or `tools`; do not implement ahead. Every angle in `lib` is in radians. **A step that
+changes an input file (v0.6, author ruling of 14 September 2026, REPORT_03_step0 decision 1):**
+`refrac` and `forward` refuse `-dirty` inputs, so such a step is accepted on a candidate product
+built in memory by the acceptance script, with the `-dirty` refusal relaxed inside that script
+only and the relaxation named in the output; the registered product is rebuilt on the clean
+tree at the sweep, and the suites that run the command-line tools on the on-disk products run
+after the sweep and are recorded in the report then. No em dash or
 en dash anywhere. No silent choices: a choice this document did not make is a decision in the
 report or a question to the author, never a default in the code.
 
@@ -134,22 +141,27 @@ and §6.7).**
 
 **Rebuild and sweep.** `casspian-lindal-raw`, then the composition tool, then
 `casspian-lindal-inputs`, then `casspian-refrac` on the manifest, in that order, on a clean
-tree after the acceptance commit; every product under `occul_data/lindal/` is rebuilt (T, C
-and D change hash because the raw bundle hash they record changes, even where their content
-does not; the tool's keep-by-content rule of SPEC_02 Step 6 decision 4 must be told to rebuild
-when the raw bundle hash changes, which is a one-line rule: content compared including
-`input_hashes`).
+tree after the acceptance commit; every product under `occul_data/lindal/` is rebuilt (T, C, D
+and W change hash because the raw bundle hash they record changes, even where their content
+does not; the keep-by-content rule of SPEC_02 Step 6 decision 4 already compares the
+`raw_bundle` attribute as content, so a new raw bundle rebuilds T and D without any change to
+the rule, and `input_hashes` stays excluded from the comparison, v0.6, REPORT_03_step0
+finding 3). Products that do not read the raw bundle (G, R) are not rebuilt; their content and
+hashes are unchanged (v0.6, REPORT_03_step0 decision 5).
 
 **Expected values (measured by the reviewing agent; to be reproduced, not prescribed).**
 `pressure_Pa` at the top level 19.9526 Pa, then 25.1189, 31.6228, 39.8107, 50.1187, 63.0957,
 79.4328, 100.0; the 1 bar row and the bottom row unchanged (100,000.0 and 129,848.0 Pa). 65
 rows snapped, one as printed. The `k` sequence starts at −70 and is 10 apart to `k = 130`
-(20 mbar), then 8 apart to 194, 6 apart to 230, 4 apart to 270, 2 apart to 310, with the
-excluded row after it. `n` at the top level 1.041934e22 m⁻³ (was 1.04441e22); at the second
+(20 mbar), then 8 apart to 194, 6 apart to 236, 4 apart to 268, 2 apart to 310, with the
+excluded row after it (v0.6: the v0.5 endpoints 230 and 270 were wrong, REPORT_03_step0
+finding 1). `n` at the top level 1.041934e22 m⁻³ (was 1.04441e22); at the second
 level 1.270497e22; at 1 bar unchanged (5.373124e25). `N` moves at each snapped level by the
 same fraction as `p`. `radius_m` at the top level 58,801,571.0 m (was 58,802,888.3, a change of
 −1,317.2 m), at the bottom 58,412,566.6 m (+478.3 m), at the anchor level exactly `r0`.
-`cos ψ = 0.995406`. F2's gravity along the profile changes by under 5e-5.
+`cos ψ = 0.995406`. F2's effective gravity along the profile changes by under 6e-5 (v0.6:
+5.3e-5 at the top level, the Newtonian 2 dr/r = 4.5e-5 divided by `g_eff / g_N` plus the
+centrifugal part's own change with `r`; REPORT_03_step0 finding 2).
 
 **Acceptance.** The raw bundle carries both pressure variables, the flag, and the `k` sequence
 above; a CSV copy with one printed value edited to something no grid value rounds to is
@@ -614,6 +626,15 @@ gets an uncertainty.
    the acceptance now says every suite the regression shows affected, listed in the report,
    with the Step 02_1 hash-table read and the Step 5 skipped-figures check called out.
 
+**Rulings on REPORT_03_step0 (REVIEW_03_step0, 14 September 2026).** Finding 1, the `k`
+run endpoints: correct, verified against the raw bundle (6 apart to 236, 4 apart to 268);
+restated here and in SPEC_01 v0.24. Finding 2, the gravity bound: correct, 5.284e-5 reproduced
+independently; the bound is 6e-5 with the decomposition stated. Finding 3, keep-by-content:
+correct, the `raw_bundle` attribute already does it; the sentence is restated. Finding 4, the
+ammonia fill: recorded, no action. Finding 5 and decision 1: the in-memory candidate is the
+rule for any step that changes an input, now in §0. Decision 5: gravity and rotation kept.
+Decisions 2, 3, 4, 6, 7: accepted as reported.
+
 ## 9. Revision history
 
 | Version | Date | Change | Cause |
@@ -621,6 +642,7 @@ gets an uncertainty.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.6 | 2026-09-14 | Step 0: `k` run endpoints 236 and 268; gravity bound 6e-5 with its decomposition; keep-by-content through `raw_bundle`; G and R not rebuilt; §0: the in-memory candidate rule for a step that changes an input; §8 rulings on REPORT_03_step0 | REVIEW_03_step0 |
 | 0.5 | 2026-09-14 | Step 0: the snap rule restated once more so that adjacent ambiguous rows resolve one at a time from the fixed side; basis count corrected to 48; SPEC_01 v0.23 carries the same | coding agent's second reading of v0.4 |
 | 0.4 | 2026-09-14 | Step 0: the grid snap rule restated (equal spacing with fixed neighbors, no spacing numbers in code), the basis count corrected to 62; Step 1: gauge match exact; Step 3: twelfth refusal case (geodesy key), compensated composition edit, `inputs/*.nc` ignored pending the author's decision, the Step 5 skipped-figures check retired; Step 0 acceptance: every affected suite; §8 rulings added, revision history moved to §9; SPEC_01 v0.22 carries the same snap rule | coding agent's pre-execution review |
 
