@@ -32,7 +32,7 @@ SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 procee
 
 ## SPEC_03, the forward production and its hydrostatic closure
 
-SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.3). Step 0 proceeds; Steps 1 to 4 proceed in order, each after the review of the one before. Current: SPEC_00 v0.16, SPEC_01 v0.22, SPEC_02 v0.10, SPEC_03 v0.4 (coding agent's pre-execution review applied). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
+SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.3). Step 0 proceeds; Steps 1 to 4 proceed in order, each after the review of the one before. Current: SPEC_00 v0.16, SPEC_01 v0.23, SPEC_02 v0.10, SPEC_03 v0.5 (coding agent's pre-execution review applied). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|

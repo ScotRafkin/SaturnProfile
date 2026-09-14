@@ -2,13 +2,13 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.4, 14 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.2 (14 September 2026); v0.4 applies the coding agent's pre-execution review of Step 0
-and Step 3 (rulings in §8). Step 0 proceeds. Steps 1 to 4 proceed in order, each after the
+Version 0.5, 14 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
+Step 0 and Step 3 (rulings in §8). Step 0 proceeds. Steps 1 to 4 proceed in order, each after the
 review of the one before.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.16, the closed
-`SPEC_01_Lindal_Tool_Chain.md` v0.22 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.10,
+`SPEC_01_Lindal_Tool_Chain.md` v0.23 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.10,
 which it does not repeat. See §9 for the revision history.
 
 ---
@@ -74,10 +74,11 @@ do.
   the inference: `rule = "10^(k/100) mbar"`, `denominator = 100`, `unit = "mbar"`,
   `excluded_printed_values_mbar = [1298.48]` (the bottom row is the end of the data, not a grid
   level, and stays as printed), `basis = "62 of the 65 rows admit exactly one grid value
-  within their printed precision, 49 of them printed to four, five or six figures; the three
+  within their printed precision, 48 of them printed to four, five or six figures; the three
   rows printed to two figures that admit two grid values (0.20, 0.25, 0.32 mbar) are resolved
-  by the equal spacing of their neighbors; the spacing is 10, 8, 6, 4, 2 hundredths of a decade
-  in succession"` (v0.4; the v0.3 count of 63 was wrong), `value_source = "Table I, inferred by the reviewing agent, 14
+  one at a time by the equal spacing of the fixed rows below them; the spacing is 10, 8, 6, 4,
+  2 hundredths of a decade in succession"` (v0.5; the v0.3 count of 63 and the v0.4 count of
+  49 were both wrong), `value_source = "Table I, inferred by the reviewing agent, 14
   September 2026; not stated by the source. If the source's level list is ever found it
   replaces this inference."`. `raw/notes.md` states the same in prose.
 - `lindal_table1.csv` is unchanged: it remains the transcription of what is printed.
@@ -86,13 +87,15 @@ do.
   `table1/pressure_Pa` on the grid, by the rule (v0.4, coding agent's proposal adopted): for
   each row, the set of integers `k` for which `100 · 10^(k/100)` Pa, rounded to the number of
   decimals the CSV prints for that row, equals the printed value. A row with exactly one match
-  is fixed. A row with two or more matches takes the one that keeps equal spacing in `k` with
-  its fixed neighbors; the top row uses the spacing of the two fixed rows below it. A row still
-  ambiguous after that, or with no match and not in `excluded_printed_values_mbar`, is a
-  refusal, not a warning, with the row named. A row in `excluded_printed_values_mbar` keeps
+  is fixed. Ambiguous rows are resolved one at a time, starting next to the fixed rows: each
+  takes the candidate that continues the spacing in `k` of the two nearest fixed rows on its
+  fixed side; if both sides are fixed, both must agree or the row is refused; a row once
+  resolved counts as fixed for the next (v0.5). A row still ambiguous after that, or with no
+  match and not in `excluded_printed_values_mbar`, is a refusal, not a warning, with the row
+  named. A row in `excluded_printed_values_mbar` keeps
   its printed value. No spacing numbers are written into the code; the spacing pattern is what
-  the acceptance checks in the report. For Table I: 62 rows have one match, three (0.20, 0.25,
-  0.32 mbar, each admitting two) are resolved by the rule, one is excluded. Per-level flag `pressure_grid_applied` (1 snapped, 0 as
+  the acceptance checks in the report. For Table I: 62 rows have one match; 0.32 mbar takes `k = −50` from
+  the spacing of 0.40 and 0.50, then 0.25 takes −60, then 0.20 takes −70; one row is excluded. Per-level flag `pressure_grid_applied` (1 snapped, 0 as
   printed). The rule and the `[pressure_grid]` table go into `history` and into the `scalars`
   group as every other table does. The bundle still interprets nothing it does not carry beside
   the original: both columns are in the file.
@@ -591,11 +594,13 @@ gets an uncertainty.
    on both counts, verified: 0.20 (`k` −70 or −69), 0.25 (−61 or −60), 0.32 (−50 or −49); 62
    rows admit one. The coding agent's rule is adopted as written in Step 0 deliverable 1: a
    row with one match is fixed, a row with several takes the one equally spaced with its fixed
-   neighbors (the top row from the two rows below it), anything still ambiguous is refused, and
-   no spacing numbers go into the code.
-2. **The "63 of the 65" count was wrong.** Corrected in the basis string (62 unambiguous, of
-   which 49 are printed to four or more figures); the transcription carries the corrected
-   text, not the v0.3 wording.
+   neighbors, anything still ambiguous is refused, and no spacing numbers go into the code.
+   **v0.5:** the v0.4 wording refused Table I, because the three ambiguous rows are adjacent
+   and the top row has no fixed neighbor within two rows; the coding agent's second wording
+   (resolve one at a time from the fixed side, a resolved row counting as fixed) is adopted.
+2. **The "63 of the 65" count was wrong, and so was v0.4's 49.** Verified: of the 62 rows
+   with one match, 48 are printed to four, five or six figures (12, 30 and 6), 10 to three and
+   4 to two. The basis string carries 48; the transcription takes the v0.5 text.
 3. **Twelve refusal cases, eleven listed.** The missing one is the geodesy key, as guessed;
    added.
 4. **The `x_He + 0.01` case would fail the sum rule first.** Correct; the case is now a
@@ -616,6 +621,7 @@ gets an uncertainty.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.5 | 2026-09-14 | Step 0: the snap rule restated once more so that adjacent ambiguous rows resolve one at a time from the fixed side; basis count corrected to 48; SPEC_01 v0.23 carries the same | coding agent's second reading of v0.4 |
 | 0.4 | 2026-09-14 | Step 0: the grid snap rule restated (equal spacing with fixed neighbors, no spacing numbers in code), the basis count corrected to 62; Step 1: gauge match exact; Step 3: twelfth refusal case (geodesy key), compensated composition edit, `inputs/*.nc` ignored pending the author's decision, the Step 5 skipped-figures check retired; Step 0 acceptance: every affected suite; §8 rulings added, revision history moved to §9; SPEC_01 v0.22 carries the same snap rule | coding agent's pre-execution review |
 
 ---
