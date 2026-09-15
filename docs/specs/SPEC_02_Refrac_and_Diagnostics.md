@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.10, 14 September 2026. Author of record: S. Rafkin. Status: closed; Steps 3, 4 and 5 amended at v0.10 (Eq. B1 with the tilt `cos ψ`, the projection and drift recorded, F5 and F6 moved to kind `profile`) for SPEC_03 Step 0, with a rebuild of the product. Earlier: accepted by the author
+Version 0.11, 15 September 2026. Author of record: S. Rafkin. Status: closed; Step 4 amended at v0.11 (kind N carries the season of its thermo file) for SPEC_03 Step 3, with a rebuild of the product; Steps 3, 4 and 5 amended at v0.10 (Eq. B1 with the tilt `cos ψ`, the projection and drift recorded, F5 and F6 moved to kind `profile`) for SPEC_03 Step 0, with a rebuild of the product. Earlier: accepted by the author
 at v0.4 (12 September 2026); Steps 1 to 6 accepted (Step 3 with the v0.6 changes, Step 4 with
 the v0.7 change, Step 5 with two figure changes, Step 6 with the decision recorded at v0.9).
 **SPEC_02 is closed at the Step 6 acceptance commit and sweep.** The Lindal default anchor
@@ -225,6 +225,7 @@ anchor: `r0` near 58,537.7 km under `north_pole` and 58,502.1 km under `south_po
 ∓0.0030° (the coupling `dphi_c/dr_anchor` = −3.62e-9 rad/m), to about 30.8020° and 30.8079°.
 The latitude-held values the v0.6 build recorded, ±17.5 km, differ by the coupling term.
 - Global `input_hashes` over the six inputs and the manifest.
+- (v0.11) `epoch`, `solar_longitude_deg` and `solar_longitude_source` copied from kind T (SPEC_00 v0.17 §5).
 
 **Acceptance.** The file reads back as kind N (a DataTree); `read` refuses a copy missing the
 `inputs/wind` group and a copy whose `input_hashes` entry for the thermo file has been edited;
@@ -490,5 +491,6 @@ enough to be wrapped.
 | 0.6 | 2026-09-12 | Step 3 accepted with changes: total derivative `dr0/dr_anchor`; uncertainty kinds converted before quadrature (label `range` divided by √3); measured partials recorded; closure read from kind C's declaration; mean refractivity and molar mass companions carried into kind N | REPORT_02_step3 findings 1 to 6 |
 | 0.7 | 2026-09-12 | Step 4 accepted with one change: the anchor-rule spread by a full fixed-point rerun under each rule, `r0` and `phi_c` recorded; decisions 7 and 8; dependency lines updated to SPEC_00 v0.14 and SPEC_01 v0.19 | REPORT_02_step4 findings 1 and 3, decisions 2 and 5 |
 | 0.8 | 2026-09-12 | Step 5 accepted with two figure changes (F4 fractional uncertainty on a top axis; F1 inset axis label); new Step 6, equatorial anchoring, as a comparison step with a report-only wind-scaling diagnostic; Lindal manifest gains `[diagnostics]` at the Step 6 rebuild; decisions 9 (open) and 10; sections renumbered | REPORT_02_step5; author direction on the Fig. 9 caption and the equatorial anchor |
+| 0.11 | 2026-09-15 | Step 4: kind N carries the season of its thermo file; product rebuilt at SPEC_03 Step 3 | SPEC_00 v0.17 |
 | 0.10 | 2026-09-14 | Step 3: Eq. B1 with the tilt `cos ψ`, projection residual and latitude drift recorded; acceptance values at the top levels restated for the v0.21 pressure grid; Step 4: three `reduction_record` attributes; Step 5: F5 and F6 moved to kind `profile`; decision 10 superseded; product rebuilt at SPEC_03 Step 0; decision 9 unchanged | SPEC_03 v0.3 decisions 1, 2 and 4 |
 | 0.9 | 2026-09-13 | Step 6 accepted; decision 9 made: `equatorial_radius` is the Lindal default; asymmetry acceptance restated as the `r³` scaling; SPEC_02 closed at the Step 6 acceptance commit and sweep | REPORT_02_step6 findings 1 to 3; author decision |

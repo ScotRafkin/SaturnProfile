@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.24, 14 September 2026. Author of record: S. Rafkin. Status: closed at commit ece58d2; Steps 2, 8 and 9 amended at v0.21, the snap rule restated at v0.22 and v0.23 before Step 0 began, the `k` run endpoints corrected at v0.24 (REPORT_03_step0 finding 1) (the Table I pressure grid: `pressure_printed_Pa` beside `pressure_Pa` on the declared `10^(k/100)` mbar grid, applied at stage one, read by every downstream tool) for SPEC_03 Step 0, with a rebuild of the whole chain; Step 8 amended at v0.19 (closure declaration, NaN per-molecule uncertainties) with a rebuild of the composition product; Steps 5 and 9 amended at v0.20 (the `equatorial_radius` anchor rule in `lib.geoid`; `[stage_two]` carries the anchor quantity and rule and the `[diagnostics]` keys into the manifest) for SPEC_02 Step 6. See §13 for the revision history.
+Version 0.26, 15 September 2026. Author of record: S. Rafkin. Status: closed at commit ece58d2; v0.26: every build-file section carries a required `role` key and every writer records paths relative to its product (SPEC_00 v0.18), applied at the SPEC_03 Step 3 rebuild; the season identifier added at v0.25 (Steps 2, 3, 7, 8, 9) for SPEC_03 Step 3, with a rebuild of the chain; Steps 2, 8 and 9 amended at v0.21, the snap rule restated at v0.22 and v0.23 before Step 0 began, the `k` run endpoints corrected at v0.24 (REPORT_03_step0 finding 1) (the Table I pressure grid: `pressure_printed_Pa` beside `pressure_Pa` on the declared `10^(k/100)` mbar grid, applied at stage one, read by every downstream tool) for SPEC_03 Step 0, with a rebuild of the whole chain; Step 8 amended at v0.19 (closure declaration, NaN per-molecule uncertainties) with a rebuild of the composition product; Steps 5 and 9 amended at v0.20 (the `equatorial_radius` anchor rule in `lib.geoid`; `[stage_two]` carries the anchor quantity and rule and the `[diagnostics]` keys into the manifest) for SPEC_02 Step 6. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.15, which it does not repeat.
 
 ---
@@ -194,6 +194,14 @@ in km above the source's 1 bar level) and `occul_data/lindal/raw/lindal_scalars.
   match and three (0.20, 0.25, 0.32 mbar) have two, resolved in that order from below to
   `k` = −50, −60, −70. Both columns stay in the bundle, so nothing
   printed is dropped.
+- **v0.25, the season (SPEC_00 v0.17 §5).** `lindal_scalars.toml` `[source]` already carries
+  `observation_date = "1981-08-26"` from the Fig. 2 caption; it gains `solar_longitude_deg`,
+  `subsolar_latitude_deg` and `solar_longitude_source`. Expected: `Ls` 18.2° with the sub-solar
+  latitude 8.06° N, computed by the reviewing agent on 15 September 2026 from the JPL approximate
+  Keplerian elements of Saturn and the IAU pole (RA 40.589°, Dec 83.537°), a method that
+  reproduces the equinoxes of February 1980 and 11 August 2009 to 0.3°; the source attribute
+  says so and says the value is to be replaced by the ephemeris value when the season tool
+  exists. The raw bundle carries the date as `epoch` and the pair with its source.
 
 **Acceptance.** 66 levels; the 1 bar row reads exactly 100000.0 Pa, 134.8 K, 0.0 m; the top
 row 19.9526 Pa on the grid with `pressure_printed_Pa` 20.0 Pa (v0.21; then 25.1189, 31.6228,
@@ -211,6 +219,10 @@ transcription can be checked against the paper by a second reader.
 ---
 
 ## 4. Step 3: the gravity and rotation tools, kinds G and R
+
+(v0.26: every section of a build control file, for every tool of this specification, carries a required key `role`, `"reduction"` or `"forward"`, written into the file's `role` global; the composition tool writes `composition_role` from the same key. There is no default: a section without `role` is refused. `lindal_build.toml` gains `role = "reduction"` in every section. Every writer records the paths it names relative to the directory of the file it writes, SPEC_00 v0.18 §5.)
+
+(v0.25: kinds G and R carry `season_absent_meaning = "uniform"`; their `epoch` is the solution's or the system's epoch as already recorded.)
 
 **Purpose.** Standard harmonic-set and rotation-system files from the `data_static`
 transcriptions, so that `lib.gravity` in the next step reads real files.
@@ -401,6 +413,8 @@ included, the value **moves**, by an amount to be reported (the Step 5 stand-in 
 
 ## 8. Step 7: the wind tool for Lindal, kind W
 
+(v0.25: kind W carries `epoch` and `solar_longitude_deg` with its source from `data_static/winds/smith1982_fig4.toml`, which gains them: the Voyager 2 encounter date, 1981-08-25, `Ls` 18.2°, with an `epoch_note` that the curve combines Voyager 1 (November 1980, `Ls` about 8°) and Voyager 2 imaging and is assigned the Voyager 2 date.)
+
 **Purpose.** `occul_data/lindal/lindal_wind.nc`: the cloud-top wind Lindal carried in his
 geoid, on the model's axes, with its uncertainty.
 
@@ -539,7 +553,7 @@ and the oblateness corrections Eq. 18 drops; a larger departure is to be explain
 
 ## 9. Step 8: the composition tool for Lindal, kind C
 
-(v0.21: the tool reads `table1/pressure_Pa`, the grid values, so kind C's levels are kind T's.)
+(v0.21: the tool reads `table1/pressure_Pa`, the grid values, so kind C's levels are kind T's. v0.25: the reduction composition is an assumption of the source and carries `season_absent_meaning = "uniform"`; its `epoch` is the observation date.)
 
 **Purpose.** `occul_data/lindal/lindal_composition.nc`: the reduction composition with the
 species group carrying the `lindal1985` refractivity set.
@@ -639,6 +653,8 @@ six figures. `read` as kind C succeeds and refuses when one mole fraction is per
    `[pressure_grid]` declaration (SPEC_00 §6.1 v0.16). The keep-by-content rule of SPEC_02
    Step 6 decision 4 compares `input_hashes` as content, so a changed raw bundle rebuilds T
    and D.
+7. (v0.25) Kinds T and D carry `epoch` (the observation date), `solar_longitude_deg` and
+   `solar_longitude_source` from the raw bundle.
 
 **Acceptance.** All six files validate under their kinds; `lindal_thermo.nc` has exactly the
 three profile variables and their three uncertainty companions and no `x_*` or geodesy
@@ -709,6 +725,8 @@ same Monte Carlo; and the pass-through of the 0.2° label uncertainty into `phi_
 | 0.17 | 2026-09-11 | Step 8: NH3 rule restated (zero above the tabulated range by assumption with the saturation reason, no upward extrapolation or clamp; interior interpolation and downward extrapolation kept); `is_polar` moved to a molecular table in `species_master.toml`; `x_H2_uncertainty` from the raw bundle; `<dimension>_absent_meaning` spelled out; per-level `nh3_provenance` | REPORT_01_step8 §3 and author question |
 | 0.18 | 2026-09-11 | Step 9 accepted; §0 rebuild rule restated as a directory sweep; header dependency to SPEC_00 v0.9; `gravity_used_by_source` added to `lindal_scalars.toml` by the author (raw bundle and all downstream products to be rebuilt) | REPORT_01_step9 §3 |
 | 0.19 | 2026-09-12 | Step 8 amendment: kind C closure declaration attributes; per-molecule refractivity uncertainty NaN where unstated; composition product rebuilt | REPORT_02_step3 findings 4 and 5 |
+| 0.26 | 2026-09-15 | Required `role` in every build-file section, no default; paths recorded relative to the product; applied at the SPEC_03 Step 3 rebuild | coding agent's pre-execution review of SPEC_03 Step 3, problems 1 and 3 |
+| 0.25 | 2026-09-15 | The season identifier: Step 2 transcribes `Ls` and the sub-solar latitude with their source and the raw bundle carries them; Step 3 marks G and R `uniform`; Step 7 gives W the imaging epoch and season; Step 8 marks the reduction composition `uniform`; Step 9 copies the season into T and D; chain rebuilt at SPEC_03 Step 3 | SPEC_00 v0.17 |
 | 0.24 | 2026-09-14 | Step 2 acceptance: `k` runs end at 236 and 268, not 230 and 270 | REPORT_03_step0 finding 1 |
 | 0.23 | 2026-09-14 | Step 2: the snap rule resolves adjacent ambiguous rows one at a time from the fixed side | coding agent's second reading of SPEC_03 v0.4 |
 | 0.22 | 2026-09-14 | Step 2: the grid snap rule restated as SPEC_03 v0.4 states it (equal spacing with fixed neighbors; three ambiguous rows named) | coding agent's pre-execution review of SPEC_03 v0.3 |

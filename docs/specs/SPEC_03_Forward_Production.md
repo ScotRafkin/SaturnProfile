@@ -2,15 +2,16 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.8, 15 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.10, 15 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
 Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
-(REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1, `b3efc3d`); Step 2 accepted (REVIEW_03_step2); Step 3
-proceeds after the Step 2 acceptance commit. Steps 1 to 4 proceed in order, each after the
+(REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1, `b3efc3d`); Step 2 accepted (REVIEW_03_step2, `994c787`); Step 3
+proceeds, with the season identifier (deliverable 0, v0.9) and the rulings on the coding
+agent's pre-execution review (v0.10, §8) applied. Steps 1 to 4 proceed in order, each after the
 review of the one before.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.16, the closed
-`SPEC_01_Lindal_Tool_Chain.md` v0.24 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.10,
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.18, the closed
+`SPEC_01_Lindal_Tool_Chain.md` v0.26 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.11,
 which it does not repeat. See §9 for the revision history.
 
 ---
@@ -282,6 +283,46 @@ SPEC_02 Step 3 closure, now through this module).
 the forward product kind; and the `input_hashes` warning of SPEC_00 §8 for every derived kind
 (carried from SPEC_02 decision 8).
 
+**Deliverable 0 (v0.9): the season identifier across the chain.** Every file the model reads
+or writes carries its season (SPEC_00 v0.17 §5; `docs/CASSPIAN_Seasonal_Design_Note.md` §2 and
+§8.1; author decision of 15 September 2026 that all data, input or output, carry a season, and
+that everything is valid at an instant). In this step:
+
+- `lib.schema` requires `epoch` on every kind and exactly one of `solar_longitude_deg` (with
+  `solar_longitude_source`) and `season_absent_meaning = "uniform"`; `epoch_note` optional.
+- The transcription and the reduction chain are amended as SPEC_01 v0.25 and SPEC_02 v0.11 say
+  (the `Ls` of the Voyager 2 ingress, 18.2° with the sub-solar latitude 8.06° N, transcribed
+  with its source; G and R `uniform`; W with the imaging epoch and season; the reduction
+  composition `uniform`; T, D and N with the observation's date and season), and the chain is
+  rebuilt once by the procedure of §0 for a step that changes an input, with the new hashes
+  recorded in this step's report in the row format the Step 02_1 suite reads. Gravity and
+  rotation are rebuilt this time, since their content changes.
+- The run's inputs carry seasons the same way (deliverable 1): the wind the imaging season,
+  gravity and rotation `uniform`, the composition `uniform`.
+- The namelist `[run]` gains `solar_longitude_deg`, required, and the optional `date`
+  (deliverable 2); in closure mode the run's season must equal the anchor's exactly.
+- Kind `profile` carries the run's `solar_longitude_deg`, its `epoch` (the declared date, or
+  the SPEC_00 string for a season declared without a date) and `anchor_solar_longitudes_deg`
+  (deliverable 3).
+
+No logic acts on the season beyond the closure equality; the identifier is there so nothing
+later has to guess.
+
+Two more things ride on the same rebuild (v0.10, §8 rulings 1 and 3):
+
+- **`role` is a required key in every section of every build control file**, `"reduction"` or
+  `"forward"`, written into the product's `role` global, and into `composition_role` by the
+  composition tool. No default in code: a section without it is refused. `lindal_build.toml`
+  gains `role = "reduction"` in every section; the run's build file says `"forward"`. Since the
+  chain is rebuilt in this step anyway, the hash changes this causes cost nothing (SPEC_01
+  v0.26).
+- **Every writer records paths relative to the directory of the file it writes** (SPEC_00
+  v0.18 §5): `input_hashes`, `control_file`, `raw_bundle`, `raw_sources`, `master_table`,
+  `latitude_conversion_inputs`, `decomposition_geometry`, and any other attribute that names a
+  file, with `/` as the separator. The absolute paths some tools wrote were a defect against
+  SPEC_00 §5, and SPEC_00 §7 contradicted §5; §7 is corrected. A helper in `lib.io` does the
+  conversion once for every writer.
+
 **Deliverable 1: the run directory and its inputs.** `forward/lindal_closure/` holds the
 namelist, `lindal_closure_build.toml` (the run's build control file, SPEC_00 §2.2.2), `inputs/`
 written by the tools, and `output/` written by the model; nothing else. **Every input kind
@@ -353,6 +394,7 @@ The vocabulary accepted in this specification (SPEC_00 §7.2 v0.16 adds `mode`, 
 name        = "lindal_closure"
 description = "Hydrostatic closure of the Lindal reduction at its own latitude under matching forward inputs"
 mode        = "closure"          # this specification implements only closure; SPEC_04 adds transfer
+solar_longitude_deg = 18.2       # v0.9: the run's season; in closure mode equal to the anchor's
 
 [[anchors]]                      # exactly one entry in closure mode
 slug   = "lindal"                # must equal profile_or_run inside the file, or refuse
@@ -392,8 +434,13 @@ the anchor's pressure range and latitude; the components sum to the total; the p
 zero; each file carries the run prefix and `role = "forward"`; kind C carries
 `composition_role = "forward"`. In `closure` mode, additionally: the run's four inputs must be
 **content-identical to the anchor's embedded copies** (compared through
-`xarray.Dataset.identical` after dropping the writer globals, `title`, `profile_or_run`,
-`role`, `composition_role`, `history`, `control_file` and `input_hashes`), otherwise the run
+`xarray.Dataset.identical`, root and every group, after dropping the writer globals
+(`created_by`, `created_at`, `casspian_git_commit`, `casspian_version`, `history`), the naming
+and role attributes (`title`, `profile_or_run`, `role`, `composition_role`), and every
+provenance attribute that carries a path or a hash of another file (`input_hashes`,
+`control_file`, `raw_bundle`, `raw_sources`, `master_table`, `master_table_hash`,
+`latitude_conversion_inputs`, `decomposition_geometry`, and any attribute whose value contains
+`sha256:`); the report lists the attributes dropped per file (v0.10, §8 ruling 2)), otherwise the run
 is refused with the first differing variable or attribute named, because a closure under
 inputs that differ from the source's is not a closure; the composition's levels are the
 anchor's levels; no `[target]` (the target is the anchor's `phi_c`; a present `[target]` is
@@ -424,7 +471,10 @@ scalar. Variables, all `provenance = "modeled"` unless noted:
 | `pressure_tabulated_Pa(level)`, `temperature_tabulated_K(level)` | Pa, K | closure mode only: the anchor's tabulated values copied for the comparison (`derived`) |
 | uncertainty companions of every modeled variable | | present and NaN, `uncertainty_kind = "1sigma"`, `uncertainty_method = "not propagated"`, `uncertainty_terms_unstated` listing every declared term of the anchor (composition, anchor radius, label latitude) with the reason: a first-order companion carrying only the terms that pass through the integral would be read as a total; the Monte Carlo wrapper supplies the product's uncertainty (decision 5) |
 
-Scalars: `latitude_planetocentric_deg`, `psi_deg` (copied), `gauge_isobar_Pa` (`index`),
+Globals (v0.9): `epoch` (the run's declared date, or the SPEC_00 §5 string when only a season
+was declared), `solar_longitude_deg` (the run's), `solar_longitude_source = "declared in the
+namelist"`, and `anchor_solar_longitudes_deg`, the seasons of the anchors in `[[anchors]]`
+order. Scalars: `latitude_planetocentric_deg`, `psi_deg` (copied), `gauge_isobar_Pa` (`index`),
 `gauge_level_index` (`index`), `boundary_pressure_Pa` (`index` in closure mode, since it
 names the anchor's top level value), `boundary_level_index`. Groups: `anchors/<slug>`, the
 kind N file verbatim (variables, attributes and its own groups); `inputs/composition`,
@@ -447,10 +497,13 @@ against `geopotential_m2s2` and `pressure_hydrostatic_Pa` on kind N are removed;
 renders F1 to F4 and reports nothing skipped (SPEC_02 decision 10 superseded; §7 decision 4).
 
 **Deliverable 4: the `input_hashes` warning for every derived kind.** `lib.io.read` warns, for
-any kind whose file carries `input_hashes`, when a listed path exists on disk relative to the
-file's directory and its hash differs, and says nothing when the path does not exist (a copied
-file is not a defect). Kind N keeps its refusal on a missing recorded hash. This is the
-SPEC_00 §8 rule as written, now implemented once for every kind.
+any kind whose file carries `input_hashes`, when a listed path, resolved against the directory
+of the file being read, names a file that exists and whose hash differs, and says nothing when
+the path does not resolve to a file (a copied file is not a defect). With every writer now
+recording paths relative to its product (deliverable 0), this is one rule for every kind, and a
+file moved with its inputs keeps its check while a file moved alone reads silently. Kind N keeps
+its refusal on a missing recorded hash. This is the SPEC_00 §8 rule as corrected at v0.18,
+implemented once for every kind.
 
 **Acceptance.** `casspian-run-inputs forward/lindal_closure/lindal_closure_build.toml` writes
 the four inputs, each validating under its kind with the run prefix and `role = "forward"`,
@@ -464,14 +517,23 @@ without the run prefix, a namelist that names a geodesy file, and a composition 
 reader's closure-declaration check trips first, its declared share edited to match, so that
 the only refusal left is the closure comparison, with `x_He` named; the report says which
 edits were needed) are each refused with the right message (twelve cases, each message
-quoted in the report; v0.4); the SPEC_02 Step 5 suite's "F5 and F6 skipped" check is
-retired in this step, since kind N now reports nothing skipped; a synthetic
+quoted in the report; v0.4), plus (v0.9) a namelist whose `solar_longitude_deg` differs from
+the anchor's, refused as not a closure (thirteen cases); every product of the rebuilt chain and
+every run input validates with the season attributes, a copy with neither `solar_longitude_deg`
+nor `season_absent_meaning` and a copy with both are each refused, kind N's season equals kind
+T's, and the transcribed pair satisfies `sin δ_s = sin ε sin Ls` to 0.05° (v0.9); the SPEC_02
+Step 5 suite's "F5 and F6 skipped" check is retired in this step, since kind N now reports
+nothing skipped; a synthetic
 kind `profile` file built in memory validates, reads back as a `DataTree`, and is refused when
 `pressure_tabulated_Pa` is present without `temperature_tabulated_K`, when the coordinate is
 not monotonic, or when a modeled variable lacks its NaN companion; `casspian-plots` on the
 synthetic file renders F5 and F6 with the envelope band and on `lindal_refractivity.nc` renders
 F1 to F4 and reports nothing skipped; a kind T copy whose recorded raw bundle hash is edited
-warns on read, and the same copy moved to a directory without the raw bundle reads silently.
+warns on read when the raw bundle sits at the recorded relative path beside it (the copy is
+placed in a scratch directory with a `raw/` subdirectory holding the bundle), and the same copy
+alone in a directory without the bundle reads silently (v0.10); every product of the rebuilt
+chain and every run input carries only relative paths, checked by a scan for a drive letter or
+a leading `/` in every path-bearing attribute.
 
 ---
 
@@ -658,6 +720,40 @@ which is what the reviewing agent measured; restated in Step 2. Finding 2: no ac
 Decisions 1 to 5 accepted; the `expm1` form (decision 1) is the better evaluation of the same
 expression and is recorded as the module's form.
 
+**Rulings on the coding agent's pre-execution review of Step 3 (v0.10, 15 September 2026).**
+1. **`role = "forward"` cannot be written by the tools.** Correct. Option (b) is adopted, not
+   the recommended (a): `role` is a required key in every build-file section with no default,
+   because a default in code is what the standing rule forbids, and because the chain is
+   rebuilt in this step for the season identifier anyway, so the hash changes (b) would have
+   caused are already being paid. `composition_role` follows the same key.
+2. **The closure comparison would refuse identical inputs on `latitude_conversion_inputs`.**
+   Correct; the drop list was incomplete. It is now stated as a rule (every attribute that
+   carries a path or a hash of another file, plus the writer, naming and role attributes) with
+   the known members enumerated, and the report lists what was dropped per file.
+3. **The `input_hashes` warning cannot pass its acceptance as specified.** Correct, and the
+   cause is a contradiction in SPEC_00: §5 asked for relative paths and §7 said the resolved
+   absolute form is recorded, and the tools followed one or the other. Option (b) is adopted,
+   not the recommended (a): every writer records paths relative to its product, SPEC_00 §7 is
+   corrected, and the chain is rebuilt with the season identifier in this step, so the rebuild
+   costs nothing extra. The reasons: an absolute Windows path in a product is a defect for a
+   run directory that must be self-contained and for the service deployment of SPEC_00 §11;
+   resolving relative paths against "the repository root the file sits in" would have added a
+   second convention and a root-finding rule to the reader; and the acceptance then tests the
+   rule as written. The writer changes are the cost, and they are the fix of a defect the
+   review found, which is what the standing rule about fixes says to do.
+4. **The rest, as the coding agent proposed:** the run's wind build section names the raw
+   bundle and the run's own gravity and rotation files (the reference geoid for a forward run
+   under other harmonics is a forward-inputs specification question, not this step's); the
+   composition comparison covers the `species` group; the four run inputs are loaded in the
+   acceptance through the §0 relaxation and rebuilt clean at the sweep; `forward/*/inputs/*.nc`
+   goes into `.gitignore`.
+
+**Rulings of 15 September 2026 (v0.9).** The season identifier is added to Step 3 as
+deliverable 0 rather than as a step of its own, because Step 3 already touches the schema for
+kind `profile` and already builds the run's inputs, and the rebuild of the chain uses the §0
+procedure established at Step 0. Nothing else from the seasonal design note enters SPEC_03 or
+SPEC_04; the retrieval leg and the seasonal propagator are later specifications.
+
 ## 9. Revision history
 
 | Version | Date | Change | Cause |
@@ -665,6 +761,8 @@ expression and is recorded as the module's form.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.10 | 2026-09-15 | Coding agent's pre-execution review of Step 3: required `role` in build files (no default), the closure drop list as a rule, paths relative to the product for every writer with the reader resolving against the file's directory, acceptance restated; dependencies SPEC_00 v0.18, SPEC_01 v0.26 | coding agent's pre-execution review |
+| 0.9 | 2026-09-15 | Step 3 deliverable 0: the season identifier across the chain (schema, transcription, rebuild, run inputs, namelist `solar_longitude_deg`, kind `profile` globals), with the closure equality and the thirteenth refusal case; dependencies to SPEC_00 v0.17, SPEC_01 v0.25, SPEC_02 v0.11; status line: Step 2 accepted at `994c787` | the seasonal design note of 15 September 2026; author decision |
 | 0.8 | 2026-09-15 | Step 2: the linear-T test column's orientation stated (falling with height); status line: Step 2 accepted; §8 rulings on REPORT_03_step2 | REVIEW_03_step2 |
 | 0.7 | 2026-09-14 | Step 4: the negative control defined as the one-factor construction `g_k (h_{k+1} − h_k)`, the fully radial reading reported beside it; status line: Step 1 accepted; §8 rulings on REPORT_03_step1 | REVIEW_03_step1 |
 | 0.6 | 2026-09-14 | Step 0: `k` run endpoints 236 and 268; gravity bound 6e-5 with its decomposition; keep-by-content through `raw_bundle`; G and R not rebuilt; §0: the in-memory candidate rule for a step that changes an input; §8 rulings on REPORT_03_step0 | REVIEW_03_step0 |
