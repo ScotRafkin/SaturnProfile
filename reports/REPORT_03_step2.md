@@ -115,7 +115,14 @@ acceptance from the same accepted `lib.geopotential`.
 
 No em dash or en dash appears in any file written in this step.
 
+**Sweep** (REVIEW_03_step2 order of work, item 3), after the acceptance commit `994c787`: no input
+or product changed in this step. The `-dirty` scan over `occul_data/lindal/` finds every product
+clean at the commit it was swept at: `lindal_raw.nc`, `lindal_thermo.nc`, `lindal_geodesy.nc`,
+`lindal_wind.nc`, `lindal_composition.nc` and `lindal_refractivity.nc` at `2149b64`,
+`lindal_gravity.nc` and `lindal_rotation.nc` at `ece58d2`; SHA-256 prefixes 07e0727c, 5705f1dc,
+51c545a6, 26fe83a3, 6af9dbfb, 64c5d01a, 6db0129c, a5c72017, each equal to REPORT_03_step0 section 7.
+Nothing to rebuild.
+
 ## 6. Next step
 
-The review. Nothing is committed and Step 3 does not start until the review is in and the author
-says go.
+Step 2 is accepted (`994c787`). Step 3 proceeds; the author said go.
