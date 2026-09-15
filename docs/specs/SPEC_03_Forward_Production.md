@@ -2,11 +2,11 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.7, 14 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.8, 15 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
 Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
-(REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1); Step 2 proceeds
-after the Step 1 acceptance commit. Steps 1 to 4 proceed in order, each after the
+(REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1, `b3efc3d`); Step 2 accepted (REVIEW_03_step2); Step 3
+proceeds after the Step 2 acceptance commit. Steps 1 to 4 proceed in order, each after the
 review of the one before.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.16, the closed
@@ -256,13 +256,16 @@ never the trapezoid of endpoint values.
 
 **Why the rule, in numbers (measured at Table I's geopotential spacing).** The exact-exponential
 layer integral recovers an isothermal column to 1e-15 and a column whose temperature falls
-linearly from 140 to 80 K across the whole span to 6e-4; the trapezoid gives 8.5e-3 on both,
+linearly with height, from 140 K at the bottom level to 80 K at the top, linear in Φ (v0.8,
+REPORT_03_step2 finding 1: the other orientation gives 3.5e-4 and 6.5e-3), to 6e-4; the
+trapezoid gives 8.5e-3 on both,
 which is larger than the effect Step 0 corrected and would hide it.
 
 **Acceptance.** An isothermal column (uniform composition, `T` = 100 K, `p_b` = 20 Pa) sampled
 on the Step 1 `Φ` grid returns `p_k` to 1e-14 relative at every level and `T_k` = 100 K to
-1e-14; the linear-`T` column above returns `p` to 6e-4 or better at every level, and the
-trapezoid alternative, computed in the acceptance script only, to 8e-3 to 9e-3, both reported;
+1e-14; the linear-`T` column above (140 K at the bottom level, 80 K at the top, linear in Φ)
+returns `p` to 6e-4 or better at every level, and the trapezoid alternative, computed in the
+acceptance script only, to 8e-3 to 9e-3, both reported;
 halving every layer (midpoints inserted with the analytic `ρ`) reduces the linear-`T` error by
 a factor of 3.5 to 4.5 (second order); `layer_mass` returns the limit form on a pair of equal
 densities and refuses a zero-thickness layer with the layer named; `temperature` applied to the
@@ -649,6 +652,12 @@ detect; the two-factor reading is reported beside it and must fail too (Step 4 r
 Finding 2: noted, no action; the bound holds with a factor of three to spare. Decisions 1 to
 6 accepted as reported.
 
+**Rulings on REPORT_03_step2 (REVIEW_03_step2, 15 September 2026).** Finding 1: correct; the
+linear-T column is the one falling with height, 140 K at the bottom level and 80 K at the top,
+which is what the reviewing agent measured; restated in Step 2. Finding 2: no action.
+Decisions 1 to 5 accepted; the `expm1` form (decision 1) is the better evaluation of the same
+expression and is recorded as the module's form.
+
 ## 9. Revision history
 
 | Version | Date | Change | Cause |
@@ -656,6 +665,7 @@ Finding 2: noted, no action; the bound holds with a factor of three to spare. De
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.8 | 2026-09-15 | Step 2: the linear-T test column's orientation stated (falling with height); status line: Step 2 accepted; §8 rulings on REPORT_03_step2 | REVIEW_03_step2 |
 | 0.7 | 2026-09-14 | Step 4: the negative control defined as the one-factor construction `g_k (h_{k+1} − h_k)`, the fully radial reading reported beside it; status line: Step 1 accepted; §8 rulings on REPORT_03_step1 | REVIEW_03_step1 |
 | 0.6 | 2026-09-14 | Step 0: `k` run endpoints 236 and 268; gravity bound 6e-5 with its decomposition; keep-by-content through `raw_bundle`; G and R not rebuilt; §0: the in-memory candidate rule for a step that changes an input; §8 rulings on REPORT_03_step0 | REVIEW_03_step0 |
 | 0.5 | 2026-09-14 | Step 0: the snap rule restated once more so that adjacent ambiguous rows resolve one at a time from the fixed side; basis count corrected to 48; SPEC_01 v0.23 carries the same | coding agent's second reading of v0.4 |
