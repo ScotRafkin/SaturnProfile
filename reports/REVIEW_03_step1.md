@@ -49,5 +49,7 @@ and the broadcast of `u` and `phi_c` are as the report describes.
 1. Commit the author's documents (SPEC_03 v0.7, this review) in their own commit.
 2. Commit the step (the acceptance commit for Step 1). Push.
 3. Sweep: no input or product changed in this step; confirm with the `-dirty` scan that every
-   product under `occul_data/` still carries `2149b64` and record that line in the report.
+   product under `occul_data/` still carries the commit it was swept at (`2149b64` for the raw
+   bundle, T, D, W, C and N; `ece58d2` for gravity and rotation, which Step 0 kept) and record
+   that line in the report.
 4. Set `STATE.md` to accepted with the commit. Step 2 then proceeds when the author says go.
