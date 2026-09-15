@@ -1,0 +1,78 @@
+# CASSPIAN build control file for the forward run lindal_closure (SPEC_00 section 2.2.2 and 2.3,
+# SPEC_03 Step 3 deliverable 1). Pointers and declared choices only.
+#
+# The same section vocabulary as occul_data/lindal/lindal_build.toml, minus [stage_two], which has
+# no forward counterpart. Every section points at the source the Lindal reduction used, with the
+# run's prefix, titles and outputs, and role = "forward". The files it writes are the run's own
+# inputs: what this run assumes, distinct from the reduction's files, which record what the source
+# assumed. For the closure the two are meant to agree in content; forward checks that they do.
+# Built by: casspian-run-inputs forward/lindal_closure/lindal_closure_build.toml
+
+[gravity]
+source = "../../data_static/harmonics/null1981.toml"
+output = "inputs/lindal_closure_gravity.nc"
+prefix = "lindal_closure"
+role   = "forward"
+epoch  = "1981-08-26"   # SPEC_01 v0.28: the date of the occultation the run closes on
+title  = "Null et al. (1981) harmonic set, as assumed by the lindal_closure run"
+
+[rotation]
+source = "../../data_static/rotation/system_iii.toml"
+entry  = "system_iii"
+output = "inputs/lindal_closure_rotation.nc"
+prefix = "lindal_closure"
+role   = "forward"
+epoch  = "1981-08-26"
+title  = "System III rotation, as assumed by the lindal_closure run"
+
+[wind]
+# The run's own gravity and rotation files; the raw bundle for the reference geoid polar radius
+# (SPEC_03 v0.10 section 8 ruling 4). A build file may point outside the run directory.
+wind_source_kind = "curve"
+curve_source     = "../../data_static/winds/ingersoll_pollard1982_fig5_curve.csv"
+points_source    = "../../data_static/winds/smith1982_fig4_points.csv"
+data_properties  = "../../data_static/winds/smith1982_fig4.toml"
+gravity_file     = "inputs/lindal_closure_gravity.nc"
+rotation_file    = "inputs/lindal_closure_rotation.nc"
+raw_bundle       = "../../occul_data/lindal/raw/lindal_raw.nc"
+output           = "inputs/lindal_closure_wind.nc"
+prefix           = "lindal_closure"
+role             = "forward"
+title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as assumed by the lindal_closure run"
+
+bin_width_deg     = 2.0
+min_count_per_bin = 3
+
+gap_rule        = "reflect_north"
+polar_rule      = "pchip_to_zero"
+join_window_deg = [-10.9, -15.0]
+
+latitude_grid_step_deg = 0.5
+vertical_structure     = "altitude independent"
+
+pressure_grid_Pa = [
+  1, 1.25893, 1.58489, 1.99526, 2.51189, 3.16228, 3.98107, 5.01187, 6.30957, 7.94328,
+  10, 12.5893, 15.8489, 19.9526, 25.1189, 31.6228, 39.8107, 50.1187, 63.0957, 79.4328,
+  100, 125.893, 158.489, 199.526, 251.189, 316.228, 398.107, 501.187, 630.957, 794.328,
+  1000, 1258.93, 1584.89, 1995.26, 2511.89, 3162.28, 3981.07, 5011.87, 6309.57, 7943.28,
+  10000, 12589.3, 15848.9, 19952.6, 25118.9, 31622.8, 39810.7, 50118.7, 63095.7, 79432.8,
+  100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
+  1e+06
+]
+
+[composition]
+# casspian-composition-lindal with its output redirected: the generic composition tool does not
+# exist yet (the forward-inputs specification).
+raw_bundle     = "../../occul_data/lindal/raw/lindal_raw.nc"
+species_master = "../../data_static/species_master.toml"
+species_set    = "lindal1985"
+output         = "inputs/lindal_closure_composition.nc"
+prefix         = "lindal_closure"
+role           = "forward"
+title          = "Lindal et al. (1985) composition, 94 percent H2 with He and NH3, as assumed by the lindal_closure run"
+
+h2_fraction_of_remainder = 0.94
+he_fraction_of_remainder = 0.06
+
+nh3_fill_rule = "linear in pressure through the tabulated Table I values, extrapolated beyond them by scipy.interpolate.interp1d(fill_value='extrapolate'), then clamped at zero; ammonia is assigned first and the remainder is split by the two shares above"
+vertical_coordinate = "pressure_Pa"

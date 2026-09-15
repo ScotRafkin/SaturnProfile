@@ -28,5 +28,11 @@ frame_source = "Smith et al. 1982, Fig. 4 caption: 'Zonal (eastward) winds in th
 positive_direction = "eastward"
 
 [epoch]
-value = "Voyager 1 and 2, 1980 to 1981"
-value_source = "Smith et al. 1982; Ingersoll and Pollard 1982 Fig. 5 caption, 'from Voyager 2 in late August, 1981'"
+# SPEC_00 v0.19 section 5, SPEC_01 v0.28 Step 7: a wind curve has no date of its own and carries
+# the date of the observation it serves, the Voyager 2 ingress occultation; the curve's own dating
+# is the epoch_note.
+value = "1981-08-26"
+value_source = "the date of the Lindal et al. (1985) Voyager 2 ingress occultation this curve serves (SPEC_01 v0.28); Ingersoll and Pollard 1982 Fig. 5 caption, 'from Voyager 2 in late August, 1981'"
+epoch_note = "The curve combines Voyager 1 imaging (November 1980, Ls about 8 deg) and Voyager 2 imaging (late August 1981); it is assigned the occultation date (SPEC_01 v0.28 Step 7)."
+solar_longitude_deg = 18.2
+solar_longitude_source = "computed by the reviewing agent on 15 September 2026 for 1981-08-26 from the JPL approximate Keplerian elements of Saturn and the IAU pole (RA 40.589 deg, Dec 83.537 deg), a method that reproduces the equinoxes of February 1980 and 11 August 2009 to 0.3 deg; not stated by the source; to be replaced by the ephemeris value when the season tool exists (SPEC_01 v0.28 Step 7)"

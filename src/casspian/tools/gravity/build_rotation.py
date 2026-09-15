@@ -21,17 +21,23 @@ import xarray as xr
 from casspian.lib import io as cio
 from casspian.lib.control import (
     ControlFileError,
+    build_epoch,
+    build_role,
     load_section,
     reject_physical_values,
 )
 
 TOOL = "casspian-rotation-file"
 
+#: SPEC_01 v0.26: `role` is required in every build-file section, with no default. SPEC_01 v0.28:
+#: `epoch` too, the date of the observation the rotation system serves.
 SECTION_KEYS = {
     "source": True,
     "entry": True,
     "output": True,
     "prefix": True,
+    "role": True,
+    "epoch": True,
     "title": False,
 }
 
@@ -47,6 +53,8 @@ def build(control_path, section: str = "rotation") -> Path:
     output = Path(control["output"])
     prefix = control["prefix"]
     entry_name = control["entry"]
+    role = build_role(control, control_path, section)
+    epoch = build_epoch(control, control_path, section)
 
     if not source_path.exists():
         raise ControlFileError(f"{source_path}: the static transcription does not exist")
@@ -85,14 +93,20 @@ def build(control_path, section: str = "rotation") -> Path:
         attrs={
             "title": control.get("title", f"{prefix} rotation system"),
             "profile_or_run": prefix,
-            "role": "reduction",
+            "role": role,
             "source": entry.get("citation", source_path.name),
             "system_name": entry.get("name", entry_name),
-            "epoch": entry.get("epoch", "unstated"),
+            # SPEC_01 v0.28: the date of the observation the system serves, from the build
+            # file; the transcription's own dating is kept as epoch_note.
+            "epoch": epoch,
+            # SPEC_01 v0.25 Step 3: a rotation system has no season by its nature.
+            "season_absent_meaning": "uniform",
             "citation": entry.get("citation", "unstated"),
-            "input_hashes": cio.input_hashes([source_path, Path(control_path)]),
+            "input_hashes": cio.input_hashes([source_path, Path(control_path)], output),
         },
     )
+    if entry.get("epoch"):
+        dataset.attrs["epoch_note"] = entry["epoch"]
     if entry.get("note"):
         dataset.attrs["note"] = entry["note"]
     if transcribed_rate is not None:

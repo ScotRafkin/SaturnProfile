@@ -309,11 +309,9 @@ def read_scalars(path: Path) -> dict[str, xr.Dataset]:
     return groups
 
 
-def _repository_root(start: Path) -> Path:
-    for candidate in [start, *start.parents]:
-        if (candidate / ".git").exists():
-            return candidate
-    return start
+#: SPEC_01 v0.25 Step 2: the keys of `[source]` that date the observation and name its season.
+SEASON_KEYS = ("observation_date", "solar_longitude_deg", "subsolar_latitude_deg",
+               "solar_longitude_source")
 
 
 def build(raw_dir: Path, output: Path) -> Path:
@@ -331,6 +329,14 @@ def build(raw_dir: Path, output: Path) -> Path:
     with open(scalars_toml, "rb") as handle:
         tables = tomllib.load(handle)
     citation = tables.get("source", {}).get("citation", "unknown")
+    source_table = tables.get("source", {})
+    missing = [key for key in SEASON_KEYS if key not in source_table]
+    if missing:
+        raise ValueError(
+            f"{scalars_toml}: [source] lacks {missing}; the raw bundle carries the observation's "
+            "date as its epoch and its season with the source of the computation (SPEC_00 v0.17 "
+            "section 5, SPEC_01 v0.25 Step 2)."
+        )
     if "pressure_grid" not in tables:
         raise PressureGridError(
             f"{scalars_toml}: no [pressure_grid] table. SPEC_01 v0.23 Step 2 places Table I on a "
@@ -341,7 +347,6 @@ def build(raw_dir: Path, output: Path) -> Path:
     groups = {"table1": table1}
     groups.update(read_scalars(scalars_toml))
 
-    root_dir = _repository_root(raw_dir)
     data_inputs = [table1_csv, scalars_toml]
     record = [*data_inputs] + ([notes_md] if notes_md.exists() else [])
 
@@ -349,10 +354,16 @@ def build(raw_dir: Path, output: Path) -> Path:
         attrs={
             "title": "Lindal et al. (1985) Voyager 2 ingress, raw transcription bundle",
             "profile_or_run": "lindal",
+            # The raw bundle is written from the transcription with no build-file section, so
+            # its role is the transcription's own: the reduction of a source.
             "role": "reduction",
             "source": citation,
-            "input_hashes": cio.input_hashes(data_inputs, relative_to=root_dir),
-            "raw_sources": cio.input_hashes(record, relative_to=root_dir),
+            "epoch": str(source_table["observation_date"]),
+            "solar_longitude_deg": float(source_table["solar_longitude_deg"]),
+            "subsolar_latitude_deg": float(source_table["subsolar_latitude_deg"]),
+            "solar_longitude_source": str(source_table["solar_longitude_source"]),
+            "input_hashes": cio.input_hashes(data_inputs, output),
+            "raw_sources": cio.input_hashes(record, output),
         }
     )
     for line in CONVERSIONS:

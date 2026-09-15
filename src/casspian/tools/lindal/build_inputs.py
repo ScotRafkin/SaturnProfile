@@ -28,12 +28,19 @@ import numpy as np
 import xarray as xr
 
 from casspian.lib import io as cio
-from casspian.lib.control import ANCHOR_QUANTITY_FOR_RULE, ControlFileError, load_section
+from casspian.lib.control import (
+    ANCHOR_QUANTITY_FOR_RULE,
+    ControlFileError,
+    build_role,
+    load_section,
+)
 from casspian.lib.schema import WRITER_FILLED_GLOBALS, CasspianSchemaError
 
 TOOL = "casspian-lindal-inputs"
 
 SECTION_KEYS = {
+    # SPEC_01 v0.26: required, no default; written into kinds T and D.
+    "role": True,
     "raw_bundle": True,
     "prefix": True,
     "description": True,
@@ -114,18 +121,11 @@ def _attrs(units, long_name, provenance, **extra):
     return out
 
 
-def _repository_root(start: Path) -> Path:
-    start = Path(start).resolve()
-    for candidate in [start, *start.parents]:
-        if (candidate / ".git").exists():
-            return candidate
-    return start.parent
-
-
 def build(control_path, section: str = "stage_two"):
     """Write kinds T and D and the reduction manifest. Returns the three paths."""
     control = load_section(control_path, section, SECTION_KEYS, path_keys=PATH_KEYS)
     prefix = control["prefix"]
+    role = build_role(control, control_path, section)
     expected_quantity = ANCHOR_QUANTITY_FOR_RULE.get(control["geoid_anchor_rule"])
     if expected_quantity is None or control["geoid_anchor_quantity"] != expected_quantity:
         raise ControlFileError(
@@ -140,8 +140,9 @@ def build(control_path, section: str = "stage_two"):
             f"{control_path}: [{section}] diagnostics_figures = true needs diagnostics_format "
             "and diagnostics_dpi; no default is declared for them."
         )
-    root_dir = _repository_root(Path(control["raw_bundle"]))
     control_path = Path(control_path)
+    thermo_output = Path(control["thermo_output"])
+    geodesy_output = Path(control["geodesy_output"])
 
     raw_path = Path(control["raw_bundle"])
     raw = cio.read(raw_path, "raw")
@@ -173,9 +174,20 @@ def build(control_path, section: str = "stage_two"):
     finally:
         raw.close()
 
-    raw_hash = cio.input_hash_entry(raw_path, relative_to=root_dir)
-    control_hash = cio.input_hash_entry(control_path, relative_to=root_dir)
-    provenance_hashes = cio.input_hashes([raw_path, control_path], relative_to=root_dir)
+    # SPEC_00 v0.18 section 5: every path recorded relative to the file that records it.
+    def provenance(product):
+        return {
+            "raw_bundle": cio.input_hash_entry(raw_path, product),
+            "input_hashes": cio.input_hashes([raw_path, control_path], product),
+            "control_file": cio.input_hash_entry(control_path, product),
+        }
+
+    # SPEC_01 v0.25 Step 9: kinds T and D carry the observation's date and season.
+    season = {
+        "epoch": str(source["observation_date"]),
+        "solar_longitude_deg": float(source["solar_longitude_deg"]),
+        "solar_longitude_source": str(source["solar_longitude_source"]),
+    }
 
     # ---- the four companions must already exist and validate -------------------------
     companion_hashes = {}
@@ -188,7 +200,7 @@ def build(control_path, section: str = "stage_two"):
             )
         handle = cio.read(path, kind)
         try:
-            companion_hashes[key] = cio.input_hash_entry(path, relative_to=root_dir)
+            companion_hashes[key] = cio.input_hash_entry(path, Path(control["manifest"]))
         finally:
             handle.close()
 
@@ -229,7 +241,8 @@ def build(control_path, section: str = "stage_two"):
     thermo.attrs.update({
         "title": f"{prefix} thermodynamic profile, kind T",
         "profile_or_run": prefix,
-        "role": "reduction",
+        "role": role,
+        **season,
         "source": source["citation"],
         "vertical_coordinate": "pressure_Pa",
         "thermo_instance": "source_profile",
@@ -273,9 +286,7 @@ def build(control_path, section: str = "stage_two"):
         "source_rotation_system": rotation_scalars["system"],
         "source_wind_citation": wind_scalars["citations"],
         "source_wind_vertical_structure": wind_scalars["vertical_structure"],
-        "raw_bundle": raw_hash,
-        "input_hashes": provenance_hashes,
-        "control_file": control_hash,
+        **provenance(thermo_output),
     })
     cio.history_append(
         thermo,
@@ -283,7 +294,7 @@ def build(control_path, section: str = "stage_two"):
         "and height taken from the raw bundle table1 group; uncertainties present and NaN, the "
         "source states none; no composition and no geodesy in this file (SPEC_00 section 6.1)",
     )
-    thermo_path = _write_unless_unchanged(Path(control["thermo_output"]), thermo, "thermo")
+    thermo_path = _write_unless_unchanged(thermo_output, thermo, "thermo")
 
     # ---- kind D ----------------------------------------------------------------------
     order = ["surface_100mbar", "surface_1bar"]
@@ -328,7 +339,8 @@ def build(control_path, section: str = "stage_two"):
     geodesy_ds.attrs.update({
         "title": f"{prefix} fitted reference surfaces, kind D",
         "profile_or_run": prefix,
-        "role": "reduction",
+        "role": role,
+        **season,
         "source": source["citation"],
         "citation": source["citation"],
         "fit_inputs": geodesy["fit_inputs"],
@@ -341,9 +353,7 @@ def build(control_path, section: str = "stage_two"):
         "polar_asymmetry_note": surfaces["surface_100mbar"].get("polar_asymmetry_note", ""),
         "surface_value_sources": "\n".join(
             f"{s}: {surfaces[s]['value_source']}" for s in order),
-        "raw_bundle": raw_hash,
-        "input_hashes": provenance_hashes,
-        "control_file": control_hash,
+        **provenance(geodesy_output),
     })
     cio.history_append(
         geodesy_ds,
@@ -351,8 +361,7 @@ def build(control_path, section: str = "stage_two"):
         "the fit residual is stated by the source as a range across its fits, so the per "
         "surface variable is NaN and the range is in fit_residual_range_m",
     )
-    geodesy_path = _write_unless_unchanged(Path(control["geodesy_output"]), geodesy_ds,
-                                           "geodesy")
+    geodesy_path = _write_unless_unchanged(geodesy_output, geodesy_ds, "geodesy")
 
     # ---- the manifest, SPEC_00 section 7.1 -------------------------------------------
     manifest_path = Path(control["manifest"])

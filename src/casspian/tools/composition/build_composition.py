@@ -32,11 +32,13 @@ from scipy.interpolate import interp1d
 
 from casspian.lib import io as cio
 from casspian.lib.constants import CODATA_RELEASE, LOSCHMIDT_CONSTANT
-from casspian.lib.control import ControlFileError, load_section
+from casspian.lib.control import ControlFileError, build_role, load_section
 
 TOOL = "casspian-composition-lindal"
 
 SECTION_KEYS = {
+    # SPEC_01 v0.26: required, no default; also written as composition_role.
+    "role": True,
     "raw_bundle": True,
     "species_master": True,
     "species_set": True,
@@ -56,15 +58,6 @@ TEMPERATURE_FLAG_VALUES = np.array([0, 1], dtype="int8")
 TEMPERATURE_FLAG_MEANINGS = "none declared_in_refractivity_temperature_note"
 BOOLEAN_FLAG_VALUES = np.array([0, 1], dtype="int8")
 BOOLEAN_FLAG_MEANINGS = "false true"
-
-
-def _repository_root(start: Path) -> Path:
-    """The repository root, so recorded paths are relative to it and not to a machine."""
-    start = Path(start).resolve()
-    for candidate in [start, *start.parents]:
-        if (candidate / ".git").exists():
-            return candidate
-    return start.parent
 
 
 def fill_ammonia(pressure, nh3):
@@ -113,6 +106,7 @@ def build(control_path, section: str = "composition") -> Path:
     control = load_section(control_path, section, SECTION_KEYS, path_keys=PATH_KEYS)
     output = Path(control["output"])
     prefix = control["prefix"]
+    role = build_role(control, control_path, section)
     set_name = control["species_set"]
     h2_share = float(control["h2_fraction_of_remainder"])
     he_share = float(control["he_fraction_of_remainder"])
@@ -132,9 +126,10 @@ def build(control_path, section: str = "composition") -> Path:
         source_h2 = float(composition["h2_fraction"])
         h2_uncertainty = float(composition["h2_uncertainty"])
         footnote = str(source_group["table1_footnote"])
+        observation_date = str(source_group["observation_date"])
         latitude_planetographic = float(latitude_group["planetographic_deg"])
         latitude_value_source = str(latitude_group["value_source"])
-        raw_hash = cio.input_hash_entry(Path(control["raw_bundle"]))
+        raw_hash = cio.input_hash_entry(Path(control["raw_bundle"]), output)
     finally:
         raw.close()
 
@@ -215,11 +210,15 @@ def build(control_path, section: str = "composition") -> Path:
 
     dataset = xr.Dataset(variables)
     dataset.attrs.update({
-        "title": control.get("title", f"{prefix} reduction composition"),
+        "title": control.get("title", f"{prefix} {role} composition"),
         "profile_or_run": prefix,
-        "role": "reduction",
+        "role": role,
         "source": str(source_group.get("citation", "")),
-        "composition_role": "reduction",
+        "composition_role": role,
+        # SPEC_01 v0.25 Step 8: the composition is an assumption of the source, valid at the
+        # observation's date and declared season independent.
+        "epoch": observation_date,
+        "season_absent_meaning": "uniform",
         "vertical_coordinate": control["vertical_coordinate"],
         "source_statement": footnote,
         "latitude_planetocentric_absent_meaning": "point",
@@ -253,7 +252,7 @@ def build(control_path, section: str = "composition") -> Path:
         "input_hashes": cio.input_hashes([
             Path(control["raw_bundle"]), Path(control["species_master"]),
             Path(control_path),
-        ], relative_to=_repository_root(Path(control["species_master"]))),
+        ], output),
     })
 
     # ---- the species group, SPEC_00 section 6.2 --------------------------------------
@@ -276,8 +275,6 @@ def build(control_path, section: str = "composition") -> Path:
                 "of the molecule and cannot be defaulted."
             )
         return table[name]
-
-    root_dir = _repository_root(Path(control["species_master"]))
 
     per_molecule = np.array(
         [float(property_of(n, "refractivity_stp_e6")) * 1e-6 / LOSCHMIDT_CONSTANT
@@ -341,14 +338,10 @@ def build(control_path, section: str = "composition") -> Path:
         np.array([str(property_of(n, "source", "")) for n in species], dtype=object),
     )
     species_group.attrs.update({
-        # Relative to the repository root, so the record does not carry a machine's paths
-        # (SPEC_00 section 6.2: "path under [D0]").
-        "master_table": str(
-            Path(control["species_master"]).resolve().relative_to(root_dir).as_posix()
-        ),
-        "master_table_hash": cio.input_hash_entry(
-            Path(control["species_master"]), relative_to=root_dir
-        ),
+        # Relative to the file being written, so the record carries no machine's paths
+        # (SPEC_00 v0.18 section 5).
+        "master_table": cio.recorded_path(Path(control["species_master"]), output),
+        "master_table_hash": cio.input_hash_entry(Path(control["species_master"]), output),
         "set": set_name,
         "refractivity_temperature_note": str(
             refractivity_set.get("NH3", {}).get("note", "")

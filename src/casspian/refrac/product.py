@@ -32,14 +32,6 @@ METHOD = ("first order propagation of the declared input uncertainties, uncorrel
           "terms left out (SPEC_02 Step 3; SPEC_00 sections 5 and 6.7)")
 
 
-def _repository_root(start: Path) -> Path:
-    start = Path(start).resolve()
-    for candidate in [start, *start.parents]:
-        if (candidate / ".git").exists():
-            return candidate
-    return start.parent
-
-
 def _attrs(units, long_name, provenance, **extra):
     out = {"units": units, "long_name": long_name, "provenance": provenance}
     out.update({k: v for k, v in extra.items() if v is not None})
@@ -194,7 +186,6 @@ def build_product(manifest_path) -> Path:
                                "uncertainty on the absolute radius")
     dataset["radius_uncertainty_m"] = (("level",), value, attrs)
 
-    root_dir = _repository_root(manifest.path)
     input_paths = [manifest.inputs[key] for key in ctl.INPUT_KINDS] + [manifest.path]
     dataset.attrs.update({
         "title": f"{manifest.slug} registered refractivity, kind N",
@@ -202,7 +193,12 @@ def build_product(manifest_path) -> Path:
         "role": "reduction",
         "source": (f"{TOOL} reduction of the {manifest.slug} profile under "
                    f"{manifest.path.name}; source profile: {thermo.attrs.get('source', '')}"),
-        "input_hashes": cio.input_hashes(input_paths, relative_to=root_dir),
+        # SPEC_02 v0.11 Step 4: kind N carries the season of its thermo file.
+        "epoch": str(thermo.attrs["epoch"]),
+        "solar_longitude_deg": float(thermo.attrs["solar_longitude_deg"]),
+        "solar_longitude_source": str(thermo.attrs["solar_longitude_source"]),
+        # SPEC_00 v0.18 section 5: relative to the product's own directory.
+        "input_hashes": cio.input_hashes(input_paths, manifest.product),
     })
     cio.history_append(
         dataset,

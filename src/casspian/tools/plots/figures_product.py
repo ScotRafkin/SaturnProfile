@@ -1,13 +1,12 @@
-"""The kind N figure set, F1 to F6. SPEC_02 Step 5.
+"""The kind N figure set, F1 to F4. SPEC_02 Step 5.
 
 Every figure is drawn from the product file and the inputs embedded in it. Where a panel needs a
 quantity the file does not carry (gravity along the profile, the two geoids across latitude, the
 recovered temperature), it calls `lib` on the embedded inputs and its title says so. Nothing
 computed here is written to any product.
 
-F5 and F6 draw forward model fields (SPEC_03). They render when the offered file carries
-`geopotential_m2s2(level)` or `pressure_hydrostatic_Pa(level)` and are otherwise reported as
-skipped, with the field each needs.
+F5 and F6 draw forward model fields and belong to kind `profile` (`figures_profile`, SPEC_03 Step 3,
+SPEC_02 v0.10 decision 10 superseded); kind N renders F1 to F4 and reports nothing skipped.
 """
 
 from __future__ import annotations
@@ -22,11 +21,6 @@ from casspian.lib import reduction as red
 from casspian.lib.gravity import G_phi_eff, g_eff_radial, g_eff_vector, g_newton
 from casspian.tools.plots import figures_inputs as fi
 from casspian.tools.plots import style
-
-#: The fields F5 and F6 need, named in the skip report.
-F5_FIELD = "geopotential_m2s2"
-F6_FIELD = "pressure_hydrostatic_Pa"
-
 
 class _Product:
     """The product and its embedded inputs, read once."""
@@ -302,67 +296,20 @@ def figure_4(pr: _Product):
                  "recovered_temperature_max_abs": worst}
 
 
-def figure_5(pr: _Product):
-    fig = Figure(figsize=style.FIGSIZE_WIDE)
-    ax = fig.subplots(1, 1)
-    style.layout(fig, rows=1)
-    phi = np.asarray(pr.root[F5_FIELD].values, dtype="float64")
-    ax.plot(phi, pr.p / 100.0, color=style.COLOR["geopotential"], label="geopotential")
-    ax.set_xlabel("geopotential (m2/s2)")
-    twin = ax.twiny()
-    twin.plot(np.asarray(pr.thermo["height_m"].values) / 1e3, pr.p / 100.0,
-              color=style.COLOR["height"], linestyle="--", label="tabulated height")
-    twin.set_xlabel("height above the source datum (km)")
-    twin.grid(False)
-    style.pressure_axis(ax, pr.p)
-    style.anchor_line(ax, pr.anchor_Pa)
-    ax.legend(loc="lower left")
-    ax.set_title("geopotential against pressure, with height", pad=22)
-    _title(fig, f"F5. Geopotential, {pr.slug}")
-    return fig, {"geopotential_m2s2": phi}
-
-
-def figure_6(pr: _Product):
-    fig = Figure(figsize=style.FIGSIZE_WIDE)
-    ax = fig.subplots(1, 1)
-    style.layout(fig, rows=1)
-    hydro = np.asarray(pr.root[F6_FIELD].values, dtype="float64")
-    ratio = hydro / pr.p - 1.0
-    ax.axvline(0.0, color="0.6", linewidth=0.8)
-    ax.plot(ratio, pr.p / 100.0, marker="o", markersize=2.5, color=style.COLOR["hydrostatic"],
-            label="p_hydro / p_tab - 1")
-    boundary = pr.root[F6_FIELD].attrs.get("boundary_pressure_Pa")
-    if boundary is not None:
-        ax.axhline(float(boundary) / 100.0, color="0.3", linestyle="-.", linewidth=0.9,
-                   label=f"declared boundary {float(boundary) / 100.0:g} mbar")
-    style.pressure_axis(ax, pr.p)
-    style.anchor_line(ax, pr.anchor_Pa)
-    ax.set_xlabel("fractional difference")
-    ax.set_title("hydrostatic closure")
-    ax.legend(loc="lower left")
-    _title(fig, f"F6. Hydrostatic closure, {pr.slug}")
-    return fig, {"hydrostatic_fraction": ratio}
-
-
 FIGURES = (
-    ("F1", "inputs", figure_1, None),
-    ("F2", "gravity_profile", figure_2, None),
-    ("F3", "gravity_latitude", figure_3, None),
-    ("F4", "product", figure_4, None),
-    ("F5", "geopotential", figure_5, F5_FIELD),
-    ("F6", "hydrostatic", figure_6, F6_FIELD),
+    ("F1", "inputs", figure_1),
+    ("F2", "gravity_profile", figure_2),
+    ("F3", "gravity_latitude", figure_3),
+    ("F4", "product", figure_4),
 )
 
 
 def build_all(tree):
-    """Every figure the product's fields allow. Returns `(figures, skipped, data)`."""
+    """F1 to F4. Returns `(figures, skipped, data)`; nothing is skipped for kind N."""
     pr = _Product(tree)
-    figures, skipped, data = [], {}, {}
-    for key, name, maker, needs in FIGURES:
-        if needs is not None and needs not in pr.root.variables:
-            skipped[f"{key}_{name}"] = f"needs {needs}(level), which this file does not carry"
-            continue
+    figures, data = [], {}
+    for key, name, maker in FIGURES:
         fig, values = maker(pr)
         figures.append((key, name, fig))
         data[key] = values
-    return figures, skipped, data
+    return figures, {}, data

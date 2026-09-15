@@ -20,6 +20,7 @@ exists only at the single stated coordinate, and the reader refuses to broadcast
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date as _date
 
 # ---------------------------------------------------------------------------
 # Fixed strings and vocabularies, SPEC_00 section 5
@@ -140,7 +141,26 @@ WRITER_FILLED_GLOBALS = (
 
 #: Globals the caller must supply for every kind. `history` is created by `write` and
 #: appended to thereafter, so it is not demanded of the caller.
-AUTHOR_REQUIRED_GLOBALS = ("title", "profile_or_run", "role", "source")
+AUTHOR_REQUIRED_GLOBALS = ("title", "profile_or_run", "role", "source", "epoch")
+
+#: SPEC_00 v0.17 section 5: the `epoch` of a forward product whose run declared a season but no date.
+PROFILE_EPOCH_WITHOUT_DATE = "none: season declared as solar longitude only"
+
+#: SPEC_00 v0.17 section 5: the one meaning an absent season may carry. A file carries exactly one
+#: of `solar_longitude_deg` (with `solar_longitude_source`) and `season_absent_meaning`.
+SEASON_ABSENT_MEANINGS = frozenset({"uniform"})
+
+#: SPEC_03 Step 3 deliverable 3: the variables of kind `profile` that the model forms, each with a
+#: NaN uncertainty companion. The copied variables (`radius_m`, `height_above_anchor_isobar_m`,
+#: `refractivity`, the tabulated pair) carry the provenance of their source and no companion.
+PROFILE_MODELED_VARIABLES = (
+    "geopotential_m2s2",
+    "mean_refractivity_m3",
+    "mean_molar_mass_kg_mol",
+    "number_density_m3",
+    "pressure_Pa",
+    "temperature_K",
+)
 
 
 class CasspianSchemaError(Exception):
@@ -366,6 +386,48 @@ _REFRACTIVITY = KindSpec(
     notes="SPEC_00 section 6.7. `role` is always `reduction` for this kind.",
 )
 
+_PROFILE = KindSpec(
+    name="profile",
+    schema_version=1,
+    dimensions=("level", "latitude_planetocentric"),
+    required_dimensions=("level",),
+    variables=(
+        VarSpec("geopotential_m2s2", dims=("level",), units="m2 s-2", needs_uncertainty=True),
+        VarSpec("radius_m", dims=("level",), units="m"),
+        VarSpec("height_above_anchor_isobar_m", dims=("level",), units="m"),
+        VarSpec("refractivity", dims=("level",), units="1"),
+        VarSpec("mean_refractivity_m3", dims=("level",), units="m3", needs_uncertainty=True),
+        VarSpec("mean_molar_mass_kg_mol", dims=("level",), units="kg mol-1",
+                needs_uncertainty=True),
+        VarSpec("number_density_m3", dims=("level",), units="m-3", needs_uncertainty=True),
+        VarSpec("pressure_Pa", dims=("level",), units="Pa", needs_uncertainty=True),
+        VarSpec("temperature_K", dims=("level",), units="K", needs_uncertainty=True),
+        # Closure mode only, and then both (SPEC_03 Step 3 deliverable 3).
+        VarSpec("pressure_tabulated_Pa", required=False, dims=("level",), units="Pa"),
+        VarSpec("temperature_tabulated_K", required=False, dims=("level",), units="K"),
+        VarSpec("latitude_planetocentric_deg", dims=(), units="degrees_north"),
+        VarSpec("psi_deg", dims=(), units="degrees"),
+        VarSpec("gauge_isobar_Pa", dims=(), units="Pa"),
+        VarSpec("gauge_level_index", dims=(), units="1"),
+        VarSpec("boundary_pressure_Pa", dims=(), units="Pa"),
+        VarSpec("boundary_level_index", dims=(), units="1"),
+    ),
+    globals_required=("boundary_pressure_Pa", "anchor_solar_longitudes_deg", "input_hashes"),
+    groups_required=(
+        "inputs/composition",
+        "inputs/gravity",
+        "inputs/rotation",
+        "inputs/wind",
+        "namelist",
+        "production_record",
+    ),
+    grouped=True,
+    notes=(
+        "SPEC_00 v0.16 section 6.8, SPEC_03 Step 3 deliverable 3. Written by forward, role "
+        "forward, one latitude; every anchor verbatim under anchors/<slug>."
+    ),
+)
+
 _RAW = KindSpec(
     name="raw",
     schema_version=1,
@@ -387,6 +449,7 @@ KINDS: dict[str, KindSpec] = {
         _ROTATION,
         _WIND,
         _REFRACTIVITY,
+        _PROFILE,
         _RAW,
     )
 }
@@ -461,6 +524,12 @@ def _check_globals(dataset, spec: KindSpec, writer_filled: bool, where: str) -> 
         raise CasspianSchemaError(
             f"{where}: kind N is always role 'reduction' (SPEC_00 section 6.7), not {role!r}."
         )
+    if spec.name == "profile" and role != "forward":
+        raise CasspianSchemaError(
+            f"{where}: kind profile is written by forward and is role 'forward' (SPEC_03 Step 3), "
+            f"not {role!r}."
+        )
+    _check_season(attrs, spec, where)
     if spec.name == "gravity":
         stated = attrs.get("harmonic_convention")
         if stated not in KNOWN_HARMONIC_CONVENTIONS:
@@ -512,6 +581,110 @@ def _check_globals(dataset, spec: KindSpec, writer_filled: bool, where: str) -> 
             f"{where}: vertical_coordinate is {vertical!r}; "
             f"SPEC_00 section 6 allows {sorted(VERTICAL_COORDINATES)}."
         )
+
+
+def _check_season(attrs, spec: KindSpec, where: str) -> None:
+    """The season identifier of SPEC_00 v0.17 section 5, on every kind.
+
+    `epoch` (required through `AUTHOR_REQUIRED_GLOBALS`) is an ISO 8601 date, or on kind profile
+    the SPEC_00 section 5 string for a season declared without a date (SPEC_00 v0.19, SPEC_03
+    v0.11). Exactly one of `solar_longitude_deg` and `season_absent_meaning`. A season is a number
+    in [0, 360) degrees with its source; an absent season means `uniform`.
+    """
+    epoch = attrs.get("epoch")
+    if not (spec.name == "profile" and epoch == PROFILE_EPOCH_WITHOUT_DATE):
+        try:
+            _date.fromisoformat(str(epoch))
+        except ValueError:
+            allowed = (f", or on kind profile {PROFILE_EPOCH_WITHOUT_DATE!r}"
+                       if spec.name == "profile" else "")
+            raise CasspianSchemaError(
+                f"{where}: epoch is {epoch!r}; SPEC_00 v0.19 section 5 requires an ISO 8601 date"
+                f"{allowed}. A source's own dating goes in epoch_note."
+            ) from None
+    has_season = "solar_longitude_deg" in attrs
+    has_absent = "season_absent_meaning" in attrs
+    if has_season and has_absent:
+        raise CasspianSchemaError(
+            f"{where}: carries both solar_longitude_deg and season_absent_meaning; SPEC_00 v0.17 "
+            "section 5 allows exactly one."
+        )
+    if not has_season and not has_absent:
+        raise CasspianSchemaError(
+            f"{where}: carries neither solar_longitude_deg nor season_absent_meaning; SPEC_00 "
+            "v0.17 section 5 requires exactly one, so that a missing season is never silent."
+        )
+    if has_absent:
+        meaning = attrs["season_absent_meaning"]
+        if meaning not in SEASON_ABSENT_MEANINGS:
+            raise CasspianSchemaError(
+                f"{where}: season_absent_meaning is {meaning!r}; SPEC_00 v0.17 section 5 allows "
+                f"{sorted(SEASON_ABSENT_MEANINGS)}."
+            )
+        if spec.name == "profile":
+            raise CasspianSchemaError(
+                f"{where}: kind profile carries the run's declared season, so "
+                "season_absent_meaning is not allowed (SPEC_03 Step 3 deliverable 0)."
+            )
+        return
+    value = attrs["solar_longitude_deg"]
+    numeric = isinstance(value, (int, float)) or (hasattr(value, "dtype") and getattr(value, "size", 1) == 1)
+    try:
+        number = float(value) if numeric else float("nan")
+    except (TypeError, ValueError):
+        number = float("nan")
+    if not (0.0 <= number < 360.0):
+        raise CasspianSchemaError(
+            f"{where}: solar_longitude_deg is {value!r}; a season is a planetocentric solar "
+            "longitude in [0, 360) degrees (SPEC_00 v0.17 section 5)."
+        )
+    if "solar_longitude_source" not in attrs:
+        raise CasspianSchemaError(
+            f"{where}: solar_longitude_deg is present without solar_longitude_source; the season "
+            "is computed, never typed from memory, and the computation is named (SPEC_00 v0.17 "
+            "section 5)."
+        )
+
+
+def _check_profile(dataset, where: str) -> None:
+    """The rules of kind `profile` beyond its variable table (SPEC_03 Step 3 deliverable 3)."""
+    import numpy as np
+
+    names = set(dataset.variables)
+    tabulated = {"pressure_tabulated_Pa", "temperature_tabulated_K"}
+    present = tabulated & names
+    if len(present) == 1:
+        missing = (tabulated - present).pop()
+        raise CasspianSchemaError(
+            f"{where}: {present.pop()!r} is present without {missing!r}; the closure comparison "
+            "carries both tabulated quantities or neither (SPEC_03 Step 3 deliverable 3)."
+        )
+    coordinate = dataset["geopotential_m2s2"]
+    values = np.asarray(coordinate.values, dtype="float64")
+    if values.ndim != 1 or not (np.all(np.diff(values) > 0) or np.all(np.diff(values) < 0)):
+        raise CasspianSchemaError(
+            f"{where}: the coordinate 'geopotential_m2s2' is not strictly monotonic (SPEC_03 Step 3 "
+            "deliverable 3)."
+        )
+    if coordinate.attrs.get("positive") != "up":
+        raise CasspianSchemaError(
+            f"{where}: the coordinate 'geopotential_m2s2' needs positive = 'up' (SPEC_03 Step 3 "
+            "deliverable 3)."
+        )
+    for name, var in dataset.variables.items():
+        if "_uncertainty" in str(name) or var.attrs.get("provenance") != "modeled":
+            continue
+        companion = uncertainty_companion(str(name))
+        if companion not in names:
+            raise CasspianSchemaError(
+                f"{where}: the modeled variable {name!r} lacks its uncertainty companion "
+                f"{companion!r}, which kind profile carries present and NaN (SPEC_03 decision 5)."
+            )
+        if np.any(np.isfinite(np.asarray(dataset[companion].values, dtype="float64"))):
+            raise CasspianSchemaError(
+                f"{where}: {companion!r} holds finite values; kind profile carries its companions "
+                "NaN until the Monte Carlo wrapper supplies the uncertainty (SPEC_03 decision 5)."
+            )
 
 
 def _check_dimensions(dataset, spec: KindSpec, where: str) -> None:
@@ -570,6 +743,8 @@ def _check_variables(dataset, spec: KindSpec, where: str) -> None:
                 f"{where}: vertical_coordinate declares {vertical!r} but no such variable "
                 "is present."
             )
+    if spec.name == "profile":
+        _check_profile(dataset, where)
     if spec.name == "composition":
         if not any(str(n).startswith("x_") and not str(n).endswith("_uncertainty") for n in names):
             raise CasspianSchemaError(

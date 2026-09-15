@@ -37,12 +37,17 @@ import xarray as xr
 from casspian.lib import geoid as gd
 from casspian.lib import io as cio
 from casspian.lib import latitude as latmod
-from casspian.lib.control import ControlFileError, load_section
+from casspian.lib.control import ControlFileError, build_role, load_section
 from casspian.tools.wind.curve import EXTENDED, AssembledCurve, read_curve
 
 TOOL = "casspian-wind-from-curve"
 
+#: The keys the data properties file's [epoch] table must carry (SPEC_01 v0.25 Step 7): the
+#: epoch as an ISO date and the season with its source; `epoch_note` is optional.
+EPOCH_KEYS = ("value", "solar_longitude_deg", "solar_longitude_source")
+
 SECTION_KEYS = {
+    "role": True,
     "wind_source_kind": True,
     "curve_source": True,
     "points_source": True,
@@ -130,6 +135,7 @@ def build(control_path, section: str = "wind") -> Path:
 
     output = Path(control["output"])
     prefix = control["prefix"]
+    role = build_role(control, control_path, section)
     width = float(control["bin_width_deg"])
     min_count = int(control["min_count_per_bin"])
     pressure = np.asarray(control["pressure_grid_Pa"], dtype="float64")
@@ -137,6 +143,13 @@ def build(control_path, section: str = "wind") -> Path:
 
     with open(Path(control["data_properties"]), "rb") as handle:
         properties = tomllib.load(handle)
+    epoch_table = properties.get("epoch", {})
+    missing = [key for key in EPOCH_KEYS if key not in epoch_table]
+    if missing:
+        raise ControlFileError(
+            f"{control['data_properties']}: the [epoch] table lacks {missing}; a wind file "
+            "carries its epoch and season (SPEC_00 v0.17 section 5, SPEC_01 v0.25 Step 7)."
+        )
     level_ref = float(properties["observation_level"]["value_Pa"])
     if not np.any(np.isclose(pressure, level_ref)):
         raise ControlFileError(
@@ -288,14 +301,16 @@ def build(control_path, section: str = "wind") -> Path:
     dataset.attrs.update({
         "title": control.get("title", f"{prefix} cloud top zonal wind"),
         "profile_or_run": prefix,
-        "role": "reduction",
+        "role": role,
         "source": ("Ingersoll, A. P., and Pollard, D. 1982, Icarus 52, 62, Fig. 5, solid "
                    "curve; uncertainty from Smith, B. A., et al. 1982, Science 215, 504, "
                    "Fig. 4"),
         "wind_source": "ingersoll_pollard1982_fig5",
         "rotation_system_name": rotation_name,
         "rotation_rate_rad_s": Omega,
-        "epoch": properties["epoch"]["value"],
+        "epoch": str(epoch_table["value"]),
+        "solar_longitude_deg": float(epoch_table["solar_longitude_deg"]),
+        "solar_longitude_source": str(epoch_table["solar_longitude_source"]),
         "method": "cloud tracking, smoothed by the source",
         "observation_level_Pa": level_ref,
         "observation_level_justification":
@@ -323,7 +338,7 @@ def build(control_path, section: str = "wind") -> Path:
         ),
         "curve_segments_deg": np.array([south_min, south_max, north_min, north_max]),
         "latitude_conversion_inputs": cio.input_hashes(
-            [Path(control["gravity_file"]), Path(control["rotation_file"])]
+            [Path(control["gravity_file"]), Path(control["rotation_file"])], output
         ),
         "latitude_conversion_note": (
             "grid latitudes converted from planetocentric to planetographic by the direct "
@@ -350,8 +365,10 @@ def build(control_path, section: str = "wind") -> Path:
             Path(control["data_properties"]), Path(control["gravity_file"]),
             Path(control["rotation_file"]), Path(control["raw_bundle"]),
             Path(control_path),
-        ]),
+        ], output),
     })
+    if epoch_table.get("epoch_note"):
+        dataset.attrs["epoch_note"] = str(epoch_table["epoch_note"])
 
     cio.history_append(
         dataset,

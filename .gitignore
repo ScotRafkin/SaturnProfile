@@ -7,6 +7,11 @@ dist/
 # Forward run products are transient and regenerable from the run directory.
 forward/*/output/
 
+# A run's inputs are regenerable from its build control file with casspian-run-inputs; whether
+# they are committed is the author's call, and until then they stay out like every other netCDF
+# product (SPEC_03 Step 3 deliverable 1, section 8 ruling 5).
+forward/*/inputs/*.nc
+
 # Generated netCDF under occul_data is regenerable from raw/ and data_static/.
 # These two rules are removed once a reduction is accepted, so that the
 # registered product is committed as the anchor of every run (SPEC_00 section 2.4).

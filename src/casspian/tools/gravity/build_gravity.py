@@ -28,13 +28,18 @@ from casspian.lib import io as cio
 from casspian.lib.schema import HARMONIC_CONVENTION
 from casspian.lib.control import (
     ControlFileError,
+    build_epoch,
+    build_role,
     load_section,
     reject_physical_values,
 )
 
 TOOL = "casspian-gravity-file"
 
-SECTION_KEYS = {"source": True, "output": True, "prefix": True, "title": False}
+#: SPEC_01 v0.26: `role` is required in every build-file section, with no default. SPEC_01 v0.28:
+#: `epoch` too, the date of the observation the harmonic set serves.
+SECTION_KEYS = {"source": True, "output": True, "prefix": True, "role": True, "epoch": True,
+                "title": False}
 
 #: SPEC_00 section 6.4. CF style flag pair for `J_status`.
 J_STATUS_VALUES = np.array([0, 1, 2], dtype="int8")
@@ -63,6 +68,8 @@ def build(control_path, section: str = "gravity") -> Path:
     source_path = Path(control["source"])
     output = Path(control["output"])
     prefix = control["prefix"]
+    role = build_role(control, control_path, section)
+    epoch = build_epoch(control, control_path, section)
 
     if not source_path.exists():
         raise ControlFileError(f"{source_path}: the static transcription does not exist")
@@ -155,12 +162,17 @@ def build(control_path, section: str = "gravity") -> Path:
     globals_ = {
         "title": control.get("title", f"{prefix} gravity harmonic set"),
         "profile_or_run": prefix,
-        "role": "reduction",
+        "role": role,
         "source": meta.get("citation", str(source_path.name)),
         "GM_scope": gm.get("scope", "unstated"),
-        "epoch": meta.get("epoch", "unstated"),
+        # SPEC_01 v0.28: the date of the observation the set serves, from the build file; the
+        # transcription's own dating of the solution is kept as epoch_note.
+        "epoch": epoch,
+        "epoch_note": meta.get("epoch"),
+        # SPEC_01 v0.25 Step 3: a harmonic set has no season by its nature.
+        "season_absent_meaning": "uniform",
         "harmonic_convention": HARMONIC_CONVENTION,
-        "input_hashes": cio.input_hashes([source_path, Path(control_path)]),
+        "input_hashes": cio.input_hashes([source_path, Path(control_path)], output),
     }
     # The source file states its convention in prose. The netCDF asserts the code; the prose is
     # kept beside it so a reader can see what the transcription claimed.

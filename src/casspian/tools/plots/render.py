@@ -1,10 +1,10 @@
 """`render` and the `casspian-plots` entry point. SPEC_02 Step 5.
 
-`render` reads `casspian_kind` and dispatches: kind N renders the figure set F1 to F6 (those its
-fields allow); a kind W, T or C file renders its single figure view; any other kind is refused
-by name. Figures go to `<out_dir>/<prefix>_diag_<key>_<name>.<format>`, with a combined PDF of
-the kind N set at `<out_dir>/<prefix>_diag.pdf`. The default `out_dir` is `figures/` beside the
-file.
+`render` reads `casspian_kind` and dispatches: kind N renders the figure set F1 to F4; kind
+`profile` renders F5, and F6 when it carries the tabulated pair (SPEC_03 Step 3); a kind W, T or
+C file renders its single figure view; any other kind is refused by name. Figures go to
+`<out_dir>/<prefix>_diag_<key>_<name>.<format>`, with a combined PDF of a kind N or `profile` set
+at `<out_dir>/<prefix>_diag.pdf`. The default `out_dir` is `figures/` beside the file.
 """
 
 from __future__ import annotations
@@ -20,10 +20,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from casspian.lib import io as cio
 from casspian.lib.schema import CasspianSchemaError
-from casspian.tools.plots import figures_inputs, figures_product, style
+from casspian.tools.plots import figures_inputs, figures_product, figures_profile, style
 
 TOOL = "casspian-plots"
-SUPPORTED_KINDS = ("refractivity", "wind", "thermo", "composition")
+SUPPORTED_KINDS = ("refractivity", "profile", "wind", "thermo", "composition")
+#: The kinds whose figure set is also written as one combined PDF.
+SET_KINDS = {"refractivity": figures_product, "profile": figures_profile}
 FORMATS = ("png", "pdf")
 
 
@@ -61,8 +63,8 @@ def render(path, out_dir=None, format: str = "png", dpi: int = 150,
     if kind not in SUPPORTED_KINDS:
         raise UnsupportedKindError(
             f"{path.name}: casspian_kind {kind!r} has no diagnostic figures. casspian-plots "
-            "renders kind N (refractivity) and the single figure views of kinds W, T and C "
-            "(SPEC_02 Step 5)."
+            "renders kind N (refractivity), kind profile, and the single figure views of kinds "
+            "W, T and C (SPEC_02 Step 5, SPEC_03 Step 3)."
         )
     if format not in FORMATS:
         raise ValueError(f"format {format!r}; SPEC_02 Step 5 allows {list(FORMATS)}")
@@ -76,8 +78,8 @@ def render(path, out_dir=None, format: str = "png", dpi: int = 150,
         commit = str(handle.attrs["casspian_git_commit"])
         sha12 = cio.sha256(path)[:12]
         with style.styled():
-            if kind == "refractivity":
-                figures, skipped, data = figures_product.build_all(handle)
+            if kind in SET_KINDS:
+                figures, skipped, data = SET_KINDS[kind].build_all(handle)
             else:
                 figures, skipped, data = figures_inputs.build(kind, handle)
             result.skipped, result.data = skipped, data
@@ -88,7 +90,7 @@ def render(path, out_dir=None, format: str = "png", dpi: int = 150,
                 target = out_dir / f"{stem}.{format}"
                 fig.savefig(target, dpi=dpi, format=format)
                 result.written.append(target)
-            if kind == "refractivity":
+            if kind in SET_KINDS:
                 combined = out_dir / f"{prefix}_diag.pdf"
                 with PdfPages(combined) as pdf:
                     for _, _, fig in figures:

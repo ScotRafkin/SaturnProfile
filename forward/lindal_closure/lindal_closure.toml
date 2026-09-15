@@ -1,0 +1,36 @@
+[run]
+name        = "lindal_closure"
+description = "Hydrostatic closure of the Lindal reduction at its own latitude under matching forward inputs"
+mode        = "closure"          # this specification implements only closure; SPEC_04 adds transfer
+solar_longitude_deg = 18.2       # v0.9: the run's season; in closure mode equal to the anchor's
+
+[[anchors]]                      # exactly one entry in closure mode
+slug   = "lindal"                # must equal profile_or_run inside the file, or refuse
+path   = "../../occul_data/lindal/lindal_refractivity.nc"
+weight = 1.0
+measurement_uncertainty_scale = 1.0
+
+[inputs]                         # all under inputs/, all prefixed with the run name (SPEC_00 section 7.2)
+composition = "inputs/lindal_closure_composition.nc"
+gravity     = "inputs/lindal_closure_gravity.nc"
+rotation    = "inputs/lindal_closure_rotation.nc"
+wind        = "inputs/lindal_closure_wind.nc"
+
+[hydrostatic_boundary]
+p_b_rule     = "anchor_profile_top"   # the tabulated pressure at the anchor's top level, read
+                                      # from the thermo group embedded in kind N; the only rule
+                                      # accepted in closure mode. A general run may instead
+                                      # declare p_b_Pa (SPEC_00 section 7.2); exactly one of the two.
+p_b_location = "top_of_anchor_profile"
+
+[isobars]
+gauge_isobar_Pa = 1.0e4          # where Phi = 0; must be a tabulated level of the anchor in closure mode
+
+[output]
+directory = "output"
+product   = "lindal_closure_profile.nc"
+
+[diagnostics]                    # as SPEC_00 section 7.1
+figures = true
+format  = "png"
+dpi     = 150

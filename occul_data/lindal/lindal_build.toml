@@ -9,6 +9,8 @@
 source = "../../data_static/harmonics/null1981.toml"
 output = "lindal_gravity.nc"
 prefix = "lindal"
+role   = "reduction"   # SPEC_01 v0.26: required in every section
+epoch  = "1981-08-26"  # SPEC_01 v0.28: the date of the occultation the harmonic set serves
 title  = "Null et al. (1981) harmonic set, as used in the Lindal reduction"
 
 [rotation]
@@ -16,6 +18,8 @@ source = "../../data_static/rotation/system_iii.toml"
 entry  = "system_iii"
 output = "lindal_rotation.nc"
 prefix = "lindal"
+role   = "reduction"
+epoch  = "1981-08-26"
 title  = "System III rotation, as used in the Lindal reduction"
 
 
@@ -33,6 +37,7 @@ rotation_file    = "lindal_rotation.nc"
 raw_bundle       = "raw/lindal_raw.nc"          # for the reference geoid polar radius
 output           = "lindal_wind.nc"
 prefix           = "lindal"
+role             = "reduction"
 title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as used in the Lindal reduction"
 
 # Uncertainty binning of the Smith points.
@@ -68,6 +73,7 @@ species_master = "../../data_static/species_master.toml"
 species_set    = "lindal1985"
 output         = "lindal_composition.nc"
 prefix         = "lindal"
+role           = "reduction"
 title          = "Lindal et al. (1985) reduction composition, 94 percent H2 with He and NH3"
 
 # How the remainder is divided once ammonia is assigned. Checked against the h2_fraction the
@@ -83,6 +89,7 @@ vertical_coordinate = "pressure_Pa"
 # Pointers and declared choices only.
 raw_bundle       = "raw/lindal_raw.nc"
 prefix           = "lindal"
+role             = "reduction"
 description      = "Voyager 2 ingress, Lindal, Sweetnam and Eshleman 1985, Table I"
 thermo_output    = "lindal_thermo.nc"
 geodesy_output   = "lindal_geodesy.nc"

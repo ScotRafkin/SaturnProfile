@@ -19,7 +19,9 @@ it without opening the file first.
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -56,21 +58,69 @@ def sha256(path) -> str:
     return digest.hexdigest()
 
 
-def input_hash_entry(path, relative_to=None) -> str:
-    """Format one `input_hashes` entry: `<relative path> sha256:<hex>` (SPEC_00 section 5)."""
+def recorded_path(path, product) -> str:
+    """The path of `path` as the file at `product` records it (SPEC_00 v0.18 section 5).
+
+    Relative to the directory of `product`, with `/` as the separator, so that a file and the
+    inputs it names can be moved together and a record never carries a machine's paths. Every
+    writer records every path it names through this function. A path that cannot be expressed
+    relative to the product (another drive) is refused rather than recorded absolute.
+    """
+    target = Path(path).resolve()
+    base = Path(product).resolve().parent
+    try:
+        relative = os.path.relpath(target, base)
+    except ValueError:
+        raise CasspianSchemaError(
+            f"{target} cannot be recorded relative to {Path(product).name}: the two are on "
+            "different drives. SPEC_00 v0.18 section 5 records every path relative to the file "
+            "that names it; an absolute path is a defect."
+        ) from None
+    return Path(relative).as_posix()
+
+
+def input_hash_entry(path, product) -> str:
+    """One `input_hashes` entry, `<path relative to product> sha256:<hex>` (SPEC_00 section 5)."""
+    return f"{recorded_path(path, product)} sha256:{sha256(path)}"
+
+
+def input_hashes(paths, product) -> str:
+    """An `input_hashes` global for the file at `product`: one entry per input, newline separated."""
+    return "\n".join(input_hash_entry(p, product) for p in paths)
+
+
+def hash_entries(text) -> dict:
+    """Parse an `input_hashes` value into `{recorded path: hex digest}`."""
+    entries = {}
+    for line in str(text).splitlines():
+        if " sha256:" in line:
+            name, digest = line.rsplit(" sha256:", 1)
+            entries[name.strip()] = digest.strip()
+    return entries
+
+
+def warn_changed_inputs(attrs, path) -> list:
+    """Warn for every `input_hashes` entry that names an existing file whose hash differs.
+
+    SPEC_00 v0.18 section 8, for every derived kind. Each recorded path is resolved against the
+    directory of the file being read. A path that does not resolve to a file is silent, since a
+    copied file is not a defect; the embedded copy or the recorded hash remains authoritative.
+    Returns the messages, so a caller can report them.
+    """
     path = Path(path)
-    shown = path
-    if relative_to is not None:
-        try:
-            shown = path.resolve().relative_to(Path(relative_to).resolve())
-        except ValueError:
-            shown = path
-    return f"{shown.as_posix()} sha256:{sha256(path)}"
-
-
-def input_hashes(paths, relative_to=None) -> str:
-    """Format an `input_hashes` global: one entry per input, newline separated."""
-    return "\n".join(input_hash_entry(p, relative_to) for p in paths)
+    base = path.resolve().parent
+    messages = []
+    for name, digest in hash_entries(attrs.get("input_hashes", "")).items():
+        candidate = base / name
+        if candidate.is_file() and sha256(candidate) != digest:
+            message = (
+                f"{path.name}: input_hashes entry {name} does not match the file now at that path "
+                "beside it. The embedded copy and the recorded hash remain authoritative (SPEC_00 "
+                "section 8)."
+            )
+            warnings.warn(message, stacklevel=3)
+            messages.append(message)
+    return messages
 
 
 def history_append(dataset, line: str):
@@ -234,6 +284,8 @@ def write(path, dataset, kind: str, groups=None, created_by: str = "casspian"):
             raise CasspianSchemaError(
                 f"{path.name}: kind {kind} requires the group {name!r} (SPEC_00 section 6)."
             )
+    if kind == "profile":
+        _check_profile_anchor_groups(list(group_datasets), path.name)
 
     encoding = {}
     for name, var in dataset.data_vars.items():
@@ -335,11 +387,14 @@ def read(path, kind: str):
                     f"{where}: kind {kind} requires the group {name!r}, which is not in the "
                     "file (SPEC_00 section 6)."
                 )
+        if kind == "profile":
+            _check_profile_anchor_groups(present, where)
     except Exception:
         root.close()
         raise
 
     if not spec.grouped:
+        warn_changed_inputs(root.attrs, path)
         return root
     root.close()
     tree = xr.open_datatree(path, engine="netcdf4")
@@ -349,7 +404,18 @@ def read(path, kind: str):
         except Exception:
             tree.close()
             raise
+    warn_changed_inputs(tree.attrs, path)
     return tree
+
+
+def _check_profile_anchor_groups(groups, where: str) -> None:
+    """Kind `profile` carries each anchor verbatim under `anchors/<slug>` (SPEC_03 Step 3)."""
+    anchors = [g for g in groups if g.startswith("anchors/") and g.count("/") == 1]
+    if not anchors:
+        raise CasspianSchemaError(
+            f"{where}: kind profile carries every anchor it used as a group anchors/<slug>, the "
+            "kind N file verbatim; none is present (SPEC_03 Step 3 deliverable 3)."
+        )
 
 
 #: The inputs whose hashes kind N records, in `reduction_record` and in `input_hashes`.
@@ -364,17 +430,12 @@ def _check_refractivity_hashes(tree, path: Path) -> None:
     `input_hashes` (SPEC_00 section 5) and as `input_sha256_<input>` in `reduction_record`. A
     global entry that no longer lists the recorded hash means the file was altered after it was
     written, and it is refused, naming the input. An entry that no longer matches the file now
-    on disk at that path only warns (SPEC_00 section 8): the embedded copy is authoritative.
+    beside it only warns, by the rule `read` applies to every derived kind
+    (`warn_changed_inputs`, SPEC_00 v0.18 section 8): the embedded copy is authoritative.
     """
-    import warnings
-
     where = path.name
     record = tree["reduction_record"].attrs
-    entries = {}
-    for line in str(tree.attrs.get("input_hashes", "")).splitlines():
-        if " sha256:" in line:
-            name, digest = line.rsplit(" sha256:", 1)
-            entries[name.strip()] = digest.strip()
+    entries = hash_entries(tree.attrs.get("input_hashes", ""))
     listed = set(entries.values())
     for key in _REFRACTIVITY_HASHED:
         recorded = record.get(f"input_sha256_{key}")
@@ -392,15 +453,3 @@ def _check_refractivity_hashes(tree, path: Path) -> None:
             f"{where}: input_hashes lists {len(entries)} entries; kind N lists the six inputs "
             "and the manifest (SPEC_00 section 6.7)."
         )
-    resolved = path.resolve()
-    root_dir = next((c for c in [resolved, *resolved.parents] if (c / ".git").exists()), None)
-    if root_dir is None:
-        return
-    for name, digest in entries.items():
-        candidate = root_dir / name
-        if candidate.exists() and sha256(candidate) != digest:
-            warnings.warn(
-                f"{where}: input_hashes entry {name} does not match the file now on disk. The "
-                "embedded copy remains authoritative (SPEC_00 section 8).",
-                stacklevel=3,
-            )
