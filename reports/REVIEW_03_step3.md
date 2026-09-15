@@ -102,3 +102,20 @@ and the numeric bounds of the acceptance are the acceptance. The bounds do not m
 5. The suites of section 5 on the swept products (02_1, 02_4, 02_5 with its changed checks,
    02_6, 03_1, 03_2), results in section 8. The sweep record commit.
 6. Set `STATE.md` to accepted with the commits. Step 4 then proceeds when the author says go.
+
+## Sweep verified (15 September 2026, after the acceptance commit)
+
+The refreshed report was read against the swept products on disk. Every SHA-256 in section 7
+(the manifest, the eight reduction files, the four run inputs) was recomputed and matches. Every
+one of the twelve netCDF files carries commit `6ae113e` and none `-dirty`. Every file carries
+`epoch = "1981-08-26"`; gravity and rotation carry the former prose as `epoch_note`, the wind its
+imaging note. The swept kind N is bit-identical to the Step 0 product in every variable of the
+root and of every embedded group; its `reduction_record` differs only in the commit and the seven
+input hashes. The deferred suites pass on the swept products: Step 02_1 (6 of 6, rerun after its
+stale key table was replaced by the gravity tool's own `SECTION_KEYS`), 02_4 (9), 02_5 (7 with
+its changed checks), 02_6 (7), SPEC_03 Step 1 (9), Step 2 (8). The committed namelist loads on
+the swept products without relaxation, which closes finding 2.
+
+Step 3 is closed. The remaining action for the coding agent is the sweep record commit (the
+refreshed report is an uncommitted change in the working tree). Step 4 proceeds when the author
+says go.
