@@ -226,8 +226,8 @@ Steps 02_1 (it compares input and manifest hashes with the report tables, which 
 only at the sweep), 02_4, 02_5 and 02_6 (they run `casspian-refrac` on the on-disk inputs, which
 refuses them until they are clean, and 02_4 to 02_6 rewrite the registered product), and the SPEC_03
 Step 1 and Step 2 acceptances (they read the registered kind N, which the new reader refuses until
-the sweep rebuilds it, finding 2). They run after the acceptance commit and the sweep, and their
-results will be added to section 8.
+the sweep rebuilds it, finding 2). They were run after the acceptance commit and the sweep; results
+in section 8.
 
 ## 6. Manuscript and specification notes
 
@@ -236,25 +236,31 @@ For the review: finding 1 (ISO epochs for G and R), finding 3 (kind C `source_st
 
 ## 7. Hashes
 
-Provisional, from the working tree of the rerun (`1dfe483...-dirty`), for the record only; not in
-the row format the Step 02_1 suite reads. The registered hashes are recorded here after the sweep.
-The first run's provisional hashes are superseded.
+The sweep, after the acceptance commit `6ae113e`, on a clean tree (`reports/step03_3/sweep.sh`, log
+in `reports/step03_3/sweep.txt`): `casspian-lindal-raw`, the gravity, rotation, wind and composition
+tools, `casspian-lindal-inputs`, `casspian-refrac` with its figures, and `casspian-run-inputs` for
+the closure run. **The `-dirty` scan: every one of the twelve netCDF files carries commit `6ae113e`
+and none `-dirty`**; the tree was clean after. These rows supersede REPORT_01_step9 section 6,
+REPORT_01_step8, REPORT_02_step6 section 7 and REPORT_03_step0 section 7 for every file they name,
+and the Step 02_1 and Step 02_6 suites read them. The provisional hashes of the two working-tree runs
+are superseded. The four `lindal_closure_*` inputs are not committed (`.gitignore`, section 8
+ruling 5 open); they are regenerable from `lindal_closure_build.toml`.
 
-| File | Kind | SHA-256 (provisional) |
+| File | Kind | SHA-256 |
 |---|---|---|
-| occul_data/lindal/raw/lindal_raw.nc | raw | f74df3a51fbb3b30468c0d96ccef02818f283c7b8f2fff923f3bbed929367414 |
-| occul_data/lindal/lindal_thermo.nc | thermo | 9bc052d0e53327d1db0a5fcbb1d1c4b78e862cb06a364ef0e1c2014840c8df5f |
-| occul_data/lindal/lindal_geodesy.nc | geodesy | 6103b4c9746fcf27fed3f79b1846339e16784d55e427b7f01456b6829cd3595d |
-| occul_data/lindal/lindal_gravity.nc | gravity | 4948bf1b8408406268bbcae38dd0afabb10d8099ce6a6a5fb8d84d17d601a717 |
-| occul_data/lindal/lindal_rotation.nc | rotation | eba8612d3aeb494400f10878006dbe3c6a638aad43c05d631ae491084bf4a64d |
-| occul_data/lindal/lindal_wind.nc | wind | 7d445c9812e25e984c7af05789aba5ab06fc4084c43157671ce30cb60244d7c2 |
-| occul_data/lindal/lindal_composition.nc | composition | 45e4aad47714304a48a59f3042f9fa3d0c67e61c2bc03553daa514a79cde6298 |
-| occul_data/lindal/lindal_reduction.toml | manifest | 97e542d6665f525002d2a144a52da5633892f007beb28f778434af245a88dfee (unchanged) |
-| candidate lindal_refractivity.nc | refractivity | c17a67a1c0f861226a70134ab0e85b9d10eca54aadd1dfec12e5edb3e4a01d5a |
-| forward/lindal_closure/inputs/lindal_closure_composition.nc | composition | d76db689b350b647b6a68f715a614c655fc771a63f36671a37175b876f99e2b7 |
-| forward/lindal_closure/inputs/lindal_closure_gravity.nc | gravity | 12f0fe891b419c073bbae6c579d855f3f3bd61d8ecda6630265c341e1d90f8c7 |
-| forward/lindal_closure/inputs/lindal_closure_rotation.nc | rotation | 55c66e3111e30698cf0192713fa4d4be5a27493c9ada9a77aafc701632d8b601 |
-| forward/lindal_closure/inputs/lindal_closure_wind.nc | wind | 11e6e8614548ac2b182488c8425a059b07e2a8b697b869e7a5021034a2910534 |
+| `lindal_reduction.toml` | manifest | `97e542d6665f525002d2a144a52da5633892f007beb28f778434af245a88dfee` |
+| `lindal_raw.nc` | raw | `c7c7733310d39ba2dd879c5d3ed67d33637455f44d6770436ce482a50bcbcefb` |
+| `lindal_thermo.nc` | thermo | `fbbcfdd106c3295d4b0d33664166e39b2f7c00117d08aa16ce437a94766c1810` |
+| `lindal_geodesy.nc` | geodesy | `f45239ffc7213801e3c54e7bfff678e130d69d30fe261527ca5ce84172a19721` |
+| `lindal_gravity.nc` | gravity | `7993308884cd080eba44272a9a1bd58f9754d71ed50a6973c7570db32b75ff14` |
+| `lindal_rotation.nc` | rotation | `475ab5c631710c505aff580a419bd425e835079e0d1a603c23709d8997618b43` |
+| `lindal_wind.nc` | wind | `fd1d82af11eeaf39df657a2fa0c7a220eb79588ba0ed81ddaca67cf387ec0ca9` |
+| `lindal_composition.nc` | composition | `0c0b0110a2612a62782909aee61696d05581fb490ccd622ad84d09db522c9f71` |
+| `lindal_refractivity.nc` | refractivity | `d2886aedd7b8bdb7493404983138b75e77e36f2f37aecf33dbdaaa6e2347504b` |
+| `lindal_closure_composition.nc` | composition | `00c10e36ffaf478fc658c7d2ef14b9920fc454dd80ebb6ae32b195290d627d76` |
+| `lindal_closure_gravity.nc` | gravity | `cb9d210cdd455ba4ab68fbd4eba21b34eabdd413b719f2d4b0abcb87d1f6a539` |
+| `lindal_closure_rotation.nc` | rotation | `c4e84629c34ac82016f5e3ae298f922aa514f93d44077ffc3223b9cea039c787` |
+| `lindal_closure_wind.nc` | wind | `7ddbc644050236433837a3b4d03ee8170230e3ad03263bd2f80638df4deed8a4` |
 
 ## 8. Regression
 
@@ -269,10 +275,26 @@ all pass.
 
 No suite wrote into `occul_data/` or `forward/`.
 
+**After the sweep** (`reports/step03_3/post_sweep_suites.sh`, results in
+`reports/step03_3/post_sweep.txt`), on the clean products of section 7: **Step 02_1 6 of 6,
+Step 02_4 9 of 9, Step 02_5 7 of 7, Step 02_6 7 of 7, SPEC_03 Step 1 9 of 9, SPEC_03 Step 2 8 of 8.**
+- Step 02_1 first stopped in its check 6, which loaded `lindal_build.toml` `[gravity]` against a
+  key table copied into the suite before `role` and `epoch` existed. The check now uses the gravity
+  tool's own `SECTION_KEYS`; rerun alone, 6 of 6, its check 1 matching every input and the manifest
+  against the rows of section 7.
+- Step 02_5 passed with its two changed checks (nothing skipped for kind N).
+- Steps 02_4 to 02_6 rewrite `lindal_refractivity.nc` and its figures, and 02_5 recopies the
+  committed Step 5 report figures. The swept product and figures were copied aside and restored:
+  SHA-256 `d2886aed...` before and after, equal to section 7; `reports/figures/` restored from git.
+- Beyond the specification, finding 2 closed: the committed namelist
+  `forward/lindal_closure/lindal_closure.toml`, read by `read_run_namelist` and loaded by
+  `load_run_inputs` with no relaxation, loads on the swept products: gauge level 29, all four closure
+  comparisons identical, the anchor and the four inputs at commit `6ae113e`.
+
 No em dash or en dash appears in any file written in this step.
 
 ## 9. Next step
 
-The review. Nothing is committed and Step 4 does not start until the review is in and the author
-says go. After it: the acceptance commit, the clean rebuild of the chain, the product and the run's
-inputs, the sweep with hashes recorded in section 7, then the suites of section 5.
+Step 3 is accepted (`6ae113e`) and swept. Step 4, `forward/production.py`, `casspian-forward` and the
+closure run, starts when the author says go; it also enforces the kind C `source_statement` rule
+(finding 3, SPEC_03 v0.11).
