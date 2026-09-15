@@ -2,16 +2,16 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.10, 15 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.12, 15 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
 Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
 (REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1, `b3efc3d`); Step 2 accepted (REVIEW_03_step2, `994c787`); Step 3
-proceeds, with the season identifier (deliverable 0, v0.9) and the rulings on the coding
-agent's pre-execution review (v0.10, §8) applied. Steps 1 to 4 proceed in order, each after the
-review of the one before.** The amendments in the Appendix have been applied to SPEC_00
+reviewed and accepted (REVIEW_03_step3; v0.11 and v0.12 carry the rulings, §8), its acceptance commit,
+sweep and deferred suites to follow; Step 4 proceeds after the sweep record when the author says
+go. Steps 1 to 4 proceed in order, each after the review of the one before.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.18, the closed
-`SPEC_01_Lindal_Tool_Chain.md` v0.26 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.11,
+`SPEC_01_Lindal_Tool_Chain.md` v0.28 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.11,
 which it does not repeat. See §9 for the revision history.
 
 ---
@@ -290,15 +290,25 @@ that everything is valid at an instant). In this step:
 
 - `lib.schema` requires `epoch` on every kind and exactly one of `solar_longitude_deg` (with
   `solar_longitude_source`) and `season_absent_meaning = "uniform"`; `epoch_note` optional.
+  `epoch` is parsed: an ISO 8601 date, or on kind `profile` the SPEC_00 §5 string for a season
+  declared without a date (v0.11); in this chain every file's date is 1981-08-26 (v0.12). The raw bundle's `role` is always `reduction`: it is the
+  transcription of a source and has no build-file section (v0.11, REPORT_03_step3 decision 4).
 - The transcription and the reduction chain are amended as SPEC_01 v0.25 and SPEC_02 v0.11 say
   (the `Ls` of the Voyager 2 ingress, 18.2° with the sub-solar latitude 8.06° N, transcribed
-  with its source; G and R `uniform`; W with the imaging epoch and season; the reduction
-  composition `uniform`; T, D and N with the observation's date and season), and the chain is
+  with its source; G and R `uniform`; W with the imaging season; the reduction
+  composition `uniform`; T, D and N with the observation's season), **every file of the chain
+  carrying `epoch = "1981-08-26"`, the date of the occultation** (author decision of
+  15 September 2026, v0.12: one date for the whole chain; a file whose content has no date of
+  its own, the harmonic set, the rotation system, the wind curve, the composition, carries the
+  date of the observation it serves, and its source's own dating goes in `epoch_note` when it is
+  not already stated elsewhere in the file; SPEC_00 v0.19 §5, SPEC_01 v0.28). The G and R
+  build-file sections carry `epoch` beside `role` and the tools write it; the wind's data
+  properties file `[epoch]` says the same date with its existing note, and the chain is
   rebuilt once by the procedure of §0 for a step that changes an input, with the new hashes
   recorded in this step's report in the row format the Step 02_1 suite reads. Gravity and
   rotation are rebuilt this time, since their content changes.
 - The run's inputs carry seasons the same way (deliverable 1): the wind the imaging season,
-  gravity and rotation `uniform`, the composition `uniform`.
+  gravity and rotation `uniform`, the composition `uniform`; all four dated 1981-08-26 (v0.12).
 - The namelist `[run]` gains `solar_longitude_deg`, required, and the optional `date`
   (deliverable 2); in closure mode the run's season must equal the anchor's exactly.
 - Kind `profile` carries the run's `solar_longitude_deg`, its `epoch` (the declared date, or
@@ -455,8 +465,8 @@ so the report can show what it compared.
 
 **Deliverable 3: the product kind `profile` (SPEC_00 v0.16 §5 and new §6.8).** Written by
 `forward`, role `forward`, `casspian_kind = "profile"`, file `<run>_profile.nc`, one latitude,
-dimension `level`, `latitude_absent_meaning = "point"` with `latitude_planetocentric_deg` a
-scalar. Variables, all `provenance = "modeled"` unless noted:
+dimension `level`, `latitude_planetocentric_absent_meaning = "point"` (the SPEC_00 §5 form,
+named for the dimension; v0.11) with `latitude_planetocentric_deg` a scalar. Variables, all `provenance = "modeled"` unless noted:
 
 | Variable | Units | Notes |
 |---|---|---|
@@ -489,9 +499,15 @@ version is 1.
 `tools/plots` dispatches on kind `profile`: F5 (`Φ` against `p` with `h` on a twin axis; the
 across-latitude panel of SPEC_02's F5 is dropped until SPEC_04 builds the surface) and F6
 (`pressure_Pa / pressure_tabulated_Pa − 1` against `p`, with the boundary level and the gauge
-level marked, and the print-rounding envelope of the anchor drawn as a band: half a unit in
-the last printed figure of each tabulated pressure, which after Step 0 is zero at the snapped
-levels, plus the height rounding term ±50 m divided by the local scale height). F6 renders
+level marked, and the print-rounding envelope of the anchor drawn as a band: half a unit of
+the printed pressure column's precision, which after Step 0 is zero at the snapped levels and
+3.9e-6 at the off-grid bottom row, plus the height rounding term, half a unit of the printed
+height column's precision divided by the local scale height; the precision of a column is the
+finest any value of it shows, 0.01 mbar and 0.1 km for Table I, since the last printed figure
+of one value cannot be recovered from a float (v0.11, REPORT_03_step3 finding 5). The band is
+the leading-order budget of §5, not a bound. The gauge marker on F5 and F6 is labeled with the
+declared `gauge_isobar_Pa`, the tabulated value that defines the gauge, not the hydrostatic
+pressure found at that level (v0.11). F6 renders
 only when the tabulated companions are present; F5 always. The F5 and F6 placeholders written
 against `geopotential_m2s2` and `pressure_hydrostatic_Pa` on kind N are removed; kind N
 renders F1 to F4 and reports nothing skipped (SPEC_02 decision 10 superseded; §7 decision 4).
@@ -585,6 +601,11 @@ radial reading, `g_k (r_{k+1} − r_k)` with `r` the projected radius, is report
 (two factors; mean about −9.6e-3, bottom about −1.2e-2, measured by the reviewing agent) and
 must fail the same bound.
 
+Also in this step (v0.11, REPORT_03_step3 finding 3): the kind C reader enforces the
+`source_statement` rule its schema declares for role `reduction` (`conditional_globals`), which
+no code read; no product changes and nothing is rebuilt, since the composition tool already
+writes the attribute in both roles.
+
 **Acceptance.** `casspian-forward forward/lindal_closure/lindal_closure.toml` writes
 `output/lindal_closure_profile.nc`, which reads back as kind `profile` with the anchor and the
 four inputs embedded byte-identical (compare through `xarray.Dataset.identical` on every
@@ -596,8 +617,12 @@ excluding the bottom row, within 1.5e-3 in the top decade, within 4e-3 at the bo
 its mean below 10 mbar is within ±1.5e-3; the temperature residual equals the pressure
 residual to 1e-12 at every level; the negative control's mean below 10 mbar is below −4e-3, and so is the fully radial
 reading's (both must fail the mean bound, which is what shows the bound has teeth; v0.7); F5 and F6 are rendered
-by the driver and by `casspian-plots` by hand, byte-identical apart from the footer, and the
-residual drawn in F6 sits inside the envelope band at every snapped level; the author views
+by the driver and by `casspian-plots` by hand, byte-identical apart from the footer; the
+residual is drawn in F6 against the envelope band, and the levels at which it lies outside the
+band are counted and reported with their values (v0.11: the band is the leading-order budget,
+±50 m over the scale height, 1.3e-3 at 39 km, while the expected residual between 10 and
+100 mbar is ±2.6e-3, so inclusion in the band is a description, not an acceptance; the numeric
+bounds above are the acceptance and do not move); the author views
 F5 and F6 (attached to the report) and accepts them by eye. A residual outside the ranges
 above is a finding with the measured value and the reason, not a loosened check.
 
@@ -748,6 +773,22 @@ expression and is recorded as the module's form.
    acceptance through the §0 relaxation and rebuilt clean at the sweep; `forward/*/inputs/*.nc`
    goes into `.gitignore`.
 
+**Rulings on REPORT_03_step3 (REVIEW_03_step3, 15 September 2026).** Finding 1: correct, the
+contradiction was SPEC_01 v0.25's "as already recorded" against SPEC_00 §5's ISO date. The
+author's decision (v0.12, superseding the v0.11 wording that asked for the sources' own dates):
+every file of the chain carries the occultation date, 1981-08-26, with the source's own dating
+in `epoch_note` where it is not already stated; one date, no per-source casework. Applied before
+the acceptance commit so the chain is rebuilt once (deliverable 0, SPEC_00 v0.19, SPEC_01
+v0.28). Finding 2: as
+intended. Finding 3: a reader defect, enforced at Step 4 without a rebuild. Finding 4: accepted;
+whether "the reviewing agent" is named in data attributes is a question to the author. Finding
+5: correct, the column-wise precision is the envelope's (deliverable 3). Finding 6: deferred to
+the Step 4 figures, with the gauge marker labeled by the tabulated gauge pressure. Decisions 1
+to 11 accepted; the raw bundle's constant role, the `latitude_planetocentric_absent_meaning`
+form and the every-difference refusal are recorded. The reviewing agent's own finding on the
+Step 4 band clause is restated in §5. Ruling 5 of this section (committing `inputs/*.nc`)
+remains open.
+
 **Rulings of 15 September 2026 (v0.9).** The season identifier is added to Step 3 as
 deliverable 0 rather than as a step of its own, because Step 3 already touches the schema for
 kind `profile` and already builds the run's inputs, and the rebuild of the chain uses the §0
@@ -761,6 +802,8 @@ SPEC_04; the retrieval leg and the seasonal propagator are later specifications.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.12 | 2026-09-15 | Author decision on REVIEW_03_step3 finding 1: every file of the Lindal chain and of the closure run carries `epoch = "1981-08-26"`, the occultation date, the source's own dating in `epoch_note`; G and R build-file sections carry `epoch`; dependencies SPEC_00 v0.19, SPEC_01 v0.28 | author, 15 September 2026 |
+| 0.11 | 2026-09-15 | REVIEW_03_step3: G and R `epoch` as ISO dates with the prose as `epoch_note`, `epoch` parsed by the reader (SPEC_01 v0.27); the raw bundle's role always `reduction`; `latitude_planetocentric_absent_meaning` on kind `profile`; the F6 envelope by column precision and stated to be the budget, not a bound; the gauge marker labeled by the tabulated value; Step 4: the band clause restated as a count, the kind C `source_statement` rule enforced; status line: Step 3 reviewed; §8 rulings on REPORT_03_step3 | REVIEW_03_step3 |
 | 0.10 | 2026-09-15 | Coding agent's pre-execution review of Step 3: required `role` in build files (no default), the closure drop list as a rule, paths relative to the product for every writer with the reader resolving against the file's directory, acceptance restated; dependencies SPEC_00 v0.18, SPEC_01 v0.26 | coding agent's pre-execution review |
 | 0.9 | 2026-09-15 | Step 3 deliverable 0: the season identifier across the chain (schema, transcription, rebuild, run inputs, namelist `solar_longitude_deg`, kind `profile` globals), with the closure equality and the thirteenth refusal case; dependencies to SPEC_00 v0.17, SPEC_01 v0.25, SPEC_02 v0.11; status line: Step 2 accepted at `994c787` | the seasonal design note of 15 September 2026; author decision |
 | 0.8 | 2026-09-15 | Step 2: the linear-T test column's orientation stated (falling with height); status line: Step 2 accepted; §8 rulings on REPORT_03_step2 | REVIEW_03_step2 |

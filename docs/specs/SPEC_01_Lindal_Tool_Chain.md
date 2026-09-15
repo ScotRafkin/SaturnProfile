@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.26, 15 September 2026. Author of record: S. Rafkin. Status: closed at commit ece58d2; v0.26: every build-file section carries a required `role` key and every writer records paths relative to its product (SPEC_00 v0.18), applied at the SPEC_03 Step 3 rebuild; the season identifier added at v0.25 (Steps 2, 3, 7, 8, 9) for SPEC_03 Step 3, with a rebuild of the chain; Steps 2, 8 and 9 amended at v0.21, the snap rule restated at v0.22 and v0.23 before Step 0 began, the `k` run endpoints corrected at v0.24 (REPORT_03_step0 finding 1) (the Table I pressure grid: `pressure_printed_Pa` beside `pressure_Pa` on the declared `10^(k/100)` mbar grid, applied at stage one, read by every downstream tool) for SPEC_03 Step 0, with a rebuild of the whole chain; Step 8 amended at v0.19 (closure declaration, NaN per-molecule uncertainties) with a rebuild of the composition product; Steps 5 and 9 amended at v0.20 (the `equatorial_radius` anchor rule in `lib.geoid`; `[stage_two]` carries the anchor quantity and rule and the `[diagnostics]` keys into the manifest) for SPEC_02 Step 6. See §13 for the revision history.
+Version 0.28, 15 September 2026. Author of record: S. Rafkin. Status: closed at commit ece58d2; v0.28: every file of the chain carries `epoch = "1981-08-26"`, the occultation date, with the source's own dating in `epoch_note` (author decision on REVIEW_03_step3 finding 1; supersedes v0.27); v0.26: every build-file section carries a required `role` key and every writer records paths relative to its product (SPEC_00 v0.18), applied at the SPEC_03 Step 3 rebuild; the season identifier added at v0.25 (Steps 2, 3, 7, 8, 9) for SPEC_03 Step 3, with a rebuild of the chain; Steps 2, 8 and 9 amended at v0.21, the snap rule restated at v0.22 and v0.23 before Step 0 began, the `k` run endpoints corrected at v0.24 (REPORT_03_step0 finding 1) (the Table I pressure grid: `pressure_printed_Pa` beside `pressure_Pa` on the declared `10^(k/100)` mbar grid, applied at stage one, read by every downstream tool) for SPEC_03 Step 0, with a rebuild of the whole chain; Step 8 amended at v0.19 (closure declaration, NaN per-molecule uncertainties) with a rebuild of the composition product; Steps 5 and 9 amended at v0.20 (the `equatorial_radius` anchor rule in `lib.geoid`; `[stage_two]` carries the anchor quantity and rule and the `[diagnostics]` keys into the manifest) for SPEC_02 Step 6. See §13 for the revision history.
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.15, which it does not repeat.
 
 ---
@@ -222,7 +222,7 @@ transcription can be checked against the paper by a second reader.
 
 (v0.26: every section of a build control file, for every tool of this specification, carries a required key `role`, `"reduction"` or `"forward"`, written into the file's `role` global; the composition tool writes `composition_role` from the same key. There is no default: a section without `role` is refused. `lindal_build.toml` gains `role = "reduction"` in every section. Every writer records the paths it names relative to the directory of the file it writes, SPEC_00 v0.18 §5.)
 
-(v0.25: kinds G and R carry `season_absent_meaning = "uniform"`; their `epoch` is the solution's or the system's epoch as already recorded.)
+(v0.25: kinds G and R carry `season_absent_meaning = "uniform"`. v0.28, author decision of 15 September 2026: their `epoch` is the date of the occultation they serve, `"1981-08-26"`, carried as a key `epoch` in the `[gravity]` and `[rotation]` sections of the build control file beside `role` and written by the tools; the text the files carried before, "Pioneer 11 encounter, 1979" and "Voyager 1 and 2, 1980 to 1981", becomes `epoch_note`, transcribed from the `data_static` entries. The v0.25 words "as already recorded" contradicted SPEC_00 §5 and are withdrawn; the reader parses `epoch` as an ISO date. One date for the whole chain, no per-source dating. Applied at the SPEC_03 Step 3 rebuild.)
 
 **Purpose.** Standard harmonic-set and rotation-system files from the `data_static`
 transcriptions, so that `lib.gravity` in the next step reads real files.
@@ -413,7 +413,7 @@ included, the value **moves**, by an amount to be reported (the Step 5 stand-in 
 
 ## 8. Step 7: the wind tool for Lindal, kind W
 
-(v0.25: kind W carries `epoch` and `solar_longitude_deg` with its source from `data_static/winds/smith1982_fig4.toml`, which gains them: the Voyager 2 encounter date, 1981-08-25, `Ls` 18.2°, with an `epoch_note` that the curve combines Voyager 1 (November 1980, `Ls` about 8°) and Voyager 2 imaging and is assigned the Voyager 2 date.)
+(v0.25: kind W carries `epoch` and `solar_longitude_deg` with its source from `data_static/winds/smith1982_fig4.toml`, which gains them. v0.28: the date is the occultation's, 1981-08-26, `Ls` 18.2°, with an `epoch_note` that the curve combines Voyager 1 (November 1980, `Ls` about 8°) and Voyager 2 (late August 1981) imaging and is assigned the occultation date.)
 
 **Purpose.** `occul_data/lindal/lindal_wind.nc`: the cloud-top wind Lindal carried in his
 geoid, on the model's axes, with its uncertainty.
@@ -635,7 +635,7 @@ six figures. `read` as kind C succeeds and refuses when one mole fraction is per
    every global attribute of §6.1 filled from the `scalars` groups (latitude with convention
    in the name, its `value_source`, swath, uncertainty, longitude, date, bands, datum,
    source top boundary statement, source gravity, rotation, and wind citations), with
-   `latitude_absent_meaning = "point"` and `thermo_instance = "source_profile"` (SPEC_00 §5,
+   `latitude_planetocentric_absent_meaning = "point"` and `thermo_instance = "source_profile"` (SPEC_00 §5,
    §6.1). **No composition and no geodesy in this file.**
 2. Writes `lindal_geodesy.nc`, kind D (SPEC_00 §6.3): the two surfaces from the `scalars`
    geodesy groups, with the fit residual, `fit_inputs`, and `fit_latitude_convention`.
@@ -725,6 +725,8 @@ same Monte Carlo; and the pass-through of the 0.2° label uncertainty into `phi_
 | 0.17 | 2026-09-11 | Step 8: NH3 rule restated (zero above the tabulated range by assumption with the saturation reason, no upward extrapolation or clamp; interior interpolation and downward extrapolation kept); `is_polar` moved to a molecular table in `species_master.toml`; `x_H2_uncertainty` from the raw bundle; `<dimension>_absent_meaning` spelled out; per-level `nh3_provenance` | REPORT_01_step8 §3 and author question |
 | 0.18 | 2026-09-11 | Step 9 accepted; §0 rebuild rule restated as a directory sweep; header dependency to SPEC_00 v0.9; `gravity_used_by_source` added to `lindal_scalars.toml` by the author (raw bundle and all downstream products to be rebuilt) | REPORT_01_step9 §3 |
 | 0.19 | 2026-09-12 | Step 8 amendment: kind C closure declaration attributes; per-molecule refractivity uncertainty NaN where unstated; composition product rebuilt | REPORT_02_step3 findings 4 and 5 |
+| 0.28 | 2026-09-15 | Every file of the chain dated 1981-08-26, the occultation; G and R take `epoch` from the build-file section, the wind's properties file says the same date; the former prose as `epoch_note`; supersedes v0.27 | author decision on REVIEW_03_step3 finding 1 |
+| 0.27 | 2026-09-15 | Kinds G and R: `epoch` an ISO date transcribed by the author, the prose as `epoch_note`; Step 9's point-latitude marker written in the SPEC_00 §5 form | REVIEW_03_step3 finding 1 and decision 5 |
 | 0.26 | 2026-09-15 | Required `role` in every build-file section, no default; paths recorded relative to the product; applied at the SPEC_03 Step 3 rebuild | coding agent's pre-execution review of SPEC_03 Step 3, problems 1 and 3 |
 | 0.25 | 2026-09-15 | The season identifier: Step 2 transcribes `Ls` and the sub-solar latitude with their source and the raw bundle carries them; Step 3 marks G and R `uniform`; Step 7 gives W the imaging epoch and season; Step 8 marks the reduction composition `uniform`; Step 9 copies the season into T and D; chain rebuilt at SPEC_03 Step 3 | SPEC_00 v0.17 |
 | 0.24 | 2026-09-14 | Step 2 acceptance: `k` runs end at 236 and 268, not 230 and 270 | REPORT_03_step0 finding 1 |

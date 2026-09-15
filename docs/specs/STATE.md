@@ -32,12 +32,12 @@ SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 procee
 
 ## SPEC_03, the forward production and its hydrostatic closure
 
-SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.8). Step 0 accepted and swept; Steps 1 to 4 proceed in order, each after the review of the one before. Current: SPEC_00 v0.18, SPEC_01 v0.26, SPEC_02 v0.11, SPEC_03 v0.10 (the season identifier added to Step 3 as deliverable 0, the pre-execution review of Step 3 ruled on; the seasonal design note is docs/CASSPIAN_Seasonal_Design_Note.md). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
+SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.8). Step 0 accepted and swept; Steps 1 to 4 proceed in order, each after the review of the one before. Current: SPEC_00 v0.19, SPEC_01 v0.28, SPEC_02 v0.11, SPEC_03 v0.12 (Step 3 reviewed and accepted, rulings in SPEC_03 section 8; the whole chain dated 1981-08-26, the occultation, SPEC_00 v0.19 and SPEC_01 v0.28; the seasonal design note is docs/CASSPIAN_Seasonal_Design_Note.md). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 0 | pressure grid and Eq. B1 tilt amendments; whole reduction chain rebuilt and swept | accepted (`2149b64`; 13 of 13 as restated at SPEC_03 v0.6; swept, hashes in REPORT_03_step0 section 7) | `reports/REPORT_03_step0.md`, `reports/REVIEW_03_step0.md` | 2026-09-14 |
 | 1 | `lib.geopotential` | accepted (`b3efc3d`; 9 of 9; finding 1 restated the Step 4 negative control at SPEC_03 v0.7; no product changed) | `reports/REPORT_03_step1.md`, `reports/REVIEW_03_step1.md` | 2026-09-14 |
 | 2 | `lib.hydrostatic` | accepted (`994c787`; 8 of 8; finding 1 restated the linear-T orientation at SPEC_03 v0.8; no product changed) | `reports/REPORT_03_step2.md`, `reports/REVIEW_03_step2.md` | 2026-09-15 |
-| 3 | season identifier across the chain (rebuild); run directory and inputs (`casspian-run-inputs`), `read_run_namelist`, kind `profile`, `input_hashes` warning for every derived kind | not started | | |
+| 3 | season identifier across the chain (rebuild); run directory and inputs (`casspian-run-inputs`), `read_run_namelist`, kind `profile`, `input_hashes` warning for every derived kind | reviewed, accepted (REVIEW_03_step3; 16 of 16; no value changed in any product); before the acceptance commit: every file of the chain dated 1981-08-26 (author decision on finding 1) and the acceptance rerun; then the acceptance commit, the clean rebuild and sweep with hashes in section 7, and the suites of the report's section 5 | `reports/REPORT_03_step3.md`, `reports/REVIEW_03_step3.md` | 2026-09-15 |
 | 4 | `forward/production.py`, `casspian-forward`, the closure run, F5 and F6 | not started | | |
