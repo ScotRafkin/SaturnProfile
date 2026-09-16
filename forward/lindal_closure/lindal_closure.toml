@@ -3,6 +3,7 @@ name        = "lindal_closure"
 description = "Hydrostatic closure of the Lindal reduction at its own latitude under matching forward inputs"
 mode        = "closure"          # this specification implements only closure; SPEC_04 adds transfer
 solar_longitude_deg = 18.2       # v0.9: the run's season; in closure mode equal to the anchor's
+date        = "1981-08-26"       # v0.13: the closure closes on the occultation, so it carries its date
 
 [[anchors]]                      # exactly one entry in closure mode
 slug   = "lindal"                # must equal profile_or_run inside the file, or refuse

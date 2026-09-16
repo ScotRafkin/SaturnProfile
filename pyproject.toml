@@ -25,6 +25,7 @@ casspian-lindal-inputs = "casspian.tools.lindal.build_inputs:main"
 casspian-refrac = "casspian.refrac.product:main"
 casspian-plots = "casspian.tools.plots.render:main"
 casspian-run-inputs = "casspian.tools.run.run_inputs:main"
+casspian-forward = "casspian.forward.production:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

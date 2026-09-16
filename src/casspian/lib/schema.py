@@ -575,6 +575,22 @@ def _check_globals(dataset, spec: KindSpec, writer_filled: bool, where: str) -> 
                     f"attributes {present} must be absent (SPEC_00 section 6.1). A "
                     "retrieval and a delivered field carry latitude as a coordinate."
                 )
+    if spec.name == "composition":
+        # SPEC_00 section 6.2, enforced at SPEC_03 v0.11 Step 4 (REPORT_03_step3 finding 3): the
+        # globals a composition role requires, which the registry declared and no code read.
+        composition_role = attrs.get("composition_role")
+        if composition_role not in ROLES:
+            raise CasspianSchemaError(
+                f"{where}: composition_role is {composition_role!r}; SPEC_00 section 6.2 allows "
+                f"{sorted(ROLES)}."
+            )
+        for name in spec.conditional_globals.get(str(composition_role), ()):
+            if name not in attrs:
+                raise CasspianSchemaError(
+                    f"{where}: composition_role is {composition_role!r}, so the global attribute "
+                    f"{name!r} is required: a reduction composition carries the source's own words "
+                    "(SPEC_00 section 6.2)."
+                )
     vertical = attrs.get("vertical_coordinate")
     if vertical is not None and vertical not in VERTICAL_COORDINATES:
         raise CasspianSchemaError(
