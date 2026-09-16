@@ -32,7 +32,7 @@ SPEC_02 accepted by the author at v0.4 on 12 September 2026. Steps 2 to 5 procee
 
 ## SPEC_03, the forward production and its hydrostatic closure
 
-SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.13). Steps 0 to 4 accepted and swept; **SPEC_03 closed** at the Step 4 record commit `545b385` on 16 September 2026. Current: SPEC_00 v0.20, SPEC_01 v0.28, SPEC_02 v0.11, SPEC_03 v0.13 (Step 3 reviewed and accepted, rulings in SPEC_03 section 8; the whole chain dated 1981-08-26, the occultation, SPEC_00 v0.19 and SPEC_01 v0.28; the seasonal design note is docs/CASSPIAN_Seasonal_Design_Note.md). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
+SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.14). Steps 0 to 4 accepted and swept; **SPEC_03 closed** at the Step 4 record commit `545b385` on 16 September 2026. Current: SPEC_00 v0.20, SPEC_01 v0.28, SPEC_02 v0.11, SPEC_03 v0.14 (Step 3 reviewed and accepted, rulings in SPEC_03 section 8; the whole chain dated 1981-08-26, the occultation, SPEC_00 v0.19 and SPEC_01 v0.28; the seasonal design note is docs/CASSPIAN_Seasonal_Design_Note.md). Next specification: SPEC_04, the transfer (build); SPEC_05, the end-to-end tests.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|

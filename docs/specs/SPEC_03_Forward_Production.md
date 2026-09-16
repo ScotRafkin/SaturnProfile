@@ -2,13 +2,13 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.13, 16 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.14, 16 September 2026. Author of record: S. Rafkin. **Status: closed at commit `545b385` (the Step 4 record, 16 September 2026); accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
 Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
 (REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1, `b3efc3d`); Step 2 accepted (REVIEW_03_step2, `994c787`); Step 3
-accepted and swept (REVIEW_03_step3, `6ae113e`); Step 4 reviewed and accepted (REVIEW_03_step4;
-v0.13 carries the rulings, §8), its acceptance commit and the closure rerun on the clean tree to
-follow. This specification closes at that record; SPEC_04 is next.** The amendments in the Appendix have been applied to SPEC_00
+accepted and swept (REVIEW_03_step3, `6ae113e`); Step 4 accepted (REVIEW_03_step4, `1504056`),
+the closure product clean at `1504056` (SHA-256 `e6693173...`, 13 of 13 on the v0.13 bins), the
+record at `545b385`. SPEC_04 is next.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
 Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.20, the closed
 `SPEC_01_Lindal_Tool_Chain.md` v0.28 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.11,
@@ -822,6 +822,7 @@ SPEC_04; the retrieval leg and the seasonal propagator are later specifications.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.14 | 2026-09-16 | Status line: closed at `545b385`; Step 4 accepted at `1504056`, the closure product's hash recorded in REPORT_03_step4 section 8 | the Step 4 record |
 | 0.13 | 2026-09-16 | REVIEW_03_step4: the closure statistics and the acceptance bounds stated in pressure bins (above 2 mbar, 2 to 10, 10 to 100, below 100 excluding the bottom row, bottom row, mean below 10 mbar); expected values gain the 2 to 10 mbar figure and the note on the deep trend; the closure namelist declares `date`; §8 rulings on REPORT_03_step4; status line: Step 4 accepted, SPEC_03 closes at its record; dependency SPEC_00 v0.20 | REVIEW_03_step4 |
 | 0.12 | 2026-09-15 | Author decision on REVIEW_03_step3 finding 1: every file of the Lindal chain and of the closure run carries `epoch = "1981-08-26"`, the occultation date, the source's own dating in `epoch_note`; G and R build-file sections carry `epoch`; dependencies SPEC_00 v0.19, SPEC_01 v0.28 | author, 15 September 2026 |
 | 0.11 | 2026-09-15 | REVIEW_03_step3: G and R `epoch` as ISO dates with the prose as `epoch_note`, `epoch` parsed by the reader (SPEC_01 v0.27); the raw bundle's role always `reduction`; `latitude_planetocentric_absent_meaning` on kind `profile`; the F6 envelope by column precision and stated to be the budget, not a bound; the gauge marker labeled by the tabulated value; Step 4: the band clause restated as a count, the kind C `source_statement` rule enforced; status line: Step 3 reviewed; §8 rulings on REPORT_03_step3 | REVIEW_03_step3 |
