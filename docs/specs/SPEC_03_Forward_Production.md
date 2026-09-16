@@ -2,15 +2,15 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.12, 15 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.13, 16 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
 Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
 (REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1, `b3efc3d`); Step 2 accepted (REVIEW_03_step2, `994c787`); Step 3
-reviewed and accepted (REVIEW_03_step3; v0.11 and v0.12 carry the rulings, §8), its acceptance commit,
-sweep and deferred suites to follow; Step 4 proceeds after the sweep record when the author says
-go. Steps 1 to 4 proceed in order, each after the review of the one before.** The amendments in the Appendix have been applied to SPEC_00
+accepted and swept (REVIEW_03_step3, `6ae113e`); Step 4 reviewed and accepted (REVIEW_03_step4;
+v0.13 carries the rulings, §8), its acceptance commit and the closure rerun on the clean tree to
+follow. This specification closes at that record; SPEC_04 is next.** The amendments in the Appendix have been applied to SPEC_00
 (v0.16), SPEC_01 (v0.21) and SPEC_02 (v0.10).
-Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.18, the closed
+Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.20, the closed
 `SPEC_01_Lindal_Tool_Chain.md` v0.28 and the closed `SPEC_02_Refrac_and_Diagnostics.md` v0.11,
 which it does not repeat. See §9 for the revision history.
 
@@ -405,6 +405,7 @@ name        = "lindal_closure"
 description = "Hydrostatic closure of the Lindal reduction at its own latitude under matching forward inputs"
 mode        = "closure"          # this specification implements only closure; SPEC_04 adds transfer
 solar_longitude_deg = 18.2       # v0.9: the run's season; in closure mode equal to the anchor's
+date        = "1981-08-26"       # v0.13: the closure closes on the occultation, so it carries its date
 
 [[anchors]]                      # exactly one entry in closure mode
 slug   = "lindal"                # must equal profile_or_run inside the file, or refuse
@@ -575,14 +576,21 @@ from the anchor's top level by the rule; `p` by the layer sums from the top and 
 (Step 2); the product written with the anchor and the inputs embedded; the figures rendered
 when the namelist asks. The closure statistics written to
 `production_record`: the residual `pressure_Pa / pressure_tabulated_Pa − 1` at every level as
-an attribute array, its maximum magnitude in the top decade, between 10 and 100 mbar, and
-below 100 mbar excluding the bottom row, the bottom row's value, and the mean below 10 mbar.
+an attribute array, its maximum magnitude above 2 mbar (the ten top levels), between 2 and 10
+mbar, between 10 and 100 mbar, and below 100 mbar excluding the bottom row, the bottom row's
+value, and the mean below 10 mbar (v0.13: the bins stated in pressure, a level on an edge
+belonging to the deeper bin, so that "the top decade" has one reading and every level falls
+under a bound; REPORT_03_step4 finding 1).
 
 **Expected values (measured by the reviewing agent on the committed product with Step 0's
 changes applied in memory; to be reproduced, not prescribed).** Residual
-`p_hydro / p_tab − 1`: within ±9.8e-4 in the top decade, within ±2.6e-3 between 10 and 100
-mbar, within ±1.7e-3 below 100 mbar excluding the bottom row, −3.3e-3 at the bottom row (the
-off-grid last level, at the X-band extinction limit), mean below 10 mbar −4.9e-4. `T_hydro /
+`p_hydro / p_tab − 1`: within ±9.8e-4 above 2 mbar (the ten top levels, which is what the
+reviewing agent's "top decade" measured), within ±2.2e-3 between 2 and 10 mbar (2.12e-3 at
+6.31 mbar, REPORT_03_step4), within ±2.6e-3 between 10 and 100 mbar, within ±1.7e-3 below 100
+mbar excluding the bottom row, −3.3e-3 at the bottom row (the off-grid last level, at the
+X-band extinction limit), mean below 10 mbar −4.9e-4. Below about 300 mbar the residual is a
+trend, negative and growing with depth, not scatter; it sits with the systematic terms below
+and is a statement about the source's own integration that the manuscript can make once. `T_hydro /
 T_tab − 1` equals the pressure residual at every level to round-off (they are one number:
 `N = p_tab ℛ̄ / (k_B T_tab)` and `T_hydro = p_hydro ℛ̄ / (k_B N)`). The residual budget the
 envelope rests on, per level and uncorrelated between levels: height rounding ±50 m gives
@@ -612,9 +620,10 @@ four inputs embedded byte-identical (compare through `xarray.Dataset.identical` 
 group); `mean_refractivity_m3` and `mean_molar_mass_kg_mol`, formed from the run's kind C,
 equal the anchor's to 1e-14 relative, and `number_density_m3` likewise; `pressure_Pa` at the top level
 equals `p_b` exactly and `p_b` equals the anchor's top tabulated pressure; `Φ` is zero at the
-gauge level; the residual is within 3e-3 in magnitude at every level from 10 mbar down,
-excluding the bottom row, within 1.5e-3 in the top decade, within 4e-3 at the bottom row, and
-its mean below 10 mbar is within ±1.5e-3; the temperature residual equals the pressure
+gauge level; the residual is within 1.5e-3 in magnitude above 2 mbar (the ten top levels),
+within 3e-3 at every level from 2 mbar down excluding the bottom row, within 4e-3 at the
+bottom row, and its mean below 10 mbar is within ±1.5e-3 (v0.13: the bins of the statistics
+above, every level under one bound); the temperature residual equals the pressure
 residual to 1e-12 at every level; the negative control's mean below 10 mbar is below −4e-3, and so is the fully radial
 reading's (both must fail the mean bound, which is what shows the bound has teeth; v0.7); F5 and F6 are rendered
 by the driver and by `casspian-plots` by hand, byte-identical apart from the footer; the
@@ -789,6 +798,17 @@ form and the every-difference refusal are recorded. The reviewing agent's own fi
 Step 4 band clause is restated in §5. Ruling 5 of this section (committing `inputs/*.nc`)
 remains open.
 
+**Rulings on REPORT_03_step4 (REVIEW_03_step4, 16 September 2026).** Finding 1: correct; "the
+top decade" of the expected values was the ten top levels, above 2 mbar, and the acceptance's
+partition left 2 to 10 mbar under no bound; the bins are now stated in pressure (§5), and check
+5 passes on the numbers as measured. Finding 2: F5 is left for the author's figure pass; no
+restyling in this step. Finding 3: correct; SPEC_00 v0.20 §7.2 says relative paths and the
+resolved namelist lives in the product's `namelist` group, no separate file (decision 6).
+Finding 4: adopted; the closure namelist declares `date = "1981-08-26"` (Step 3 deliverable 2),
+so the closure product carries the occultation date like every other file of the run; applied
+before the acceptance commit and the acceptance rerun. Finding 5: recorded. Decisions 1 to 9
+accepted as reported.
+
 **Rulings of 15 September 2026 (v0.9).** The season identifier is added to Step 3 as
 deliverable 0 rather than as a step of its own, because Step 3 already touches the schema for
 kind `profile` and already builds the run's inputs, and the rebuild of the chain uses the §0
@@ -802,6 +822,7 @@ SPEC_04; the retrieval leg and the seasonal propagator are later specifications.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.13 | 2026-09-16 | REVIEW_03_step4: the closure statistics and the acceptance bounds stated in pressure bins (above 2 mbar, 2 to 10, 10 to 100, below 100 excluding the bottom row, bottom row, mean below 10 mbar); expected values gain the 2 to 10 mbar figure and the note on the deep trend; the closure namelist declares `date`; §8 rulings on REPORT_03_step4; status line: Step 4 accepted, SPEC_03 closes at its record; dependency SPEC_00 v0.20 | REVIEW_03_step4 |
 | 0.12 | 2026-09-15 | Author decision on REVIEW_03_step3 finding 1: every file of the Lindal chain and of the closure run carries `epoch = "1981-08-26"`, the occultation date, the source's own dating in `epoch_note`; G and R build-file sections carry `epoch`; dependencies SPEC_00 v0.19, SPEC_01 v0.28 | author, 15 September 2026 |
 | 0.11 | 2026-09-15 | REVIEW_03_step3: G and R `epoch` as ISO dates with the prose as `epoch_note`, `epoch` parsed by the reader (SPEC_01 v0.27); the raw bundle's role always `reduction`; `latitude_planetocentric_absent_meaning` on kind `profile`; the F6 envelope by column precision and stated to be the budget, not a bound; the gauge marker labeled by the tabulated value; Step 4: the band clause restated as a count, the kind C `source_statement` rule enforced; status line: Step 3 reviewed; §8 rulings on REPORT_03_step3 | REVIEW_03_step3 |
 | 0.10 | 2026-09-15 | Coding agent's pre-execution review of Step 3: required `role` in build files (no default), the closure drop list as a rule, paths relative to the product for every writer with the reader resolving against the file's directory, acceptance restated; dependencies SPEC_00 v0.18, SPEC_01 v0.26 | coding agent's pre-execution review |
