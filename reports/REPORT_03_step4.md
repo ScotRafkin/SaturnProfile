@@ -206,6 +206,38 @@ The product is under `output/`, which `.gitignore` excludes; it is regenerable f
 
 ## 7. Next step
 
-The review. Nothing is committed until the review is in and the author says go. After it: the
-acceptance commit, the closure rerun on the clean tree with F5 and F6 attached, and the product's hash
-recorded.
+SPEC_03 closes at the record commit of section 8. SPEC_04, the transfer, is drafted next by the
+author.
+
+## 8. Sweep (16 September 2026)
+
+After the acceptance commit `1504056` (pushed), on the clean tree:
+
+- **The closure rerun.** `casspian-forward forward/lindal_closure/lindal_closure.toml` with `output/`
+  removed first. The product carries `casspian_git_commit` `1504056dad3cb6e998edd457545d41cef6ac4337`
+  and `epoch` 1981-08-26, and no attribute of any group contains `dirty`. The anchor and the four run
+  inputs carry the hashes of REPORT_03_step3 section 7, unchanged.
+- **The record.** Above 2 mbar (10 levels) 9.740e-4; 2 to 10 mbar 2.119e-3; 10 to 100 mbar 2.607e-3;
+  below 100 mbar excluding the bottom row 1.714e-3; from 2 mbar down excluding the bottom row
+  2.607e-3; bottom row −3.281e-3; mean below 10 mbar −4.895e-4. The same values as the acceptance
+  rerun.
+- **F5 and F6** from the clean product, attached for the author's acceptance by eye (footer commit
+  `1504056`, product hash `e6693173778a`):
+  `reports/figures/step03_4_lindal_closure_diag_F5_geopotential.png`,
+  `reports/figures/step03_4_lindal_closure_diag_F6_hydrostatic.png`. F5's overlapping curves are left
+  for the author's figure pass (ruling 2).
+
+| File | Kind | SHA-256 |
+|---|---|---|
+| `forward/lindal_closure/output/lindal_closure_profile.nc` | profile | `e6693173778a02a5e65ca12806a6cf68d809b3704c2c532e0f6c9225a092287b` |
+
+The product is at commit `1504056`, under `output/`, which `.gitignore` excludes; it is regenerable
+from the namelist.
+
+**Regression on the clean tree** (`reports/step03_4/run_regression.sh`, the suites of section 5):
+**all pass**, 6, 14, 8, 5, 7, 7, 6, 8, 9, 6 for SPEC_01; 6, 7, 9, 9, 7, 7 for SPEC_02 Steps 1 to 6;
+9, 8 and 16 for the SPEC_03 Step 1, 2 and 3 acceptances. The registered product was restored to
+`d2886aed...` (equal before and after), and `reports/figures/` was restored from git. The script now
+also copies the closure run's `inputs/` and `output/` aside and restores them, since the Step 3
+acceptance rebuilds the run inputs; their hashes were equal before and after, and the product's hash
+after the regression is `e6693173...` still.
