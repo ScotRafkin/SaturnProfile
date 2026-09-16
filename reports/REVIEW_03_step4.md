@@ -74,3 +74,21 @@ The record of decision 7 carries what the manuscript's closure paragraph will ci
    report; the product's hash recorded; the regression on the clean tree as section 5 says.
    The record commit.
 5. Set `STATE.md` to accepted with the commits and SPEC_03 closed. SPEC_04 is drafted next.
+
+## Record verified and figures accepted (16 September 2026)
+
+The clean-tree closure product on disk carries commit `1504056`, no `-dirty` in any attribute of
+any group, `epoch` 1981-08-26, and the SHA-256 the report's section 8 records (`e6693173...`); its
+`production_record` holds the reviewed statistics to every digit on the v0.13 bins, and the
+regression passes on the clean tree. The "2 mbar edge" of decision 10 is a bookkeeping choice
+forced by the specification's double description of one bin ("above 2 mbar", "the ten top
+levels"); the grid level is the edge, the row printed 2.00 mbar belongs to the deeper bin, and no
+bounded value depends on it.
+
+The author viewed `reports/figures/step03_4_lindal_closure_diag_F5_geopotential.png` and
+`step03_4_lindal_closure_diag_F6_hydrostatic.png` and accepted both. On F5: the geopotential and
+the height lie on each other and the figure carries little information on a single profile; it is
+left as is for the figure pass, and its across-latitude panel, dropped at SPEC_03 until the
+transfer builds the surface, is where the figure earns its place (SPEC_04).
+
+Step 4 is accepted at `1504056`, the record at `545b385`; SPEC_03 is closed (v0.14).
