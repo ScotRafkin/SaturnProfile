@@ -2,8 +2,12 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.7, 21 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026 (decision L confirmed; the manuscript draft of record for the
+Version 0.9, 21 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.9 makes kind C one structure, a field on (level, latitude),
+for every use (decision O), and the mesh self-extending with no declared extent or margin;
+v0.8 applied the author's direction of 21 September on
+consistency checks (decision N) and the rulings of REVIEW_04_step0 (§11), Step 0 to be
+completed under it (decision L confirmed; the manuscript draft of record for the
 equation labels is `CASSPIAN_AtmosphericModel_Draft9_2.docx`, outside the repository). Step 0
 proceeds once `reports/REPORT_04_preexecution.md` is filed; Steps 1 to 5 in order, each after
 the review of the one before.** v0.6 ruled on the coding agent's pre-execution
@@ -37,6 +41,18 @@ commit on acceptance, then the sweep over `occul_data/` and `forward/`; the full
 after any change to `lib`, `refrac`, `forward` or `tools`; radians in `lib`; no dashes; no
 silent choices. The in-memory candidate rule for a step that changes an input file (SPEC_03 §0)
 applies to Step 0, which rebuilds input files.
+
+**What is checked (decision N, author, 21 September 2026).** The pipeline assumes its inputs
+came from the prior steps. The code refuses only what would silently produce a wrong number or
+what the schema catches for free: a file of the wrong kind or missing a required variable
+(the schema); an unknown, missing or malformed namelist key, or a scheme not implemented (a
+typo guard); a point used outside the coverage of the data it needs (an interpolant refuses to
+extrapolate); a numerical failure the step names (a curve leaving the mesh, curves crossing,
+the outer loop not converging). Everything else is recorded in the product, with a warning
+where the record alone might be missed: a season that differs from the run's, a lineage hash
+that differs from the one recorded, a role or scale combination. No refusal exists to police
+what a user might do, and no acceptance test exercises a refusal that this paragraph does not
+name. This rule overrides "else refused" wherever earlier text says it.
 
 **What this specification covers and what it does not.** The transfer half of the forward
 model, Appendix B4 to B6 and the parts of B7 the closure did not need: the reference surface at
@@ -180,7 +196,7 @@ reported at every level of every run.
 **What the closure inputs give (measured independently; the Lindal anchor; the reviewing
 agent's mesh at 0.05°, the wind linear between the file's nodes with its derivative piecewise
 constant as decision L rules, `I` bilinear, columns and curves integrated to 1e-12; v0.6, the
-v0.5 values were measured with a cubic interpolant and are withdrawn).**
+v0.5 values were measured with PCHIP and are withdrawn).**
 Under the closure wind `S / g = 2 Ω_abs cos φ u'(φ) / g`, nearly uniform in the vertical, so
 the transfer is close to a uniform scaling of `N` with a linearly growing isobar shift. From
 `φ_c` = 30.805568° to 10° N: largest `|S/g|` 0.0977 per radian; isobar shift −31,258.1 m²/s²
@@ -224,15 +240,20 @@ any product, only variables added, verified group by group; the new hashes are r
 report in the row format the `step02_1` suite reads, and REPORT_03_step4's product hash is
 superseded there.
 
-**Deliverable 2: kind C on a latitude grid for a forward run.** `casspian-composition-lindal`
-gains a build-file key `latitude_grid_deg = [south, north, step]`; when present the tool
-writes the same column at every node of that grid (the Lindal hypothesis carried to every
-latitude), and when absent it writes the point file it writes today. In transfer mode the
-model reads a composition as a field on `(φ, ln p)`: linear in latitude within the file's grid,
-log-linear in pressure onto each isobar's label (decision L; §10, finding 5), refusing a target
-or an anchor outside the latitude grid and a point file for any latitude but its own. Closure
-mode is unchanged (the file on the anchor's levels, by level). Whether a field is uniform is a
-property of its values, not a tag.
+**Deliverable 2: kind C is one structure, a field on (level, latitude) (decision O, author,
+21 September 2026).** `casspian-composition-lindal` takes a required control-file key
+`latitude_grid_deg = [south, north, step]` and writes every level variable on
+`(level, latitude_planetocentric)`, the source's column at every node (the Lindal hypothesis,
+uniform in latitude), `pressure_Pa` one dimensional; the one-latitude form and its
+`latitude_planetocentric_absent_meaning` marker are retired from the kind (SPEC_00 §6.2 and
+SPEC_01 Step 8 amended, Appendix). Every reader takes the composition as a field on
+`(φ, ln p)`: the reduction and closure mode read the column at the anchor's latitude by the
+interpolant of decision L (for a uniform field the identical column, so no value changes) and
+use it on the anchor's levels by level as SPEC_03 does; transfer mode interpolates log-linearly
+in pressure onto each isobar's label (§10, finding 5). The interpolant refuses a latitude
+outside the file's grid. Whether a field is uniform is a property of its values, not a tag.
+The reduction's composition control file and the closure's build file declare the grid
+`[-90, 90, 1.0]`; the rebuild of deliverable 1 carries this change through the same cascade.
 
 **Deliverable 3: `forward/lindal_transfer/`.** The namelist `lindal_transfer.toml` (below),
 `lindal_transfer_build.toml` with the four sections under the prefix `lindal_transfer_` and
@@ -246,7 +267,9 @@ neither `φ_r` nor `C`; any other value refused) and `measurement_uncertainty_sc
 as SPEC_03; `[hydrostatic_boundary]` exactly one of `p_b_rule = "anchor_profile_top"` (the
 label of the topmost isobar of the highest anchor) and `p_b_Pa`; `[isobars]` `gauge_isobar_Pa`
 (a tabulated level of every occultation anchor, matched exactly) and `datum_isobar_Pa`;
-`[grid]` `geopotential_spacing_m2s2`, `geopotential_range_m2s2`, `latitude_spacing_deg`;
+`[grid]` `geopotential_spacing_m2s2`, `latitude_spacing_deg` (the mesh's extent is not
+declared: Step 2 builds it from the anchors' levels and extends it when a traced curve needs
+more, v0.9);
 `[numerics]` with `scheme` restricted to what is implemented (`reference_surface`,
 `isobar_tracing`: `"rk4"`; `shear_integral`, `transfer`, `altitude`: `"trapezoid"`;
 `outer_loop`: `relative_tolerance_ln_p`, `max_iterations`; the geopotential and hydrostatic
@@ -289,7 +312,6 @@ latitude_planetocentric_deg = 10.0
 
 [grid]
 geopotential_spacing_m2s2 = 5.0e3
-geopotential_range_m2s2   = [ -1.2e6, 3.2e6 ]
 latitude_spacing_deg      = 0.05
 
 [numerics.reference_surface]
@@ -323,17 +345,18 @@ dpi     = 150
 
 **Deliverable 5: `load_run_inputs` in transfer mode.** As SPEC_03 (existence, `-dirty`, prefix,
 role, the wind against the rotation, the sum identity and poles of W) for every anchor in the
-list and the four inputs, with: no closure comparison; the wind's latitude coverage spanning
-every anchor's latitude and the target and its pressure coverage spanning every anchor's range;
-the composition covering the same latitudes; W and C carrying the run's season or `uniform`,
-else refused; each anchor's season recorded beside the run's, a mismatch recorded and not
-refused (decision I); an anchor whose kind N does not carry `radius_m` as its coordinate (the
-retrieval instance) refused as not implemented in this specification.
+list and the four inputs, with no closure comparison. Coverage is the interpolants' business
+(Step 1 deliverable 2 and the composition field refuse a point outside their data), not the
+loader's. The seasons of W, C and every anchor are recorded beside the run's, a difference
+warned and recorded, never refused (decision N; this amends decision I's "else refused"). The
+retrieval instance of kind N does not pass the schema today, so the loader carries no check of
+its own for it; the retrieval leg adds what it needs.
 
 **Deliverable 6: the anchor as it arrives.** The loader returns every anchor as one object
 carrying, on the anchor's own levels, its `ln N`, its coordinate, its label pressures, and its
 uncertainty in two named columns, `sigma_ln_N_measurement` (the file's `refractivity_uncertainty`
-times the scale) and `sigma_ln_N_season` (zero, with the attribute `season_term = "absent"`),
+divided by its `refractivity` and multiplied by the scale: an uncertainty of `ln N`, which is
+what A30's weights act on; REPORT_04_step0 finding 1) and `sigma_ln_N_season` (zero, with the attribute `season_term = "absent"`),
 beside the anchor's season and the run's. Every later step reads the anchor's uncertainty from
 this object and never from the file.
 
@@ -353,15 +376,13 @@ three parts, `u_total` unchanged to the bit, the sum identity holding, a copy wi
 broken refused; the transfer composition on 181 latitude nodes with every column equal to the
 point file's, a copy with one node edited refused nowhere (it is data) but showing a nonzero
 composition term at Step 3; `casspian-run-inputs` writes the four inputs; the transfer
-namelist loads and resolves; refusal cases, each message quoted: a missing `[target]`,
-`[target]` with two values, the closure's point composition with a target away from its
-latitude, an unknown `[numerics]` table, a `scheme` not implemented, a `[grid]` range not
-covering an anchor, a wind whose latitude coverage excludes the target, a wind or composition
-at another season (a copy with the attribute edited), an anchor without `radius_m` (a copy
-with the coordinate renamed), a closure namelist with `[target]`; a namelist with two
-`[[anchors]]` entries pointing at the same file loads (the loader does not refuse M > 1); the
-closure namelist still loads and its thirteen refusals hold; the rebuilt files differ from
-their swept copies only in the new variables and the writer globals.
+namelist loads and resolves; refusal cases, each message quoted (decision N: these and no
+others): a missing `[target]`, an unknown `[numerics]` table, a `scheme` not implemented, a
+`weight` other than 0 or 1; recorded and warned, not refused: a wind or composition at another
+season (a copy with the attribute edited); a namelist with two `[[anchors]]` entries pointing at the
+same file loads (the loader does not refuse M > 1); the closure namelist still loads and its
+thirteen refusals hold; the rebuilt files differ from their swept copies only in the new
+variables and the writer globals.
 
 ---
 
@@ -422,8 +443,13 @@ from the southernmost to the northernmost of the anchors, the gauge latitude and
 with one spacing of margin each side and every anchor latitude, the gauge latitude (known
 before the mesh, decision K) and the target inserted as exact nodes; any centered difference
 taken on the mesh in latitude uses the three-point formula for unequal spacing at the inserted
-nodes; geopotential nodes uniform at the declared spacing over the
-declared range about the gauge. At each latitude node the column: `r(φ, Φ_j)` by
+nodes; geopotential nodes uniform at the declared spacing from the lowest to the highest
+`Φ_k` of any anchor (Step 1 deliverable 3), one spacing beyond each, with `Φ = 0` a node.
+Nothing about the extent is declared or checked (v0.9): the mesh is built from the data, and
+when Step 4's tracing finds a curve reaching the mesh's edge the mesh is extended on that side
+by what the curve needs, rounded up to whole spacings, the columns and kernels tabulated on the
+new nodes, and the pass repeated; the extensions are recorded in `transfer_record`. The mesh
+`extend(side, amount)` is this deliverable's. At each latitude node the column: `r(φ, Φ_j)` by
 `dr/dΦ = 1 / g(r, φ, u)` from `(r0(φ), 0)` in both directions (RK4 on the `Φ` nodes, `u` from
 `wind_on_mesh`), `z_lv(φ, Φ_j)` by `dz/dΦ = 1 / |g_eff|` on the same integration (decision B),
 and on the nodes `g`, `G_φ`, `|g_eff|`, `ψ`, `u`. The columns are rebuilt on every pass of the
@@ -445,8 +471,7 @@ and −104,576.8 m at the bottom, `tan²ψ` more than the projected altitude, as
 **Acceptance.** Uniform gravity (`J = 0`, `Ω = 0`, `u = 0`) returns `r − r0 = Φ / g` and
 `z_lv = r − r0` to 1e-12 relative; the column at `φ_c` reproduces the values above to 0.1 m;
 `Φ` recomputed from the column's own `r` by the trapezoid of `g` returns the nodes to 1e-9
-relative; the mesh refuses a range not covering every anchor's `Φ_k` and a spacing that is not
-positive; a namelist with two anchors at different latitudes gives a mesh with both as exact
+relative; the mesh refuses a spacing that is not positive; `extend` adds whole spacings on the named side and the columns on the new nodes match a mesh built with them from the start to 1e-12; a namelist with two anchors at different latitudes gives a mesh with both as exact
 nodes; every quantity on the mesh is finite.
 
 ---
@@ -489,9 +514,9 @@ species table) to 1e-8, and the transfer composition (identical columns) gives z
 
 **Deliverable 1: `forward.transfer`.** `trace(mesh, I, Phi_levels, phi_from, phi_to)`: for
 each level, RK4 of `dΦ/dφ = −I(φ, Φ)` on the latitude nodes with `I` bilinear, returning
-`Φ_k(φ_i)` on every node between; refuses a curve that leaves the mesh's `Φ` range ("the
-traced isobar of level k leaves the mesh at φ; widen `geopotential_range_m2s2`") and a pair of
-curves that cross ("isobars k and k + 1 cross at φ; the wind field is not balanced there").
+`Φ_k(φ_i)` on every node between; a curve reaching the mesh's `Φ` edge stops the pass and
+returns the side and the excess, the caller extends the mesh (Step 2) and repeats, recorded;
+refuses a pair of curves that cross ("isobars k and k + 1 cross at φ; the wind field is not balanced there").
 `transfer(mesh, K, curves, lnN)`: the trapezoid of `K` along each curve on the same nodes.
 `outer_loop(...)`: from the barotropic guess (flat isobars, `p(φ, Φ)` from the anchors'
 productions at their own latitudes, log-linear between labels and, between anchors, the map
@@ -684,6 +709,7 @@ I. **(Author, 16 September 2026) One season per run; propagate first, then trans
 are the hypothesis for the run's season and must carry it or be uniform in season; an anchor
 at another season is moved to the run's season by the propagator in `N` before transfer, and
 the wind of its own season never enters; until the propagator exists the mismatch is recorded,
+not refused, and (v0.8, decision N) a W or C at another season is likewise recorded and warned,
 not refused. The wind's seasonal cycle is not propagated by any machinery of its own: it is in
 the delivered wind where the propagated anchors put it through the estimate, and in the
 hypothesis elsewhere.
@@ -709,8 +735,8 @@ text should say which weights place the gauge.
 L. **One interpolation rule for data on a latitude grid: linear between the nodes, with the
 derivatives those of the interpolant.** Kind W is read linearly in latitude and in `ln p`, the
 rule the reduction used to register the anchor (`refrac.anchor.wind_of_latitude`), so the
-anchor's own wind is the closure's (2.16709 m/s at `φ_c`; a cubic interpolant gives 1.940,
-10.5 percent lower, because the anchor sits on a zero crossing of the curve between nodes
+anchor's own wind is the closure's (2.16709 m/s at `φ_c`; PCHIP gives 1.940, 10.5 percent
+lower, and a cubic spline 1.994, because the anchor sits on a zero crossing of the curve between nodes
 0.5° apart). The model never differentiates `u` on its mesh; `(∂u/∂φ)_p` and `(∂u/∂ln p)_φ`
 are the interpolant's, piecewise constant, and the conversion to fixed `r` uses the isobar
 map. Kind C is read the same way in latitude and log-linearly in pressure onto the isobar
@@ -720,6 +746,24 @@ transfer's `Δ ln N` telescopes to the endpoint wind difference under a wind uni
 column, so the interpolant moves the transfer by a few 1e-6 in `ln N`; it moves the anchor's
 registration, the reference surface (6.5 m at 10° N between the two interpolants) and the
 kernel's local values, which is why one rule is fixed here.
+
+N. **(Author, 21 September 2026) The code is not idiot-proof; the pipeline assumes its inputs
+came from the prior steps.** What is refused is stated once in §0 and nowhere else grows:
+schema, namelist typo guards, extrapolation, named numerical failures. Everything else is
+recorded, warned where useful, never refused. Applied at v0.8 to Step 0 (the refusal list cut
+from fifteen to four, the season mismatch recorded and warned, the `Φ` extent no longer
+declared) and to every later step as written. A number the code can compute from the data is
+never asked of the user: the mesh extent is built from the anchors and grown when a curve needs
+it (v0.9). The kind N reader's refusal (SPEC_02) is of a file whose two hash records disagree,
+a file edited after it was written; a changed input beside it only warns, as for every derived
+kind. It stays; the Step 0 cascade was the closure's own definition (its inputs must be the
+reduction's), not the reader's.
+
+O. **(Author, 21 September 2026) Kind C is one structure for every use:** a field on
+(level, latitude), pressure the vertical coordinate, uniform in latitude when that is the
+hypothesis, the grid declared to the tool that writes it. Every input kind is then a global
+field, read by one interpolation rule (decision L), and the one-latitude form of kind C is
+retired. Applied at Step 0 inside the same rebuild.
 
 M. **The synthetic anchor of the M = 2 test carries the Lindal anchor's tabulated pressures
 in its thermo group** and temperatures `p_tab ℛ̄ / (k_B N)`, so that it is what an
@@ -736,6 +780,8 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.9 | 2026-09-21 | Decision O (kind C one structure); the mesh self-extending, `geopotential_margin_m2s2` withdrawn; decision N's last sentence corrected (the kind N reader warns on a changed input; the cascade was the closure's definition) | author's direction of 21 September |
+| 0.8 | 2026-09-21 | Decision N (what is checked), applied to Step 0 and the mesh; the `Φ` range derived from the anchors with a declared margin; deliverable 6's uncertainty as `σ_N / N`; §10 corrected (PCHIP); §11 rulings on REPORT_04_step0 | author's direction of 21 September; REVIEW_04_step0 |
 | 0.7 | 2026-09-21 | Accepted by the author at v0.6; Step 0 proceeds; the manuscript draft of record named | author's acceptance of 21 September 2026 |
 | 0.6 | 2026-09-17 | Rulings on the coding agent's pre-execution review (§10): decision L (one linear interpolation rule, derivatives of the interpolant, every expected value remeasured), the Step 0 cascade, `produce` with the wind along the column, decision K (gauge latitude before the mesh), decision M (the synthetic anchor's thermo group), the composition as a field on latitude and pressure, `weight` honored, the `[numerics]` list and the A33 citation corrected, convergence claims withdrawn | coding agent's review of v0.5, 17 September 2026 |
 | 0.5 | 2026-09-17 | The anchor as it arrives with named uncertainty columns; the propagation hook as the identity; decision J; the estimate reading no uncertainty from files; `kernel_uncertainty_per_rad` 0.02 confirmed, no open question | author's direction of 17 September 2026 |
@@ -750,7 +796,8 @@ log-linear interpolation is a later rule).
 
 The findings were verified by the reviewing agent from the files on disk before ruling: the
 wind file's nodes bracketing the anchor (5.8557 m/s at 30.5°, −0.1800 at 31.0°), linear
-2.16709 against cubic 1.93991 m/s; the closure product's produced pressure at the gauge level,
+2.16709 against PCHIP 1.93991 m/s (a piecewise cubic Hermite; a cubic spline gives 1.99409, as
+the coding agent's record corrects); the closure product's produced pressure at the gauge level,
 9998.4655 Pa; the largest `|d ln ℛ̄ / d ln p|` of the Lindal composition, 4.5e-4, and the
 largest `|ln(p_produced / p_tabulated)|`, 3.29e-3 at the bottom row, so the regrid of finding
 5 moves `ln ℛ̄` by at most 1.5e-6.
@@ -758,7 +805,8 @@ largest `|ln(p_produced / p_tabulated)|`, 3.29e-3 at the bottom row, so the regr
 1. **The interpolant.** Correct in every part, and the fault was the specification's: the
    parenthetical about the wind tool was wrong (the tool fits a constrained penalized B-spline;
    PCHIP is its pole extension), and the reviewing agent's expected values were measured with
-   a cubic interpolant, a third rule. Decision L: linear between nodes, the reduction's rule,
+   PCHIP, a third rule (the reviewing agent's code used `PchipInterpolator`, so its v0.5 values
+came from the 1.940 branch, not a cubic spline's; corrected at v0.8). Decision L: linear between nodes, the reduction's rule,
    the derivatives those of the interpolant. Every expected value is remeasured under it (§1,
    Steps 1, 3, 4, 5); the reference surface under the linear rule returns the reduction's
    equatorial radius to 0.03 m, where the cubic returned it to 0.55 m, which confirms which
@@ -800,6 +848,32 @@ values; the v0.6 values differ from them by the interpolant alone (a few 1e-5 in
 
 ---
 
+## 11. Rulings on REPORT_04_step0 (21 September 2026)
+
+1. **`sigma_ln_N_measurement`.** Correct; the specification's parenthetical was dimensionally
+   wrong and deliverable 6 now reads `σ_N / N` times the scale. Verified on the rebuilt kind N:
+   `σ_N / N` is 2.331845e-2 at all 66 levels while `σ_N` spans 1.18e-9 to 7.25e-6.
+2. **The `[grid]` refusal.** The check is removed rather than moved. The author's direction
+   (decision N) and the finding point the same way: the range is not something a user should
+   declare and the code police; Step 2 builds it from the anchors' levels and extends it when
+   a traced curve needs more (v0.9), and no refusal is left.
+3. **Check 15 of `accept_step03_3`.** The `before/` baseline of `step03_3` is refreshed at the
+   Step 0 acceptance commit, so the check means "no value changed since SPEC_04 Step 0"; check
+   13 of Step 0 then passes on the numbers already measured. Nothing is loosened: this step's
+   own check 6 is the same comparison against the swept copies and passes.
+4. **The unreachable retrieval refusal.** Removed from the loader (decision N); the retrieval
+   leg adds its own check when the instance exists.
+5. **`accept_step7`.** The change is the Appendix's amendment applied to a closed step's
+   acceptance, recorded in the report; accepted.
+
+Decisions 1, 3, 4 and 6 to 13 are accepted as reported. Decision 2 is superseded by ruling 2.
+Decision 5 is superseded by decision O: kind C is a field on (level, latitude) for every use,
+and the one-latitude form is retired. The fifteen refusal cases of check 11 reduce to the four the Step 0 acceptance now
+names, with the recorded-and-warned season case beside them; the closure namelist's thirteen
+refusals are SPEC_03's and stand.
+
+---
+
 ## Appendix. Amendments to SPEC_00 and SPEC_03, to be applied at acceptance
 
 - §3.4: "The model does not decompose the wind" stands, restated: the model reads `u_total`,
@@ -812,8 +886,10 @@ values; the v0.6 values differ from them by the interpolant alone (a few 1e-5 in
   `parameterization`) the model does not read; `decomposition`, `u_cylindrical_ms`,
   `decomposition_geometry` and the `Ω_abs` cylinder check retired (a diagnostic tool on a given
   geometry later). The reader checks the sum identity and the poles.
-- §6.2: for a forward run kind C may carry a latitude grid with identical or varying columns;
-  the point instance stays for the reduction.
+- §6.2: kind C is a field on (level, latitude) for every use, `latitude_grid_deg` required by
+  the tool, the one-latitude form and `latitude_planetocentric_absent_meaning` retired
+  (decision O). SPEC_01 Step 8 amended the same way; the reduction reads the column at the
+  anchor's latitude by decision L.
 - §6.8 (kind `profile`): the transfer-mode variables, scalars and groups of Step 5.
 - §7.2: transfer mode as Step 0 states; `[[anchors]]` one or more, `weight` as the anchor's
   role honored by the estimate; `[estimation]` gains `kernel_uncertainty_per_rad`; the

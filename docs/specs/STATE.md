@@ -48,7 +48,7 @@ SPEC_04 accepted by the author at v0.6 on 21 September 2026 (now v0.7). Steps 0 
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 0 | kind W in three parts, kind C on a latitude grid, `forward/lindal_transfer/`, the transfer namelist for M anchors, the loader with the anchor object and the propagation hook; the chain rebuilt and swept | not started | | |
+| 0 | kind W in three parts, kind C as one structure on (level, latitude), `forward/lindal_transfer/`, the transfer namelist for M anchors, the loader with the anchor object and the propagation hook; the chain rebuilt and swept | reported, refreshed under REVIEW_04_step0 and SPEC_04 v0.9 (15 of 15; decisions N and O and the §11 rulings applied and the whole step rebuilt under them; six findings, finding 1 on the uncertainty column of deliverable 6 and finding 6 on two accepted acceptances reading the retired kind C form; no value changed in any product; full regression passes, the seven suites needing clean products deferred to the sweep; hashes provisional in REPORT_04_step0 section 6 until then) | `reports/REPORT_04_step0.md`, `reports/REVIEW_04_step0.md` | 2026-09-21 |
 | 1 | `lib.geoid` `through_anchor`, `lib.windfield`, the anchors' geopotential under the run's wind (`produce` with the wind along the column) | not started | | |
 | 2 | `lib.mesh`, the columns, `z_lv` | not started | | |
 | 3 | `lib.kernel` | not started | | |

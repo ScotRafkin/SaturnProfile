@@ -1,7 +1,11 @@
 # CASSPIAN design note: occultations, thermal retrievals, and the seasonal propagator
 
-Version 0.3, 15 September 2026. Author of record: S. Rafkin, Southwest Research Institute.
-Status: draft for the author's markup. A design document, separate from the manuscript and from
+Version 0.5, 16 September 2026. Author of record: S. Rafkin, Southwest Research Institute.
+Status: draft for the author's markup; v0.4 applied the author's decisions of 16 September 2026
+(§10, decisions 9 to 12): no preference by origin among anchors, the wind as a hypothesis whose
+shear the anchors correct in the estimate, the temperature field never an input. v0.5 (decision
+13): a retrieval is registered in geopotential from its own gauge isobar and carries no absolute
+radius; the "constructed heights" of v0.3 are withdrawn. A design document, separate from the manuscript and from
 the code specifications; it records how the three sources of information are defined, what each
 supplies, how they are combined, and what the decisions of 14 and 15 September 2026 require of
 the code now and later. Equation numbers here are S1 onward; A and B numbers refer to the
@@ -31,18 +35,37 @@ In latitude the propagator is the transfer kernel of Appendix A, which needs the
 nothing about the thermal state. In season the propagator is the subject of §5, and it is built
 the same way: it moves an observed column in time and needs only the seasonal tendency, never a
 complete state of its own. The seasonal model is therefore never the starting state to be
-corrected by data. The occultation is the absolute reference at its own season; the retrievals
-supply differences and gradients; the propagator supplies tendencies; and the estimate at any
-latitude and season is the observed state moved there, with its uncertainty grown by every step
-of the move. A season in the middle of a gap between observations still gets an answer; its
+corrected by data. A season in the middle of a gap between observations still gets an answer; its
 envelope says how far the nearest observations are.
 
-The consistency requirement that binds temperature and wind is Eq. A19: on a geopotential
-surface the meridional gradient of temperature (and composition) and the axial shear of the wind
-determine one another. Whatever the source of the thermal field, the shear is derived from it
-through A19, or the thermal field is derived from the shear; never both independently. The
-sections below always take the thermal field as primary and derive the shear, because cloud
-tracking gives the wind at one level and nothing about its change with season.
+**No preference by origin (author, 16 September 2026).** Every source is reduced to
+refractivity under its own assumptions, and from that point the pipeline sees anchors with
+declared uncertainties and nothing else. An occultation and a retrieval differ in what they
+measured and how well, and those differences are numbers in their uncertainties (the retrieval's temperature carries
+its prior and its resolution; the occultation alone carries a measured radius, which feeds the
+reference surface and not the anchor's weight); they are not ranks. The weight of an anchor at a target is
+its uncertainty as it arrives there: its own, grown by the transfer in latitude along the path and
+by the propagation in season across the seasonal circle (§6). A sharp profile far away in
+latitude and season pushes weakly; a broader one nearby pushes hard. The model never
+differentiates an anchor and never computes a gradient from the profiles.
+
+**The wind is a hypothesis, and the anchors correct its shear.** The wind field the transfer
+needs is supplied as a prior: a reference-level wind against latitude from any source (cloud
+tracking where it exists, a published table, an invented profile), and a shear along the local
+vertical declared in any form the user chooses (none; constant on cylinders; a parameterization
+with parameters), each with a declared uncertainty. Within one run the delivered temperature field
+is in balance with that wind by construction, because the transfer builds `N` from the kernel and
+the kernel is the shear (Eq. A39 holds on every isobar of the output). Where several anchors are
+present, their disagreement after transfer to the gauge (Eq. A33) is the data saying what the
+integrated shear between their latitudes is, isobar by isobar, and the estimate of Eq. A35 corrects
+the kernel within its declared uncertainty until the anchors agree; the corrected kernel is a
+corrected shear, the posterior wind, which the run writes back in the user's form. The
+reference-level wind is invisible to the kernel (A9, A11) and is never corrected by the anchors.
+The temperature field is never an input: the wind is the prior, the anchors are the data, the
+estimate reconciles them, and B8's deferred decision is settled this way. Where anchors are dense
+the data set the shear and the hypothesis only fills the shape between them; where they are
+sparse or absent, below the depth they reach or in an unobserved hemisphere, the hypothesis and
+its declared uncertainty stand.
 
 ---
 
@@ -104,13 +127,12 @@ composition:
     p(Φ) = p_b + ∫_Φ^{Φ_b} (m̄ / ℛ̄) N dΦ',      T = p ℛ̄ / (k_B N).                        (S3b)
 
 What the occultation supplies that nothing else does: the absolute radius of an isobar, from
-which every altitude in the model descends; a refractivity free of composition; the structure
-below the retrieval floor (to 1.3 bar for Lindal); and a measured column at a known season
-against which the whole construction is checked. Its role in the estimate is the anchor of
-highest weight, at its own latitude and season. Its weight decreases with distance in latitude,
-through the uncertainty of the transfer kernel, and with distance in season, through the
-uncertainty of the propagator (§6), but the part of it that is the mean state persists at any
-season (§6.3).
+which every altitude in the model descends; the structure below the retrieval floor (to 1.3 bar
+for Lindal); and a measured column at a known season against which the whole construction is
+checked (§7). In the estimate it is one anchor among the `M`, weighted by its declared
+uncertainty as it arrives at the target (v0.4, §1): sharp where the target is near its latitude
+and season, broadened by the transfer and the propagator elsewhere; the part of it that is the
+mean state persists at any season (§6.3).
 
 The Cassini radio occultations are occultations in exactly this sense, at other latitudes and
 seasons, and enter the same way once transcribed and reduced.
@@ -127,30 +149,13 @@ part of its uncertainty, and its season by §2. The CIRS record spans 2004 to 20
 winter through the equinox of August 2009 to about northern summer solstice, in both hemispheres
 at every date.
 
-**The differential principle.** The retrievals are used for what they measure best, which is
-change: the gradient with latitude and the change with season. Both are differences in which the
-retrieval's absolute biases (its prior and its composition assumption) cancel to first order. The
-absolute thermal state remains the occultation's wherever an occultation reaches.
+**What a retrieval is to the pipeline (v0.4).** One more anchor, reduced under its own
+assumptions, weighted by its declared uncertainty as it arrives at the target, and nothing else.
+The two facts about retrievals that the files record are facts, not preferences: a retrieval
+carries no absolute radius and is registered in geopotential from its own gauge isobar (§4.2), and
+the limb retrievals reach above any occultation's top level (§4.4).
 
-### 4.1 As the source of the shear
-
-Given `T_R(φ, p)` and a composition, the field is placed on geopotential at each latitude by the
-hydrostatic relation of Eq. A8,
-
-    Φ(p) = Φ_g − ∫_{p_g}^{p} R̄ T d ln p',                                                  (S4)
-
-with `Φ = 0` on the gauge isobar `p_g`, and the shear kernel follows from Eq. A20 (uniform
-composition; the composition terms of A19 are added when the composition varies):
-
-    S / g = −(1/T) (∂T/∂φ)_Φ + (I / T) (∂T/∂Φ),      I(φ, Φ) = ∫_0^Φ (S/g) dΦ',            (S5)
-
-a fixed point in `I` that converges quickly because the second term is small. `S` is the axial
-shear `2 Ω_abs r (∂u/∂Z)_R`, from which the sheared component of the wind is integrated given the
-barotropic component at the reference level from cloud tracking (§B4, Eq. A39). This is the use
-the manuscript already plans; it uses the latitudinal gradient of the retrieval and nothing of its
-absolute level.
-
-### 4.2 As an anchor of lower weight: the retrieval reduced to kind N as if it were an occultation
+### 4.1 The retrieval as an anchor: the reduction
 
 A retrieval column at latitude `φ_i` is reduced to refractivity exactly as Lindal's column was,
 under the retrieval's own composition assumption, which plays the part Lindal's 94 percent
@@ -158,43 +163,48 @@ hydrogen played (author, 15 September 2026):
 
     N_i = p ℛ̄_R / (k_B T_R(p)),                                                            (S6)
 
-with `ℛ̄_R` the mean molecular refractivity of the composition the retrieval assumed. The one
-thing the retrieval lacks that the occultation has is the altitude column. It is constructed: the
-radius of the anchor isobar at `φ_i` comes from the wind-included reference surface of Eq. B3
-marched from the occultation's `r0` (the model's own geodesy at that latitude), and the height of
-each level above it from the hydrostatic integration of the retrieval's own temperature under its
-own composition,
+with `ℛ̄_R` the mean molecular refractivity of the composition the retrieval assumed.
 
-    h(p) − h_ref = −∫_{p_ref}^{p} (R̄_R T_R / |g_eff|) d ln p',                                (S6a)
+### 4.2 Registration in geopotential; no absolute radius (v0.5)
 
-a fixed point in `|g_eff|` through the radius that converges at once because gravity varies by a
-part in a thousand over the column. The retrieval then enters the occultation pipeline as a kind T
-`retrieval` instance with constructed heights, and `refrac` reduces it to a kind N product with
-everything embedded, as it does for an occultation. The radius enters the transfer only through
-`|g_eff|` along the column, so the constructed geodesy is adequate for the physics; what it is not
-is a measurement, and the product says so: the heights carry `provenance = "derived"` and the
-product carries `altitude_registration = "constructed"`, against `"measured"` for an occultation,
-and the radius uncertainty of the reference surface (the geoid's wind sensitivity) is in its
-companions.
+A retrieval has no altitude information, and the model lends it none. Its levels are placed in
+the model's `(φ, Φ)` plane from its own temperature and composition by Eq. A8,
 
-Reduced this way, retrievals are `M` more anchors of the occultation kind and the transfer in
-latitude handles them without a second code path. Their weight is lower: the retrieval's
-temperature error, its resolution and the composition dependence of (S6) together are of order a
-percent in `N`, against a part in a thousand for an occultation, and the altitude registration is
-the model's rather than the retrieval's. The inverse-variance weighting then leans
-on the occultation wherever the target is near one in latitude and season and on the retrievals
-wherever it is far. A retrieval used both as shear source and as anchor in the same run is not a
-contradiction; it is A19 enforced. The independent checks are the same-season occultation
-comparison (§7) and the cloud-tracked wind's change between epochs, not the consistency diagnostic
-between a retrieval and a shear field derived from it.
+    Φ(p) − Φ(p_g) = −∫_{p_g}^{p} R̄_R T_R d ln p',      Φ(p_g) = 0 on its own gauge isobar,     (S6a)
 
-### 4.3 As the calibration of the seasonal propagator
+wherever that isobar sits in radius. This is the gauge every anchor uses, so the retrieval enters
+the transfer as the set of points `(φ_i, Φ, N)` asserting only the thermal structure above and
+below its gauge isobar, which is what it measured, and nothing about where that surface was. If
+its epoch differs from the run's, the propagator of §5 moves `N` at fixed pressure and carries the
+hydrostatic shift of its gauge isobar (the paragraph on the anchor radius), which is why the anchor
+carries `Φ` and not `r`. No radius enters the reduction of a retrieval: (S6a) needs the
+retrieval's temperature and composition and nothing else, since gravity is absorbed in the
+coordinate. Gravity and radius enter only on the run's side, in the kernel through the run's own
+column and reference surface, the geometry every anchor is transferred through. The kind T
+`retrieval` instance therefore carries `Φ(p)` in place of a height column, and the kind N product
+for a retrieval carries geopotential as its level coordinate in place of radius and
+`altitude_registration = "none"` against `"measured"` for an occultation (a schema decision the
+retrieval-leg specification makes explicitly).
+
+Absolute altitude is a property of the delivered state, not of any anchor. It descends from the
+run's reference surface, whose constant of integration comes from the occultations' measured
+radii: one now, Lindal's; with several, their radii at their latitudes and epochs over-determine
+the constant and it is estimated with weights, the same structure as the anchor constant on an
+isobar. Retrievals contribute nothing to it, and the delivered altitude far from any occultation
+carries the geoid's uncertainty accordingly.
+
+Reduced this way, retrievals are more anchors of the same kind and the transfer in latitude
+handles them without a second code path; their uncertainty (temperature error, resolution, the
+composition dependence of (S6)) is declared in the product and is what the estimate weighs.
+
+### 4.3 The record as the calibration of the seasonal propagator
 
 The retrievals over the record calibrate the propagator of §5: they supply the measured seasonal
 differences where both seasons were observed, and the amplitude and lag that fix the response
-model elsewhere. This is the differential principle applied in time.
+model elsewhere. An occultation at a season the record covers enters that calibration on the same
+footing, as one more observation at its season.
 
-### 4.4 As the upper boundary
+### 4.4 The limb retrievals as the upper boundary
 
 The limb retrievals extend above the top of any occultation. The column above the occultation's
 top level is then observed rather than assumed: the limb column is an anchor in the overlap and
@@ -203,7 +213,7 @@ where by Eq. B7 its influence on everything below is smaller in proportion to th
 Above the limb ceiling nothing is measured and the state is a parameterization with the seasonal
 envelope as its uncertainty.
 
-### 4.5 As validation
+### 4.5 Validation
 
 At the delivered latitude and season, a retrieval not used as an anchor in that run is compared
 with the delivered temperature (SPEC_05). The same-season comparison of §7 is the first such test.
@@ -278,20 +288,14 @@ altitude. For an anomaly of a few kelvin over a scale height it is of order a ki
 against the anchor radius uncertainty but not negligible against the altitude precision the
 model aims at, and it is carried into the propagated anchor and its uncertainty.
 
-**The shear.** Eq. A20 has an exact form in `N`. With `ln T = ln p − ln N + const` on a surface of
-uniform composition and Eq. A17 for the pressure gradient along the surface,
-
-    S / g = (∂ ln N / ∂φ)_Φ + I [ 1 / (R̄ T) + ∂ ln T / ∂Φ ],      I = ∫_0^Φ (S/g) dΦ',          (S9c)
-
-so the shear kernel at the new season is formed from the season-propagated `N` field on `Φ` at
-neighboring latitudes, with the temperature in the bracket taken from the production (it
-multiplies `I`, which is small, so its composition dependence is second order). This is what
-"the shear is propagated by the same field" means in practice: (S9a) and (S9b) applied at every
-latitude, then (S9c); temperature and wind are consistent at the new season by construction and
-no separate propagation of the wind exists. The physics of §5.2 is written in temperature because
-that is where the radiative relaxation lives; its fit and its application are in `ln N`. The radius of the gauge isobar shifts by the
-hydrostatic change of the column below it, as (S9) and the paragraph on the anchor radius
-describe.
+**The shear at the new season (v0.4).** No shear is derived from the propagated thermal field.
+The wind hypothesis (§1) is the prior at every season (its reference-level wind may itself be
+declared seasonal), and the season-propagated anchors correct its shear in the estimate of §6
+exactly as same-season anchors do. Temperature and wind at the new season are consistent by
+construction because the delivered field is built from the corrected kernel. The physics of §5.2
+is written in temperature because that is where the radiative relaxation lives; its fit and its
+application are in `ln N`. The radius of the gauge isobar shifts by the hydrostatic change of the
+column below it, as (S9) and the paragraph on the anchor radius describe.
 
 ### 5.2 Forms of the anomaly, each a declared rule
 
@@ -388,22 +392,33 @@ For anchors `i` at `(φ_i, s_i)` with refractivity columns `N_i(Φ)` and uncerta
 
 1. **Propagate in season**, (S8) and (S9), to the run's season `s`, adding the propagator's
    uncertainty `σ_i^season(Φ; s, s_i)`.
-2. **Transfer in latitude** along isobars by Eq. A28 with the kernel of Eq. A27, whose shear is
-   derived from the season-propagated thermal field by (S5), adding the transfer uncertainty
-   `σ_i^transfer(Φ; φ, φ_i)` from the kernel error.
-3. **Combine** by the inverse-variance mean of Eq. A30 at the gauge latitude,
+2. **Transfer in latitude** along isobars by Eq. A28 with the kernel of Eq. A27 formed from the
+   wind hypothesis, adding the transfer uncertainty `σ_i^transfer(Φ; φ, φ_i)` accumulated along
+   the path from the hypothesis's declared shear uncertainty (Eq. A31).
+3. **Combine and correct** at the gauge latitude. With one anchor the constant is fixed and the
+   hypothesis stands. With several, the inverse-variance mean of Eq. A30,
 
        C(Φ) = Σ_i w_i C_i(Φ) / Σ_i w_i,     w_i = 1 / [ (σ_i^meas)² + (σ_i^season)² + (σ_i^transfer)² ],   (S14)
 
-   with the consistency diagnostic `D_ij` of Eq. A33 between every pair.
+   with the consistency diagnostic `D_ij` of Eq. A33 between every pair, and the estimate of
+   Eq. A35: the kernel used is `K + η`, with `η(φ, Φ)` a correction whose prior covariance is
+   the declared shear uncertainty with a declared correlation length in latitude, solved per
+   isobar as the linear least-squares problem in `C` and `η` given the `M` values `ln N_i`. The
+   posterior field's gradient on every isobar is `K + η`, and `η` integrated from the reference
+   level is the posterior shear, written back as the wind the run actually used. A misfit that
+   exceeds the declared uncertainties is reported and inflates them, as A10 says.
 4. **Produce** pressure, temperature and altitude at the target by (S3), with the boundary
    pressure from the highest anchor (§4.4) and the altitude from the wind-included surface
    through the occultation's `r0`.
 
-The weights do what the principle asks. An occultation near the run in latitude and season is
-sharp and dominates; a retrieval is broader but present everywhere; an anchor far in season is
-broadened by the propagator until, at a season in the middle of the largest gap between
-observations, the propagator's uncertainty is the envelope.
+The weights do what the principle asks. An anchor near the target in latitude and season
+arrives sharp and pushes hard, whatever its origin; one far away in either arrives broadened by
+the transfer and the propagator and pushes weakly, however precise it was where it was measured;
+at a season in the middle of the largest gap between observations the propagator's uncertainty is
+the envelope. The two things that cannot be constrained by any number of anchors are the
+reference-level wind, which the kernel does not see, and the attribution of a correction between
+shear and a composition gradient the run did not supply, since A39 constrains the product `R̄ T`;
+the record says under which composition the correction was made.
 
 ### 6.2 What persists and what decays
 
@@ -476,11 +491,14 @@ this note changes SPEC_03 or SPEC_04.
 ### 8.2 Later, as their own code bases, in order
 
 1. **The retrieval leg.** Transcription of the CIRS record (§9) into kind T `retrieval` files
-   with their assumptions and resolution; a tool that constructs the heights by (S6a) on the
-   model's reference surface so that `refrac` reduces the retrieval to kind N by (S6) as it does
-   an occultation; the `altitude_registration` attribute on kind N; the thermal-wind path of the
-   wind tool by (S5). Specified after SPEC_04, with
-   the forward-inputs specification.
+   with their assumptions and resolution; the kind T `retrieval` instance carrying `Φ(p)` by
+   (S6a) from its own gauge isobar, so that `refrac` reduces it to kind N by (S6) with no
+   radius; kind N with geopotential as its coordinate for that instance; the
+   `altitude_registration` attribute on kind N (`"measured"`, `"none"`). Specified after SPEC_04,
+   with the forward-inputs specification. **The combination and the estimate** (§6.1 step 3, per
+   isobar, with the posterior wind written back; kind W carrying the declared shear uncertainty
+   the prior covariance needs) is its own specification, after SPEC_04 and before the
+   propagator, since it is what makes the profiles and the wind hypothesis consistent.
 2. **The seasonal propagator.** The forcing function (S12, S13) with the ring data; a fitting tool
    that reads the transcribed record and writes the propagator file (the rule, `G`, `τ` or the
    harmonic coefficients, the residual, per hemisphere and latitude and pressure); a new input
@@ -528,19 +546,40 @@ the occultation kind at other latitudes and seasons.
 2. The model never refuses an anchor for seasonal distance. It produces its best estimate for any
    selected season from the data it has, with the seasonal guesses carried as uncertainty in the
    Monte Carlo.
-3. Temperature and wind are consistent at every season by construction, through A19, with the
-   thermal field primary and the shear derived.
-4. The occultation is the absolute state at its own season; the retrievals are used
-   differentially; the seasonal propagator supplies tendencies and is never the starting state.
-   Seasons are cyclic: the propagator is one function on the seasonal circle fitted to every
+3. Temperature and wind are consistent at every season by construction: the delivered field is
+   built from the kernel, and the kernel is the wind hypothesis's shear corrected by the anchors
+   (superseded wording of 15 September, "thermal field primary and shear derived", withdrawn on
+   16 September).
+4. The seasonal propagator supplies tendencies and is never the starting state. Seasons are
+   cyclic: the propagator is one function on the seasonal circle fitted to every
    observation, every target season is bounded by observations on both sides, and the weighting
    toward the observations is strongest where the target is closely bounded by them.
 5. No hemispheric symmetry is assumed. The response is fitted per hemisphere; the equinox
    comparison is examined before any symmetry is declared even for the smooth part.
 6. The retrievals' limb data serve the upper boundary.
-7. A retrieval is reduced to kind N under its own composition assumption, with constructed
-   heights on the model's reference surface, and enters the occultation pipeline as one more
-   anchor; `N` at fixed pressure is the transportable quantity in time as well as in latitude,
-   and the propagator is constructed, fitted and applied in `ln N` (S9a to S9c).
+7. A retrieval is reduced to kind N under its own composition assumption and enters the
+   occultation pipeline as one more anchor (its registration per decision 13); `N` at fixed pressure is the transportable quantity in time as well as in latitude,
+   and the propagator is constructed, fitted and applied in `ln N` (S9a, S9b).
 8. The occultation leg of the code proceeds unchanged apart from the season identifier; the
    retrieval leg and the propagator are separate code bases, specified after SPEC_04.
+9. (16 September 2026) No preference by origin. After reduction to refractivity an anchor is an
+   anchor; its weight is its declared uncertainty as it arrives at the target, grown by the
+   distance in latitude and in season. The model never computes a gradient from the profiles. The
+   "differential principle" of v0.3 is withdrawn.
+10. (16 September 2026) The wind is a hypothesis: a reference-level wind from any source and a
+    shear along the local vertical declared in any form, each with a declared uncertainty, in the
+    user's coordinates; the model builds the field on its own geometry and forms the axial shear;
+    for a shear declared constant on cylinders the model writes back what that implies along the
+    local vertical. The formulation imposes no constraint on the shear; a vanishing cylindrical
+    shear at depth is a hypothesis a user may declare, not a rule.
+11. (16 September 2026) The anchors correct the shear in the estimate (A35), per isobar, within
+    the declared uncertainty; the reference-level wind is never corrected; the posterior wind is a
+    product of every run with more than one anchor; the temperature field is never an input.
+12. (16 September 2026) The combination and the estimate are a specification of their own, after
+    SPEC_04.
+13. (16 September 2026) A retrieval carries no absolute altitude and is lent none: it is placed in
+    geopotential from its own gauge isobar by Eq. A8 with no radius entering, and its product
+    carries geopotential as its coordinate and `altitude_registration = "none"`. Absolute altitude belongs to
+    the delivered state through the reference surface, whose constant is set by the occultations'
+    measured radii (estimated with weights when there are several). "Constructed heights" (v0.3
+    to v0.4) withdrawn.
