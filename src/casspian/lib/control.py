@@ -25,6 +25,7 @@ form: a second place that converts would be a second place to get it wrong.
 from __future__ import annotations
 
 import tomllib
+import warnings
 from dataclasses import dataclass
 from datetime import date as _date
 from pathlib import Path
@@ -53,6 +54,7 @@ __all__ = [
     "RunAnchor",
     "RunNamelist",
     "RunInputs",
+    "LoadedAnchor",
     "ClosureComparison",
     "read_run_namelist",
     "load_run_inputs",
@@ -468,13 +470,7 @@ def load_reduction_inputs(manifest: ReductionManifest) -> ReductionInputs:
             raise ControlFileError(f"{manifest.path}: [inputs] {key} names {path.name}, which "
                                    "does not exist.")
         dataset = _load_into_memory(path, kind)
-        commit = str(dataset.attrs.get("casspian_git_commit", ""))
-        if commit.endswith("-dirty"):
-            raise ControlFileError(
-                f"{path.name} carries casspian_git_commit = {commit!r}. SPEC_00 section 8: a "
-                "file offered as an input to refrac may not carry -dirty. Rebuild it from a "
-                "committed tree."
-            )
+        commit = _refuse_dirty_commit(path, dataset.attrs, "refrac")
         loaded[key], hashes[key], commits[key] = dataset, cio.sha256(path), commit
 
     wind, rotation = loaded["wind"], loaded["rotation"]
@@ -554,17 +550,58 @@ RUN_INPUT_KINDS = MappingProxyType({
     "wind": "wind",
 })
 
-#: The modes of SPEC_00 section 7.2 and the one this specification implements (SPEC_03 Step 3);
-#: `transfer` is SPEC_04's.
+#: The modes of SPEC_00 section 7.2 and the ones implemented: closure by SPEC_03 Step 3,
+#: transfer by SPEC_04 Step 0.
 _RUN_MODES = ("closure", "transfer")
-_RUN_MODES_IMPLEMENTED = ("closure",)
+_RUN_MODES_IMPLEMENTED = ("closure", "transfer")
 _P_B_RULES = ("anchor_profile_top",)
 _P_B_LOCATIONS = ("top_of_anchor_profile",)
 
-#: SPEC_00 section 7.2 sections and keys that belong to SPEC_04, refused as not implemented rather
-#: than as unknown, so that a namelist written for SPEC_04 fails for the right reason.
+#: SPEC_00 section 7.2 sections and keys that belong to a later specification in closure mode,
+#: refused as not implemented rather than as unknown, so that a namelist written for one mode
+#: fails in the other for the right reason. Transfer mode requires all of them.
 _NOT_IMPLEMENTED_SECTIONS = ("grid", "numerics", "estimation")
 _NOT_IMPLEMENTED_KEYS = {"isobars": ("datum_isobar_Pa",)}
+
+#: SPEC_04 Step 0 deliverable 4: the `[numerics]` tables and the schemes implemented for each.
+#: The geopotential and the hydrostatic integration are SPEC_03's closed rules and are not
+#: namelist keys; a namelist that names either is refused as not implemented, as in closure
+#: mode, so that a namelist written against SPEC_00 section 7.2 fails for the right reason.
+_NUMERICS_SCHEMES = {
+    "reference_surface": ("rk4",),
+    "shear_integral": ("trapezoid",),
+    "isobar_tracing": ("rk4",),
+    "transfer": ("trapezoid",),
+    "altitude": ("trapezoid",),
+}
+_NUMERICS_CLOSED_IN_SPEC_03 = ("geopotential", "hydrostatic")
+_OUTER_LOOP_KEYS = {
+    "relative_tolerance_ln_p": (_NUMBER, True),
+    "max_iterations": (_INTEGER, True),
+}
+
+#: SPEC_04 Step 0 deliverable 4: the sections transfer mode adds, and their keys.
+_TRANSFER_VOCABULARY = {
+    "target": (True, {"latitude_planetocentric_deg": (_NUMBER, True)}),
+    # SPEC_04 v0.9: the mesh's extent is not declared. Step 2 builds it from the anchors'
+    # levels and grows it when a traced curve needs more, so the only numbers here are the two
+    # spacings (decision N: a number the code can compute is never asked of the user).
+    "grid": (True, {
+        "geopotential_spacing_m2s2": (_NUMBER, True),
+        "latitude_spacing_deg": (_NUMBER, True),
+    }),
+    "estimation": (True, {
+        "gauge_latitude_rule": (_TEXT, True),
+        "kernel_uncertainty_per_rad": (_NUMBER, True),
+        "model_error_correlation_length_deg": (_NUMBER, True),
+    }),
+}
+_GAUGE_LATITUDE_RULES = ("weighted_centroid",)
+
+#: SPEC_04 Step 0 deliverable 4 and SPEC_00 section 7.2: the anchor's role. 1 construction,
+#: 0 validation; anything else is refused, since the calibration weights between them are the
+#: combination specification's and nothing here would honor them.
+_ANCHOR_WEIGHTS = (0.0, 1.0)
 
 _RUN_VOCABULARY = {
     "run": (True, {
@@ -616,6 +653,16 @@ class RunAnchor:
     weight: float
     measurement_uncertainty_scale: float
 
+    @property
+    def is_construction(self) -> bool:
+        """Whether this anchor builds the estimate (SPEC_00 section 7.2, SPEC_04 Step 0).
+
+        `weight = 1` is a construction anchor and enters the gauge latitude and the anchor
+        constant; `weight = 0` is a validation anchor, which is propagated, placed and traced
+        like any other and reports its `C_i` and every `D_ij`, but enters neither.
+        """
+        return self.weight == 1.0
+
 
 @dataclass(frozen=True)
 class RunNamelist:
@@ -639,6 +686,13 @@ class RunNamelist:
     output_directory: Path
     product: Path
     diagnostics: MappingProxyType
+    # SPEC_04 Step 0 deliverable 4. All five are None or empty in closure mode, which refuses
+    # every one of them as not implemented.
+    target_latitude_deg: object = None
+    datum_isobar_Pa: object = None
+    grid: MappingProxyType = MappingProxyType({})
+    numerics: MappingProxyType = MappingProxyType({})
+    estimation: MappingProxyType = MappingProxyType({})
 
 
 def _check_run_table(path, section, table, keys):
@@ -678,18 +732,74 @@ def _check_run_table(path, section, table, keys):
             )
 
 
-def read_run_namelist(path) -> RunNamelist:
-    """Parse and check `<run>.toml` against the closure subset of SPEC_00 section 7.2.
+def _check_numerics(path, document) -> MappingProxyType:
+    """The `[numerics]` tables of transfer mode (SPEC_04 Step 0 deliverable 4).
 
-    SPEC_03 Step 3 deliverable 2. Refuses: invalid TOML; a section of SPEC_04 (`[grid]`,
-    `[numerics]`, `[estimation]`) or `datum_isobar_Pa`, as not implemented; a mode other than
-    closure; `[target]` in closure mode; an unknown section or key, as a physical value where it
-    names a quantity with a unit; a geodesy key; a missing required section or key; other than
-    exactly one `[[anchors]]` entry in closure mode; not exactly one of `p_b_rule` and `p_b_Pa`,
-    `p_b_Pa` in closure mode, or a rule or location other than the accepted ones; an input path
-    outside `inputs/` of the run directory or without the run prefix; an output directory
-    outside the run directory or a product without the prefix; a namelist file not named for its
-    run; a season outside [0, 360) degrees; a date that is not an ISO 8601 date.
+    One table per integration and one for the outer loop, each required, each with the scheme
+    implemented for it. The geopotential and hydrostatic rules are SPEC_03's closed ones and
+    are not namelist keys, so a table naming either is refused as not implemented, distinctly
+    from the unknown-table refusal.
+    """
+    numerics = document["numerics"]
+    for name in _NUMERICS_CLOSED_IN_SPEC_03:
+        if name in numerics:
+            raise ControlFileError(
+                f"{path}: [numerics.{name}] is not implemented as a namelist key: the "
+                f"{name} rule is closed by SPEC_03 and is not chosen per run (SPEC_04 Step 0 "
+                "deliverable 4)."
+            )
+    known = set(_NUMERICS_SCHEMES) | {"outer_loop"}
+    unknown = sorted(set(numerics) - known)
+    if unknown:
+        raise ControlFileError(
+            f"{path}: unknown [numerics] table(s) {unknown}. SPEC_04 Step 0 deliverable 4 "
+            f"defines {sorted(known)}."
+        )
+    missing = sorted(known - set(numerics))
+    if missing:
+        raise ControlFileError(
+            f"{path}: [numerics] is missing the required table(s) {missing}; every integration "
+            "declares its scheme (SPEC_04 Step 0 deliverable 4)."
+        )
+    out = {}
+    for name, schemes in _NUMERICS_SCHEMES.items():
+        _check_run_table(path, f"numerics.{name}", numerics[name], {"scheme": (_TEXT, True)})
+        scheme = numerics[name]["scheme"]
+        if scheme not in schemes:
+            raise ControlFileError(
+                f"{path}: [numerics.{name}] scheme = {scheme!r} is not implemented; SPEC_04 "
+                f"implements {list(schemes)} for it."
+            )
+        out[name] = scheme
+    _check_run_table(path, "numerics.outer_loop", numerics["outer_loop"], _OUTER_LOOP_KEYS)
+    loop = numerics["outer_loop"]
+    _check_positive(path, "numerics.outer_loop", "relative_tolerance_ln_p",
+                    loop["relative_tolerance_ln_p"])
+    _check_positive(path, "numerics.outer_loop", "max_iterations", loop["max_iterations"],
+                    integer=True)
+    out["outer_loop"] = MappingProxyType({
+        "relative_tolerance_ln_p": float(loop["relative_tolerance_ln_p"]),
+        "max_iterations": int(loop["max_iterations"]),
+    })
+    return MappingProxyType(out)
+
+
+def read_run_namelist(path) -> RunNamelist:
+    """Parse and check `<run>.toml` against SPEC_00 section 7.2 in the mode it declares.
+
+    SPEC_03 Step 3 deliverable 2 and SPEC_04 Step 0 deliverable 4. Refuses: invalid TOML; a
+    mode that is not one of SPEC_00 section 7.2's or is not implemented; in closure mode
+    `[grid]`, `[numerics]`, `[estimation]`, `datum_isobar_Pa` or `[target]`; in transfer mode a
+    `[numerics]` table that is unknown, missing, or names a rule SPEC_03 closed, and a scheme
+    that is not implemented; an unknown section or key, as a physical value where it names a
+    quantity with a unit; a geodesy key; a missing required section or key; other than exactly
+    one `[[anchors]]` entry in closure mode; an anchor `weight` that is neither 1 nor 0; not
+    exactly one of `p_b_rule` and `p_b_Pa`, `p_b_Pa` in closure mode, or a rule or location
+    other than the accepted ones; a gauge latitude rule that is not implemented; a grid spacing
+    that is not positive or a range that is not two increasing values; an input path outside
+    `inputs/` of the run directory or without the run prefix; an output directory outside the
+    run directory or a product without the prefix; a namelist file not named for its run; a
+    season outside [0, 360) degrees; a date that is not an ISO 8601 date.
     """
     path = Path(path).resolve()
     if not path.exists():
@@ -700,12 +810,6 @@ def read_run_namelist(path) -> RunNamelist:
     except tomllib.TOMLDecodeError as exc:
         raise ControlFileError(f"{path}: not valid TOML: {exc}") from None
 
-    for section in document:
-        if section in _NOT_IMPLEMENTED_SECTIONS:
-            raise ControlFileError(
-                f"{path}: [{section}] is not implemented in this specification (SPEC_03 Step 3 "
-                "implements the closure subset of SPEC_00 section 7.2; SPEC_04 adds it)."
-            )
     if "run" not in document:
         raise ControlFileError(f"{path}: required section [run] is missing.")
     _check_run_table(path, "run", document["run"], _RUN_VOCABULARY["run"][1])
@@ -720,26 +824,44 @@ def read_run_namelist(path) -> RunNamelist:
             f"{path}: [run] mode = {mode!r} is not implemented in this specification (SPEC_03 "
             "implements closure; SPEC_04 adds transfer)."
         )
-    if "target" in document:
-        raise ControlFileError(
-            f"{path}: [target] is not accepted in closure mode: the target of a closure is the "
-            "anchor's own latitude phi_c (SPEC_03 Step 3 deliverable 2)."
-        )
-    allowed = set(_RUN_VOCABULARY) | {"anchors"}
+    transfer = mode == "transfer"
+    if not transfer:
+        for section in document:
+            if section in _NOT_IMPLEMENTED_SECTIONS:
+                raise ControlFileError(
+                    f"{path}: [{section}] is not implemented in this specification (SPEC_03 "
+                    "Step 3 implements the closure subset of SPEC_00 section 7.2; SPEC_04 adds "
+                    "it)."
+                )
+        if "target" in document:
+            raise ControlFileError(
+                f"{path}: [target] is not accepted in closure mode: the target of a closure is "
+                "the anchor's own latitude phi_c (SPEC_03 Step 3 deliverable 2)."
+            )
+    vocabulary = dict(_RUN_VOCABULARY)
+    if transfer:
+        vocabulary.update(_TRANSFER_VOCABULARY)
+        vocabulary["isobars"] = (True, dict(_RUN_VOCABULARY["isobars"][1],
+                                            datum_isobar_Pa=(_NUMBER, True)))
+        vocabulary["numerics"] = (True, {})       # its tables are checked by _check_numerics
+    allowed = set(vocabulary) | {"anchors"}
     unknown = sorted(set(document) - allowed)
     if unknown:
         raise ControlFileError(
             f"{path}: unknown section(s) {unknown}. SPEC_00 section 7.2, as implemented for "
-            f"closure mode, defines {sorted(allowed)}."
+            f"{mode} mode, defines {sorted(allowed)}."
         )
-    for section, (section_required, keys) in _RUN_VOCABULARY.items():
-        if section == "run":
+    for section, (section_required, keys) in vocabulary.items():
+        # [numerics] holds tables and not keys; `_check_numerics` checks it below.
+        if section in ("run", "numerics"):
             continue
         if section not in document:
             if section_required:
                 raise ControlFileError(f"{path}: required section [{section}] is missing.")
             continue
         _check_run_table(path, section, document[section], keys)
+    if transfer and "numerics" not in document:
+        raise ControlFileError(f"{path}: required section [numerics] is missing.")
 
     anchors_table = document.get("anchors")
     if not isinstance(anchors_table, list) or not anchors_table:
@@ -755,6 +877,20 @@ def read_run_namelist(path) -> RunNamelist:
         if not isinstance(entry, dict):
             raise ControlFileError(f"{path}: [[anchors]] entries must be tables.")
         _check_run_table(path, "anchors", entry, _ANCHOR_KEYS)
+        if float(entry["weight"]) not in _ANCHOR_WEIGHTS:
+            raise ControlFileError(
+                f"{path}: [[anchors]] slug = {entry['slug']!r} carries weight = "
+                f"{entry['weight']!r}. SPEC_00 section 7.2 makes the weight the anchor's role, "
+                "1 for construction and 0 for validation; the calibration weights between them "
+                "are the combination specification's and are not implemented here (SPEC_04 "
+                "Step 0 deliverable 4)."
+            )
+        if float(entry["measurement_uncertainty_scale"]) <= 0.0:
+            raise ControlFileError(
+                f"{path}: [[anchors]] slug = {entry['slug']!r} carries "
+                f"measurement_uncertainty_scale = {entry['measurement_uncertainty_scale']!r}; "
+                "it multiplies the anchor's own uncertainty and must be positive."
+            )
 
     name = run["name"]
     if path.stem != name:
@@ -804,6 +940,52 @@ def read_run_namelist(path) -> RunNamelist:
         )
     gauge = document["isobars"]["gauge_isobar_Pa"]
     _check_positive(path, "isobars", "gauge_isobar_Pa", gauge)
+
+    target_latitude = datum = None
+    grid = numerics = estimation = MappingProxyType({})
+    if transfer:
+        target_latitude = float(document["target"]["latitude_planetocentric_deg"])
+        if not -90.0 <= target_latitude <= 90.0:
+            raise ControlFileError(
+                f"{path}: [target] latitude_planetocentric_deg = {target_latitude!r} is not a "
+                "latitude."
+            )
+        datum = float(document["isobars"]["datum_isobar_Pa"])
+        _check_positive(path, "isobars", "datum_isobar_Pa", datum)
+
+        table = document["grid"]
+        _check_positive(path, "grid", "geopotential_spacing_m2s2",
+                        table["geopotential_spacing_m2s2"])
+        _check_positive(path, "grid", "latitude_spacing_deg", table["latitude_spacing_deg"])
+        grid = MappingProxyType({
+            "geopotential_spacing_m2s2": float(table["geopotential_spacing_m2s2"]),
+            "latitude_spacing_deg": float(table["latitude_spacing_deg"]),
+        })
+
+        numerics = _check_numerics(path, document)
+
+        table = document["estimation"]
+        if table["gauge_latitude_rule"] not in _GAUGE_LATITUDE_RULES:
+            raise ControlFileError(
+                f"{path}: [estimation] gauge_latitude_rule = "
+                f"{table['gauge_latitude_rule']!r} is not implemented; SPEC_04 implements "
+                f"{list(_GAUGE_LATITUDE_RULES)}."
+            )
+        _check_positive(path, "estimation", "kernel_uncertainty_per_rad",
+                        table["kernel_uncertainty_per_rad"])
+        if float(table["model_error_correlation_length_deg"]) != 0.0:
+            raise ControlFileError(
+                f"{path}: [estimation] model_error_correlation_length_deg = "
+                f"{table['model_error_correlation_length_deg']!r}; only 0.0 is implemented, "
+                "which recovers Eq. A28. A nonzero length is the kernel correction of Eq. A35 "
+                "and belongs to the combination specification (SPEC_04 decision D)."
+            )
+        estimation = MappingProxyType({
+            "gauge_latitude_rule": str(table["gauge_latitude_rule"]),
+            "kernel_uncertainty_per_rad": float(table["kernel_uncertainty_per_rad"]),
+            "model_error_correlation_length_deg": 0.0,
+        })
+
     diagnostics = _check_optional_sections(path, document)
 
     run_directory = path.parent
@@ -866,6 +1048,11 @@ def read_run_namelist(path) -> RunNamelist:
         output_directory=output_directory,
         product=product,
         diagnostics=MappingProxyType(diagnostics),
+        target_latitude_deg=target_latitude,
+        datum_isobar_Pa=datum,
+        grid=grid,
+        numerics=numerics,
+        estimation=estimation,
     )
 
 
@@ -885,8 +1072,51 @@ class ClosureComparison:
 
 
 @dataclass(frozen=True)
+class LoadedAnchor:
+    """One anchor as it arrives at the model. SPEC_04 Step 0 deliverable 6.
+
+    Everything on the anchor's own levels, top down as kind N stores them. Every later step
+    reads the anchor's uncertainty from here and never from the file.
+
+    The two uncertainty columns are the measurement term and the season term of decision J.
+    `sigma_ln_N_measurement` is the uncertainty of `ln N`, that is the file's
+    `refractivity_uncertainty` divided by its `refractivity` and multiplied by the entry's
+    `measurement_uncertainty_scale`: the weights of Eq. A30 act on `ln N`, so the column that
+    carries them is an uncertainty of `ln N` (REPORT_04_step0 finding 1). `sigma_ln_N_season`
+    is zero here and `season_term` says so; the propagator specification fills it.
+
+    `label_pressure_Pa` is the label of each level's isobar. It arrives as the anchor's own
+    tabulated pressure and is replaced by the anchor's produced pressure once the anchor has
+    been produced (SPEC_04 Step 1 deliverable 3).
+    """
+
+    slug: str
+    path: Path
+    tree: object
+    weight: float
+    measurement_uncertainty_scale: float
+    latitude_planetocentric_deg: float
+    radius_m: object
+    ln_N: object
+    label_pressure_Pa: object
+    sigma_ln_N_measurement: object
+    sigma_ln_N_season: object
+    season_term: str
+    anchor_season_deg: object
+    run_season_deg: float
+    season_matches_run: bool
+    gauge_level_index: int
+    propagation: MappingProxyType = MappingProxyType({})
+
+    @property
+    def is_construction(self) -> bool:
+        """Whether this anchor enters the gauge latitude and the anchor constant."""
+        return self.weight == 1.0
+
+
+@dataclass(frozen=True)
 class RunInputs:
-    """The anchor and the four run inputs in memory, with hashes, commits and check results."""
+    """The anchors and the four run inputs in memory, with hashes, commits and check results."""
 
     namelist: RunNamelist
     anchor: object
@@ -898,6 +1128,12 @@ class RunInputs:
     commits: MappingProxyType
     gauge_level_index: int
     closure: tuple
+    #: SPEC_04 Step 0 deliverable 6: one `LoadedAnchor` per `[[anchors]]` entry, in the
+    #: namelist's order. Empty in closure mode, which reads the anchor through `anchor`.
+    anchors: tuple = ()
+    #: SPEC_04 Step 0 deliverable 5, decision N: what each file declares as its season, beside
+    #: the run's under the key `run`. A difference is recorded here and warned, never refused.
+    seasons: MappingProxyType = MappingProxyType({})
 
 
 def _nodes(obj) -> dict:
@@ -993,30 +1229,51 @@ def check_closure_inputs(inputs: dict, anchor_tree) -> tuple:
     return tuple(results)
 
 
-def _refuse_dirty(path: Path, attrs, what: str) -> str:
+def _refuse_dirty_commit(path: Path, attrs, consumer: str, what: str | None = None) -> str:
+    """Refuse a file whose `casspian_git_commit` ends in `-dirty`, and return the commit.
+
+    SPEC_00 section 8. The one place `refrac` and `forward` make this refusal, so that a step
+    that must rebuild an input file on a working tree has one point to relax, inside its
+    acceptance script and named in its output (SPEC_03 section 0, the author's ruling of 14
+    September 2026). The two message forms are unchanged: `forward` names the role the file
+    plays in the run, `refrac` names the file alone.
+    """
     commit = str(attrs.get("casspian_git_commit", ""))
     if commit.endswith("-dirty"):
+        where = path.name if what is None else f"{path.name} ({what})"
         raise ControlFileError(
-            f"{path.name} ({what}) carries casspian_git_commit = {commit!r}. SPEC_00 section 8: "
-            "a file offered as an input to forward may not carry -dirty. Rebuild it from a "
+            f"{where} carries casspian_git_commit = {commit!r}. SPEC_00 section 8: a file "
+            f"offered as an input to {consumer} may not carry -dirty. Rebuild it from a "
             "committed tree."
         )
     return commit
 
 
+def _refuse_dirty(path: Path, attrs, what: str) -> str:
+    return _refuse_dirty_commit(path, attrs, "forward", what)
+
+
 def load_run_inputs(namelist: RunNamelist) -> RunInputs:
     """Read the anchor and the four inputs of a run under their kinds, and check them.
 
-    SPEC_03 Step 3 deliverable 2. Every check runs before any arithmetic. Refuses when: a file
-    does not exist or is not of its kind; the anchor or an input carries `-dirty`; the anchor's
-    `profile_or_run` is not the `[[anchors]]` slug; an input does not carry the run name in
-    `profile_or_run`, or `role = "forward"`, or (kind C) `composition_role = "forward"`; the
-    wind's rotation system or rate differs from the run's kind R; the wind's components do not
-    sum to its total or its poles are not zero; the wind's coverage does not span the anchor's
-    levels and latitude. In closure mode, also when: the run's season differs from the anchor's;
-    the composition's levels are not the anchor's; the gauge isobar is not a tabulated level of
-    the anchor (the nearest level named); an input differs from the anchor's embedded copy.
+    SPEC_03 Step 3 deliverable 2 and SPEC_04 Step 0 deliverable 5. Every check runs before any
+    arithmetic. Refuses when: a file does not exist or is not of its kind; an anchor or an input
+    carries `-dirty`; an anchor's `profile_or_run` is not its `[[anchors]]` slug; an input does
+    not carry the run name in `profile_or_run`, or `role = "forward"`, or (kind C)
+    `composition_role = "forward"`; the wind's rotation system or rate differs from the run's
+    kind R; the wind's parts do not sum to its total or its poles are not zero; the wind's
+    coverage does not span the anchors' levels and latitudes. In closure mode, also when: the
+    run's season differs from the anchor's; the composition's levels are not the anchor's; the
+    gauge isobar is not a tabulated level of the anchor (the nearest level named); an input
+    differs from the anchor's embedded copy. In transfer mode, also when: the wind's latitude
+    coverage excludes the target; the composition does not cover every anchor and the target;
+    the wind or the composition carries neither the run's season nor `uniform`; an anchor does
+    not carry `radius_m` as its coordinate; the gauge isobar is not a tabulated level of every
+    anchor. A season mismatch between an anchor and the run is recorded, not refused
+    (SPEC_04 decision I).
     """
+    if namelist.mode == "transfer":
+        return _load_transfer_inputs(namelist)
     if namelist.mode != "closure":
         raise ControlFileError(f"{namelist.path}: mode {namelist.mode!r} is not implemented.")
     hashes, commits = {}, {}
@@ -1139,5 +1396,173 @@ def load_run_inputs(namelist: RunNamelist) -> RunInputs:
         commits=MappingProxyType(commits),
         gauge_level_index=int(match[0]),
         closure=closure,
+        **loaded,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Transfer mode, SPEC_04 Step 0 deliverables 5 and 6
+# ---------------------------------------------------------------------------
+
+
+def _season_of(attrs) -> object:
+    """A file's declared season in degrees, or `None` when it declares itself uniform."""
+    if "solar_longitude_deg" in attrs:
+        return float(attrs["solar_longitude_deg"])
+    return None
+
+
+def _record_season(path: Path, attrs, run_season: float, what: str):
+    """Record a file's season beside the run's, warning when they differ. Never refuses.
+
+    SPEC_04 decision N, which amends decision I's "else refused": a season that differs from
+    the run's is a recorded, unmodeled term until the propagator exists, and the warning is
+    there because the record alone might be missed. Returns what the file declares: the solar
+    longitude in degrees, or `"uniform"`.
+    """
+    season = _season_of(attrs)
+    if season is None:
+        return str(attrs.get("season_absent_meaning", "unstated"))
+    if season != run_season:
+        warnings.warn(
+            f"{path.name}: the run's {what} is at solar_longitude_deg = {season!r} but the run "
+            f"declares {run_season!r}. The difference is recorded in the product and is an "
+            "unmodeled term until the propagator exists (SPEC_04 decisions I and N).",
+            stacklevel=2,
+        )
+    return season
+
+
+def _load_anchor_object(entry: RunAnchor, namelist: RunNamelist, tree) -> LoadedAnchor:
+    """The anchor as it arrives (SPEC_04 Step 0 deliverable 6), from its kind N file.
+
+    The retrieval instance of kind N, which carries no `radius_m`, does not pass the schema
+    today, so there is no check of its own here; the retrieval leg adds what it needs
+    (SPEC_04 Step 0 deliverable 5, decision N).
+    """
+    root = tree.to_dataset(inherit=False)
+    levels = np.asarray(tree["inputs/thermo"].to_dataset(inherit=False)["pressure_Pa"].values,
+                        dtype="float64")
+    match = np.flatnonzero(levels == namelist.gauge_isobar_Pa)
+    if match.size != 1:
+        nearest = int(np.argmin(np.abs(levels - namelist.gauge_isobar_Pa)))
+        raise ControlFileError(
+            f"{namelist.path.name}: [isobars] gauge_isobar_Pa = {namelist.gauge_isobar_Pa!r} is "
+            f"not a tabulated level of the anchor {entry.slug!r}; the nearest is level "
+            f"{nearest} at {levels[nearest]!r} Pa. The gauge is a tabulated level of every "
+            "occultation anchor, matched exactly; an anchor whose levels do not include it is "
+            "not implemented in this specification (SPEC_04 Step 0 deliverable 4, decision M)."
+        )
+    N = np.asarray(root["refractivity"].values, dtype="float64")
+    sigma_N = np.asarray(root["refractivity_uncertainty"].values, dtype="float64")
+    anchor_season = _season_of(tree.attrs)
+    return LoadedAnchor(
+        slug=entry.slug,
+        path=entry.path,
+        tree=tree,
+        weight=entry.weight,
+        measurement_uncertainty_scale=entry.measurement_uncertainty_scale,
+        latitude_planetocentric_deg=float(root["latitude_planetocentric_deg"].values),
+        radius_m=np.asarray(root["radius_m"].values, dtype="float64"),
+        ln_N=np.log(N),
+        label_pressure_Pa=levels,
+        sigma_ln_N_measurement=entry.measurement_uncertainty_scale * sigma_N / N,
+        sigma_ln_N_season=np.zeros_like(N),
+        season_term="absent",
+        anchor_season_deg=anchor_season,
+        run_season_deg=namelist.solar_longitude_deg,
+        season_matches_run=(anchor_season is not None
+                            and anchor_season == namelist.solar_longitude_deg),
+        gauge_level_index=int(match[0]),
+    )
+
+
+def _load_transfer_inputs(namelist: RunNamelist) -> RunInputs:
+    """The anchors and the four inputs of a transfer run. SPEC_04 Step 0 deliverable 5."""
+    hashes, commits, anchors = {}, {}, []
+    for entry in namelist.anchors:
+        if not entry.path.exists():
+            raise ControlFileError(
+                f"{namelist.path}: [[anchors]] path names {entry.path}, which does not exist."
+            )
+        tree = _load_into_memory(entry.path, "refractivity")
+        commits[f"anchor:{entry.slug}"] = _refuse_dirty(entry.path, tree.attrs,
+                                                        f"anchor {entry.slug}")
+        hashes[f"anchor:{entry.slug}"] = cio.sha256(entry.path)
+        slug = str(tree.attrs.get("profile_or_run", ""))
+        if slug != entry.slug:
+            raise ControlFileError(
+                f"{namelist.path}: [[anchors]] slug = {entry.slug!r} but {entry.path.name} "
+                f"carries profile_or_run = {slug!r} (SPEC_00 section 7.2)."
+            )
+        anchors.append(_load_anchor_object(entry, namelist, tree))
+
+    loaded = {}
+    for key, kind in RUN_INPUT_KINDS.items():
+        path = namelist.inputs[key]
+        if not path.exists():
+            raise ControlFileError(
+                f"{namelist.path}: [inputs] {key} names {path.name}, which does not exist."
+            )
+        dataset = _load_into_memory(path, kind)
+        commits[key] = _refuse_dirty(path, dataset.attrs, f"run input {key}")
+        hashes[key] = cio.sha256(path)
+        attrs = dataset.attrs
+        if str(attrs.get("profile_or_run")) != namelist.name:
+            raise ControlFileError(
+                f"{path.name} carries profile_or_run = {attrs.get('profile_or_run')!r}; a run's "
+                f"input carries the run prefix {namelist.name!r} (SPEC_00 section 8)."
+            )
+        if attrs.get("role") != "forward":
+            raise ControlFileError(
+                f"{path.name} carries role = {attrs.get('role')!r}; a run's input is role "
+                "'forward' (SPEC_03 Step 3 deliverable 2)."
+            )
+        if kind == "composition" and attrs.get("composition_role") != "forward":
+            raise ControlFileError(
+                f"{path.name} carries composition_role = {attrs.get('composition_role')!r}; a "
+                "run's composition is 'forward' (SPEC_00 section 6.2)."
+            )
+        loaded[key] = dataset
+
+    wind, rotation = loaded["wind"], loaded["rotation"]
+    wind_name = str(wind.attrs["rotation_system_name"])
+    rotation_name = str(rotation.attrs["system_name"])
+    wind_rate = float(wind.attrs["rotation_rate_rad_s"])
+    rotation_rate = float(rotation["angular_rate_rad_s"])
+    if wind_name != rotation_name or wind_rate != rotation_rate:
+        raise ControlFileError(
+            f"the run's wind is in {wind_name!r} at {wind_rate!r} rad/s but its rotation file is "
+            f"{rotation_name!r} at {rotation_rate!r} rad/s (SPEC_00 section 6.6)."
+        )
+    try:
+        check_wind_components(wind, namelist.inputs["wind"].name)
+        check_wind_poles(wind, namelist.inputs["wind"].name)
+    except Exception as exc:
+        raise ControlFileError(str(exc)) from None
+
+    # The seasons of W, C and every anchor are recorded beside the run's and a difference is
+    # warned, never refused (SPEC_04 decision N, which amends decision I's "else refused").
+    # Coverage is the interpolants' business, not the loader's: `lib.windfield` and
+    # `lib.composition.column_at` refuse a point outside their data, which is where a coverage
+    # failure belongs and where it names the point that failed.
+    seasons = {"run": namelist.solar_longitude_deg}
+    for key in ("wind", "composition"):
+        seasons[key] = _record_season(namelist.inputs[key], loaded[key].attrs,
+                                      namelist.solar_longitude_deg, key)
+    for anchor in anchors:
+        seasons[f"anchor:{anchor.slug}"] = _record_season(
+            anchor.path, anchor.tree.attrs, namelist.solar_longitude_deg,
+            f"anchor {anchor.slug}")
+
+    return RunInputs(
+        namelist=namelist,
+        anchor=anchors[0].tree,
+        sha256=MappingProxyType(hashes),
+        commits=MappingProxyType(commits),
+        gauge_level_index=anchors[0].gauge_level_index,
+        closure=(),
+        anchors=tuple(anchors),
+        seasons=MappingProxyType(seasons),
         **loaded,
     )

@@ -34,6 +34,7 @@ from types import MappingProxyType
 
 import numpy as np
 
+from casspian.lib import composition as comp
 from casspian.lib import reduction as red
 from casspian.lib.constants import CODATA_RELEASE
 from casspian.lib.control import ReductionInputs, ReductionManifest
@@ -270,9 +271,13 @@ def reduce_profile(inputs: ReductionInputs, manifest: ReductionManifest,
     n = red.number_density(p, T)
     n_rel, n_included, n_unstated = red.quadrature({"pressure": dp / p, "temperature": dT / T})
 
-    # B3.3 and the composition companion, with the declared closure applied.
-    names, x, share, partner = composition_closure(inputs.composition)
-    composition = inputs.composition
+    # B3.3 and the composition companion, with the declared closure applied. Kind C is a field
+    # on (level, latitude) for every use (SPEC_04 decision O), so the reduction takes the
+    # column at the anchor's own latitude by the interpolant of decision L. For a field that
+    # is uniform in latitude, which the Lindal hypothesis is, every node carries the same
+    # column and the interpolation returns it unchanged.
+    composition = comp.column_at(inputs.composition, np.degrees(anchor.phi_c_rad))
+    names, x, share, partner = composition_closure(composition)
     root = composition.dataset
     species = composition["species"].dataset
     R_i = np.asarray(species["refractivity_per_molecule_m3"].values, dtype="float64")

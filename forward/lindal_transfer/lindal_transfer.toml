@@ -1,0 +1,67 @@
+# CASSPIAN run namelist, transfer mode (SPEC_00 section 7.2, SPEC_04 Step 0 deliverable 4).
+# The Lindal refractivity transferred to 10 N under the closure inputs: the one state in hand,
+# with the composition carried to every latitude and the wind in the three parts of SPEC_04
+# Step 0 deliverable 1.
+# Inputs built by: casspian-run-inputs forward/lindal_transfer/lindal_transfer_build.toml
+
+[run]
+name        = "lindal_transfer"
+description = "Lindal refractivity transferred to 10 N under the closure inputs"
+mode        = "transfer"
+solar_longitude_deg = 18.2
+date        = "1981-08-26"
+
+[[anchors]]
+slug   = "lindal"
+path   = "../../occul_data/lindal/lindal_refractivity.nc"
+weight = 1.0
+measurement_uncertainty_scale = 1.0
+
+[inputs]
+composition = "inputs/lindal_transfer_composition.nc"
+gravity     = "inputs/lindal_transfer_gravity.nc"
+rotation    = "inputs/lindal_transfer_rotation.nc"
+wind        = "inputs/lindal_transfer_wind.nc"
+
+[hydrostatic_boundary]
+p_b_rule     = "anchor_profile_top"
+p_b_location = "top_of_anchor_profile"
+
+[isobars]
+gauge_isobar_Pa = 1.0e4
+datum_isobar_Pa = 1.0e5
+
+[target]
+latitude_planetocentric_deg = 10.0
+
+[grid]
+geopotential_spacing_m2s2 = 5.0e3
+latitude_spacing_deg      = 0.05
+
+[numerics.reference_surface]
+scheme = "rk4"
+[numerics.shear_integral]
+scheme = "trapezoid"
+[numerics.isobar_tracing]
+scheme = "rk4"
+[numerics.transfer]
+scheme = "trapezoid"
+[numerics.altitude]
+scheme = "trapezoid"
+[numerics.outer_loop]
+relative_tolerance_ln_p = 1.0e-8
+max_iterations          = 50
+
+[estimation]
+gauge_latitude_rule                = "weighted_centroid"
+kernel_uncertainty_per_rad         = 0.02
+model_error_correlation_length_deg = 0.0
+
+[output]
+directory = "output"
+product   = "lindal_transfer_profile.nc"
+
+[diagnostics]
+figures = true
+format  = "png"
+dpi     = 150

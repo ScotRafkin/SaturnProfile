@@ -253,19 +253,25 @@ _COMPOSITION = KindSpec(
     name="composition",
     schema_version=1,
     dimensions=("level", "latitude_planetocentric"),
-    required_dimensions=("level",),
+    required_dimensions=("level", "latitude_planetocentric"),
     variables=(
         VarSpec("pressure_Pa", required=False, units="Pa"),
         VarSpec("geopotential_m2s2", required=False, units="m2 s-2"),
-        VarSpec("latitude_planetocentric_deg", required=False, units="degrees_north"),
+        VarSpec("latitude_planetocentric_deg", dims=("latitude_planetocentric",),
+                units="degrees_north"),
     ),
     globals_required=("composition_role", "vertical_coordinate"),
     groups_required=("species",),
     grouped=True,
     conditional_globals={"reduction": ("source_statement",)},
     notes=(
-        "SPEC_00 section 6.2. At least one x_<species> variable is required, and the mole "
-        "fractions must sum to one within 1e-9 at every point."
+        "SPEC_00 section 6.2 as SPEC_04 decision O amends it: kind C is one structure for "
+        "every use, a field on (level, latitude_planetocentric) with pressure as the vertical "
+        "coordinate, uniform in latitude when that is the hypothesis. The one-latitude form "
+        "and its latitude_planetocentric_absent_meaning marker are retired; a reader that "
+        "wants a column asks for it by latitude (lib.composition.column_at, decision L). At "
+        "least one x_<species> variable is required, and the mole fractions must sum to one "
+        "within 1e-9 at every point."
     ),
 )
 
@@ -321,7 +327,7 @@ _WIND = KindSpec(
         VarSpec("latitude_planetocentric_deg", dims=("latitude_planetocentric",), units="degrees_north"),
         VarSpec("pressure_Pa", dims=("pressure",), units="Pa"),
         VarSpec("u_total_ms", units="m s-1", needs_uncertainty=True),
-        VarSpec("u_cylindrical_ms", units="m s-1"),
+        VarSpec("u_reference_ms", dims=("latitude_planetocentric",), units="m s-1"),
         VarSpec("u_shear_ms", units="m s-1"),
         VarSpec("value_provenance", units="1", is_flag=True),
         VarSpec("reference_level_pressure_Pa", dims=(), units="Pa"),
@@ -337,12 +343,15 @@ _WIND = KindSpec(
         "vertical_structure",
         "coverage_pressure_Pa",
         "coverage_latitude_planetocentric_deg",
-        "decomposition_geometry",
     ),
     notes=(
-        "SPEC_00 section 6.6. The sum identity u_total = u_cylindrical + u_shear is checked "
-        "on read. The constancy of Omega_abs on cylinders is a model load time check that "
-        "needs the run geometry and so is not performed here."
+        "SPEC_00 section 6.6 as SPEC_04 amends it. The file is data along the local vertical "
+        "in three human readable parts: the reference level wind u_reference_ms(latitude) at "
+        "reference_level_pressure_Pa, the total u_total_ms(latitude, pressure), and the shear "
+        "u_shear_ms = u_total - u_reference along the local vertical. The sum identity is "
+        "checked on read. `decomposition`, `u_cylindrical_ms`, `decomposition_geometry` and "
+        "the Omega_abs cylinder check are retired (SPEC_04 decision A): the decomposition on "
+        "a given geometry is a later diagnostic tool, and the model reads the total only."
     ),
 )
 
@@ -867,27 +876,35 @@ def check_mole_fractions(dataset, where: str, tolerance: float = 1.0e-9) -> None
 
 
 def check_wind_components(dataset, where: str) -> None:
-    """Refuse a kind W dataset whose components do not sum to its total.
+    """Refuse a kind W dataset whose parts do not sum to its total.
 
-    SPEC_00 section 6.6: the identity holds at every point to round-off, or the file is
+    SPEC_00 section 6.6 as SPEC_04 amends it: `u_total = u_reference + u_shear` at every point
+    to round-off, the reference level wind broadcast along the pressure axis, or the file is
     refused. The tolerance scales with the magnitude of the field.
     """
     import numpy as np
 
-    needed = ("u_total_ms", "u_cylindrical_ms", "u_shear_ms")
+    needed = ("u_total_ms", "u_reference_ms", "u_shear_ms")
     if not all(n in dataset.variables for n in needed):
         return
+    dims = ("latitude_planetocentric", "pressure")
+    for name in ("u_total_ms", "u_shear_ms"):
+        if tuple(dataset[name].dims) != dims:
+            raise CasspianSchemaError(
+                f"{where}: {name} has dimensions {tuple(dataset[name].dims)}; kind W stores it "
+                f"on {dims} (SPEC_00 section 6.6)."
+            )
     total = np.asarray(dataset["u_total_ms"].values, dtype=float)
-    rebuilt = np.asarray(dataset["u_cylindrical_ms"].values, dtype=float) + np.asarray(
-        dataset["u_shear_ms"].values, dtype=float
-    )
+    reference = np.asarray(dataset["u_reference_ms"].values, dtype=float)
+    shear = np.asarray(dataset["u_shear_ms"].values, dtype=float)
+    rebuilt = reference[:, None] + shear
     scale = max(float(np.nanmax(np.abs(total))), 1.0)
     worst = float(np.nanmax(np.abs(total - rebuilt)))
     if worst > 1.0e-12 * scale:
         raise CasspianSchemaError(
-            f"{where}: u_total does not equal u_cylindrical + u_shear; worst departure "
+            f"{where}: u_total does not equal u_reference + u_shear; worst departure "
             f"{worst:.3e} m/s against a field scale of {scale:.3e} m/s "
-            "(SPEC_00 section 6.6)."
+            "(SPEC_00 section 6.6 as SPEC_04 amends it)."
         )
 
 

@@ -28,6 +28,7 @@ from types import MappingProxyType
 import numpy as np
 import xarray as xr
 
+from casspian.lib import composition as comp
 from casspian.lib import control as ctl
 from casspian.lib import geopotential as gp
 from casspian.lib import hydrostatic as hs
@@ -96,12 +97,19 @@ def profile_from_anchor(anchor) -> Profile:
     )
 
 
-def mean_properties(composition):
+def mean_properties(composition, latitude_deg=None):
     """`(R_bar, m_bar)` on the composition's levels, `sum x_i R_i` and `sum x_i M_i`.
 
     From the kind C root's mole fractions and its `species` group, in the order the group lists the
     species; `m_bar` in kg/mol as kinds C and N carry it.
+
+    Kind C is a field on `(level, latitude)` for every use (SPEC_04 decision O), so
+    `latitude_deg` names the column to take, by the interpolant of decision L. Closure mode
+    passes the anchor's own latitude; for a field uniform in latitude, which the Lindal
+    hypothesis is, the interpolation returns the source's column unchanged.
     """
+    if latitude_deg is not None:
+        composition = comp.column_at(composition, latitude_deg)
     root = composition.to_dataset(inherit=False)
     species = composition["species"].to_dataset(inherit=False)
     names = [str(name) for name in species["species_name"].values]
@@ -132,7 +140,7 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float) -> Production:
     u = float(wind_of_latitude(inputs.wind)(np.array([phi_c]))[0])
     geopotential = gp.geopotential_along_profile(
         u, profile.radius_m, profile.height_above_anchor_isobar_m, phi_c, gauge, *constants)
-    R_bar, m_bar = mean_properties(inputs.composition)
+    R_bar, m_bar = mean_properties(inputs.composition, np.degrees(phi_c))
     N = profile.refractivity
     n = N / R_bar
     rho = hs.density(N, R_bar, m_bar)

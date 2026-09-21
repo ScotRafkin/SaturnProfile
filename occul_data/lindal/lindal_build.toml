@@ -83,6 +83,11 @@ he_fraction_of_remainder = 0.06
 
 nh3_fill_rule = "linear in pressure through the tabulated Table I values, extrapolated beyond them by scipy.interpolate.interp1d(fill_value='extrapolate'), then clamped at zero; ammonia is assigned first and the remainder is split by the two shares above"
 vertical_coordinate = "pressure_Pa"
+# SPEC_04 decision O: kind C is one structure, a field on (level, latitude). The source's
+# single column is written at every node; uniform in latitude is the Lindal hypothesis, and
+# the reduction reads the column at phi_c (decision L), which for a uniform field is that
+# same column unchanged.
+latitude_grid_deg   = [-90.0, 90.0, 1.0]
 
 [stage_two]
 # Stage two: the two files nobody else writes, and the manifest that names all six.

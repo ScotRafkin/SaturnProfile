@@ -225,10 +225,12 @@ def build(control_path, section: str = "wind") -> Path:
     away[reference_column] = False
     provenance[:, away] = EXTENDED
 
-    # Trivial decomposition: altitude independent on a pressure coordinate with no radius per
-    # level, so the cylindrical component is the whole wind (SPEC_00 section 6.6 v0.8).
-    u_cylindrical = u_total.copy()
-    u_shear = np.zeros_like(u_total)
+    # The three parts of SPEC_04 Step 0 deliverable 1: the reference level wind against
+    # latitude, the total, and the shear along the local vertical, which is their difference.
+    # This field is altitude independent, so the shear is zero and the reference level wind is
+    # the curve itself; that is a property of these values, not a declaration.
+    u_reference = u_total[:, reference_column].copy()
+    u_shear = u_total - u_reference[:, None]
 
     def attrs(units, long_name, provenance_value, **extra):
         out = {"units": units, "long_name": long_name, "provenance": provenance_value}
@@ -254,9 +256,13 @@ def build(control_path, section: str = "wind") -> Path:
                           "Pollard 1982 Fig. 5 curve within a 2 degree planetographic bin; "
                           "NaN where the bin has fewer than the minimum count")),
             ),
-            "u_cylindrical_ms": (dims, u_cylindrical,
-                                 attrs("m s-1", "cylindrical component", "derived")),
-            "u_shear_ms": (dims, u_shear, attrs("m s-1", "total minus cylindrical", "derived")),
+            "u_reference_ms": (
+                ("latitude_planetocentric",), u_reference,
+                attrs("m s-1", "zonal wind at the reference level", "derived"),
+            ),
+            "u_shear_ms": (dims, u_shear,
+                           attrs("m s-1", "total minus the reference level wind, along the "
+                                          "local vertical", "derived")),
             "value_provenance": (dims, provenance,
                                  attrs("1", "how each value was obtained", "index",
                                        flag_values=PROVENANCE_FLAG_VALUES,
@@ -318,12 +324,6 @@ def build(control_path, section: str = "wind") -> Path:
         "source_latitude_convention": properties["latitude"]["convention"],
         "source_latitude_convention_source": properties["latitude"]["convention_source"],
         "vertical_structure": control["vertical_structure"],
-        "decomposition": "trivial_altitude_independent",
-        "decomposition_geometry": (
-            "not applicable: the field is altitude independent on a pressure coordinate and "
-            "the file carries no radius per level, so u_cylindrical equals u_total and the "
-            "shear is zero by declaration (SPEC_00 section 6.6 v0.8)"
-        ),
         "coverage_pressure_Pa": np.array([pressure.min(), pressure.max()]),
         "coverage_latitude_planetocentric_deg": np.array([-90.0, 90.0]),
         "gap_rule": control["gap_rule"],

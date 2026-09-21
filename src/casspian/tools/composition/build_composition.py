@@ -48,6 +48,11 @@ SECTION_KEYS = {
     "he_fraction_of_remainder": True,
     "nh3_fill_rule": True,
     "vertical_coordinate": True,
+    # SPEC_04 Step 0 deliverable 2, decision O: `[south, north, step]` in planetocentric
+    # degrees, required. Kind C is one structure, a field on (level, latitude), and the
+    # source's single column is written at every node of this grid, uniform in latitude
+    # because that is the Lindal hypothesis. The one-latitude form is retired.
+    "latitude_grid_deg": True,
     "title": False,
 }
 
@@ -99,6 +104,37 @@ def fill_ammonia(pressure, nh3):
                  np.where(pressure <= hi, "interpolated", "extrapolated")),
     )
     return filled, provenance, lo, hi
+
+
+def latitude_grid(declared):
+    """The planetocentric latitude nodes of `[south, north, step]`, in degrees.
+
+    SPEC_04 Step 0 deliverable 2. The step must divide the interval exactly, so that both ends
+    are nodes and the grid a reader sees is the grid the control file declares.
+    """
+    try:
+        south, north, step = (float(v) for v in declared)
+    except (TypeError, ValueError):
+        raise ControlFileError(
+            f"latitude_grid_deg is {declared!r}; it is [south, north, step] in planetocentric "
+            "degrees (SPEC_04 Step 0 deliverable 2)."
+        ) from None
+    if not -90.0 <= south < north <= 90.0:
+        raise ControlFileError(
+            f"latitude_grid_deg = [{south}, {north}, {step}]: the interval must run south to "
+            "north inside [-90, 90]."
+        )
+    if step <= 0.0:
+        raise ControlFileError(
+            f"latitude_grid_deg = [{south}, {north}, {step}]: the step must be positive."
+        )
+    count = (north - south) / step
+    if abs(count - round(count)) > 1e-9:
+        raise ControlFileError(
+            f"latitude_grid_deg = [{south}, {north}, {step}]: the step does not divide the "
+            f"interval, which spans {count:.6f} steps. Both ends are nodes."
+        )
+    return np.linspace(south, north, int(round(count)) + 1)
 
 
 def build(control_path, section: str = "composition") -> Path:
@@ -208,7 +244,27 @@ def build(control_path, section: str = "composition") -> Path:
               flag_meanings="measured interpolated assumed extrapolated"),
     )
 
+    # SPEC_04 Step 0 deliverable 2, decision O: the source's column at every node of the
+    # declared grid. `pressure_Pa` is the vertical coordinate and stays one dimensional; every
+    # value that varies with level is repeated across latitude. Whether the field is uniform in
+    # latitude is then a property of its values, not a tag.
+    phi_c_deg = latitude_grid(control["latitude_grid_deg"])
+    for name, (dims, values, variable_attrs) in list(variables.items()):
+        if name == "pressure_Pa":
+            continue
+        variables[name] = (
+            dims + ("latitude_planetocentric",),
+            np.repeat(np.asarray(values)[:, None], phi_c_deg.size, axis=1),
+            variable_attrs,
+        )
+
     dataset = xr.Dataset(variables)
+    dataset = dataset.assign_coords(
+        latitude_planetocentric_deg=(
+            ("latitude_planetocentric",), phi_c_deg,
+            attrs("degrees_north", "declared latitude grid, planetocentric", "index"),
+        )
+    )
     dataset.attrs.update({
         "title": control.get("title", f"{prefix} {role} composition"),
         "profile_or_run": prefix,
@@ -221,7 +277,6 @@ def build(control_path, section: str = "composition") -> Path:
         "season_absent_meaning": "uniform",
         "vertical_coordinate": control["vertical_coordinate"],
         "source_statement": footnote,
-        "latitude_planetocentric_absent_meaning": "point",
         "latitude_planetographic_deg": latitude_planetographic,
         "latitude_planetographic_deg_value_source": latitude_value_source,
         "species_set": set_name,
@@ -254,6 +309,14 @@ def build(control_path, section: str = "composition") -> Path:
             Path(control_path),
         ], output),
     })
+    south, north, step = (float(v) for v in control["latitude_grid_deg"])
+    dataset.attrs["latitude_grid_rule"] = (
+        f"the source's single column written unchanged at every node of "
+        f"[{south:g}, {north:g}] degrees planetocentric at {step:g} degrees, "
+        f"{phi_c_deg.size} nodes: the Lindal composition carried to every latitude as a "
+        "hypothesis (SPEC_04 Step 0 deliverable 2, decision O). The column's own latitude is "
+        "latitude_planetographic_deg."
+    )
 
     # ---- the species group, SPEC_00 section 6.2 --------------------------------------
     def property_of(name, key, default=0.0):
@@ -360,7 +423,9 @@ def build(control_path, section: str = "composition") -> Path:
         f"{TOOL}: ammonia column filled from Table I by the declared rule between "
         f"{p_lo:g} and {p_hi:g} Pa and clamped at zero; remainder split {h2_share} to "
         f"{he_share}; species properties from the {set_name} set of the master table, "
-        f"refractivities converted to m3 per molecule by the Loschmidt constant",
+        f"refractivities converted to m3 per molecule by the Loschmidt constant; the column "
+        f"written at {phi_c_deg.size} planetocentric latitude nodes from {phi_c_deg[0]:g} to "
+        f"{phi_c_deg[-1]:g} degrees",
     )
     return cio.write(output, dataset, "composition", groups={"species": species_group},
                      created_by=TOOL)

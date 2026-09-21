@@ -96,11 +96,13 @@ def figure_1(pr: _Product):
     inset.set_xlabel("planetocentric lat. (deg)", fontsize=6, labelpad=1)
     data["u_at_phi_c_ms"] = u_w
 
-    data.update(fi.panel_mole_fractions(c, pr.composition, pr.anchor_Pa))
+    data.update(fi.panel_mole_fractions(c, pr.composition, pr.anchor_Pa,
+                                        latitude_deg=pr.phi_c_deg))
     data.update(fi.panel_mean_properties(
         d, pr.composition, pr.anchor_Pa,
         mean_refractivity=np.asarray(pr.root["mean_refractivity_m3"].values),
-        mean_molar_mass=np.asarray(pr.root["mean_molar_mass_kg_mol"].values)))
+        mean_molar_mass=np.asarray(pr.root["mean_molar_mass_kg_mol"].values),
+        latitude_deg=pr.phi_c_deg))
     _title(fig, f"F1. Inputs of the {pr.slug} reduction, phi_c = {pr.phi_c_deg:.4f} deg")
     return fig, data
 

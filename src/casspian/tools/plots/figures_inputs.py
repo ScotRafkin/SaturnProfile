@@ -10,6 +10,7 @@ from __future__ import annotations
 import numpy as np
 from matplotlib.figure import Figure
 
+from casspian.lib import composition as comp
 from casspian.lib import reduction as red
 from casspian.tools.plots import style
 
@@ -45,8 +46,29 @@ def _species_names(composition):
     return [str(v) for v in composition["species"].dataset["species_name"].values]
 
 
-def panel_mole_fractions(ax, composition, anchor_Pa=None):
-    """`x_i(p)` on a log axis, the per level provenance of a flagged species by marker."""
+def _column(composition, latitude_deg):
+    """The composition's column at `latitude_deg`, and the latitude actually drawn.
+
+    A panel draws `x(p)`, so it needs one column of the field kind C now is (SPEC_04 decision
+    O). A caller that knows the latitude passes it; a kind C file offered on its own has no
+    latitude in its context, and the panel draws the node nearest the equator and says so.
+    """
+    if not hasattr(composition, "to_dataset"):
+        return composition, latitude_deg
+    nodes = comp.latitudes_of(composition)
+    if latitude_deg is None:
+        latitude_deg = float(nodes[int(np.argmin(np.abs(nodes)))])
+    return comp.column_at(composition, latitude_deg), float(latitude_deg)
+
+
+def panel_mole_fractions(ax, composition, anchor_Pa=None, latitude_deg=None):
+    """`x_i(p)` on a log axis, the per level provenance of a flagged species by marker.
+
+    Kind C is a field on `(level, latitude)` (SPEC_04 decision O), so the panel draws one
+    column and `latitude_deg` says which, by the interpolant of decision L. The title names it,
+    since a single column of a field that varies with latitude is not the whole file.
+    """
+    composition, latitude_deg = _column(composition, latitude_deg)
     root = composition.to_dataset(inherit=False) if hasattr(composition, "to_dataset") else composition
     p = np.asarray(root["pressure_Pa"].values, dtype="float64")
     names = _species_names(composition)
@@ -72,19 +94,22 @@ def panel_mole_fractions(ax, composition, anchor_Pa=None):
     if anchor_Pa is not None:
         style.anchor_line(ax, anchor_Pa, label=False)
     ax.set_xlabel("mole fraction (zero not drawn on the log axis)")
-    ax.set_title("composition")
+    ax.set_title("composition"
+                 + ("" if latitude_deg is None else f" at {latitude_deg:.4f} deg"))
     # The trace species sit at the bottom left, so the legend goes where no species is drawn.
     ax.legend(loc="upper left", ncol=2)
     return data
 
 
 def panel_mean_properties(ax, composition, anchor_Pa=None, mean_refractivity=None,
-                          mean_molar_mass=None):
+                          mean_molar_mass=None, latitude_deg=None):
     """`m_bar(p)` and `R_bar(p)` on twin axes.
 
     Taken from the product when it carries them; for a kind C file alone they are formed with
-    `lib.reduction.mean_over_species`, which the panel title says.
+    `lib.reduction.mean_over_species`, which the panel title says. `latitude_deg` names the
+    column, as in `panel_mole_fractions`.
     """
+    composition, latitude_deg = _column(composition, latitude_deg)
     root = composition.to_dataset(inherit=False)
     species = composition["species"].to_dataset(inherit=False)
     p = np.asarray(root["pressure_Pa"].values, dtype="float64")
