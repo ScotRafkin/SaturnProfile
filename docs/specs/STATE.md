@@ -41,3 +41,16 @@ SPEC_03 accepted by the author at v0.2 on 14 September 2026 (now v0.14). Steps 0
 | 2 | `lib.hydrostatic` | accepted (`994c787`; 8 of 8; finding 1 restated the linear-T orientation at SPEC_03 v0.8; no product changed) | `reports/REPORT_03_step2.md`, `reports/REVIEW_03_step2.md` | 2026-09-15 |
 | 3 | season identifier across the chain (rebuild); run directory and inputs (`casspian-run-inputs`), `read_run_namelist`, kind `profile`, `input_hashes` warning for every derived kind | accepted (`6ae113e`; 16 of 16 after the author's decision on finding 1, every file of the chain dated 1981-08-26; no value changed in any product; swept, hashes in REPORT_03_step3 section 7; the suites of section 5 pass on the swept products) | `reports/REPORT_03_step3.md`, `reports/REVIEW_03_step3.md` | 2026-09-15 |
 | 4 | `forward/production.py`, `casspian-forward`, the closure run, F5 and F6 | accepted (`1504056`; 13 of 13 on the SPEC_03 v0.13 bins, the closure namelist dated 1981-08-26; closure product clean at `1504056`, SHA-256 `e6693173...`, F5 and F6 attached; record `545b385`, hash in REPORT_03_step4 section 8; the suites of section 5 pass on the clean tree); SPEC_03 closed | `reports/REPORT_03_step4.md`, `reports/REVIEW_03_step4.md` | 2026-09-16 |
+
+## SPEC_04, the transfer
+
+SPEC_04 accepted by the author at v0.6 on 21 September 2026 (now v0.7). Steps 0 to 5 proceed in order, each after the review of the one before; the coding agent's pre-execution review of v0.5 is ruled on in SPEC_04 section 10 and its record is `reports/REPORT_04_preexecution.md`. Current: SPEC_00 v0.20, SPEC_01 v0.28, SPEC_02 v0.11, SPEC_03 v0.14, SPEC_04 v0.7. The manuscript draft of record for the equation labels is `CASSPIAN_AtmosphericModel_Draft9_2.docx`, outside the repository. Next specification after SPEC_04: the combination (A35, the posterior wind, the reference-surface constant), then SPEC_05, the end-to-end tests.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 0 | kind W in three parts, kind C on a latitude grid, `forward/lindal_transfer/`, the transfer namelist for M anchors, the loader with the anchor object and the propagation hook; the chain rebuilt and swept | not started | | |
+| 1 | `lib.geoid` `through_anchor`, `lib.windfield`, the anchors' geopotential under the run's wind (`produce` with the wind along the column) | not started | | |
+| 2 | `lib.mesh`, the columns, `z_lv` | not started | | |
+| 3 | `lib.kernel` | not started | | |
+| 4 | `forward.transfer`, `forward.estimate`, the outer loop, the M = 2 identity test | not started | | |
+| 5 | production at the target, altitude and datum, kind `profile` in transfer mode, `casspian-forward` transfer mode, F5, F6, F7 | not started | | |
