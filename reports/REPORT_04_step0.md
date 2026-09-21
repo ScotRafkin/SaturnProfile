@@ -283,35 +283,38 @@ closure run's inputs and product restored equal; the transfer run's inputs resto
 Porcelain afterwards holds only this step's own source and documents and the author's modified
 design note.
 
-## 6. Hashes, provisional until the sweep
+## 6. Hashes, the Step 0 sweep
 
-Every product below was built on this working tree and carries `casspian_git_commit`
-`6bc1f9ffdd96799672b7c8e9922058f02456449b-dirty`. They are rebuilt on the clean tree at the sweep
-and this table is replaced by the sweep record then.
+Every product below was rebuilt on the clean tree at the Step 0 acceptance commit `1c9b310` by
+`reports/step04_0/sweep.py`, which refuses to start on a tree whose porcelain output is not
+empty and reads `casspian_git_commit` back from every file it wrote. All seventeen netCDF
+products carry `1c9b310018979bb5343501a5a1dc6357199481f1`; none carries `-dirty`. Output in
+`reports/step04_0/sweep.txt`. The rows are named as REPORT_03_step3 names them, by file, which
+is the form the `step02_1` and `step02_6` suites read. The provisional table of the first
+filing, built on the working tree, is superseded, and so is REPORT_03_step4's product hash
+`e6693173...`. The forward runs' inputs and products are not committed (`.gitignore`); they are
+regenerable from their build control files.
 
-| `file` | kind | `64 hex digits` |
+| File | Kind | SHA-256 |
 |---|---|---|
-| `occul_data/lindal/raw/lindal_raw.nc` | raw | `b4a093c8aa4154698afa2d79f5bb60fbbf9124a27d54d590c82d1554286f49ce` |
-| `occul_data/lindal/lindal_thermo.nc` | thermo | `85e9c3ca0228e815694928eb2dda8033fd83f59d91587e5479a5050bda50151e` |
-| `occul_data/lindal/lindal_geodesy.nc` | geodesy | `3ebd61ce4a1148469f1e378fc02a2d912839dc43cd7d3a3c2cd63eed83db0bc1` |
-| `occul_data/lindal/lindal_gravity.nc` | gravity | `8934c1425f8844b86e197df5a7274725e886675ae5f2d4d3f66dce68561ba03b` |
-| `occul_data/lindal/lindal_rotation.nc` | rotation | `0f7a643d6ae989fb7bf91eddc07e5ddf807b60eb7ef8e2a52183f26c4a6ed0a7` |
-| `occul_data/lindal/lindal_wind.nc` | wind | `dd8d2b15c6c5a0576050ec69f922e5ef97950d19b8d422f23e63019898bf83ed` |
-| `occul_data/lindal/lindal_composition.nc` | composition | `35b30ff89faa33f606f87a84df7e4bd8cad9e0400282aa8ee21792307d3d5e9d` |
-| `occul_data/lindal/lindal_reduction.toml` | manifest | `97e542d6665f525002d2a144a52da5633892f007beb28f778434af245a88dfee` |
-| `occul_data/lindal/lindal_refractivity.nc` | refractivity | `c3662500e5db36f0bc887821447911aefbbb9988bb11de09b54202690ede7813` |
-| `forward/lindal_closure/inputs/lindal_closure_gravity.nc` | gravity | `52f55b782724d0036e006b6acdb447d2316b2445fe14e1d90d9ada4ea64c9678` |
-| `forward/lindal_closure/inputs/lindal_closure_rotation.nc` | rotation | `8a876cf4144115d94e208696baddaf6196aece78b0a7cd3e88c70b4c3d35b89b` |
-| `forward/lindal_closure/inputs/lindal_closure_wind.nc` | wind | `6fa3d9ce908a43f5fc12374aa10e91bf128763e4094c3f2e87c4722e00fe40ec` |
-| `forward/lindal_closure/inputs/lindal_closure_composition.nc` | composition | `48b207375bebbe7431d572c4102c345d910731178499df58077b4e7b2f66bda9` |
-| `forward/lindal_closure/output/lindal_closure_profile.nc` | profile | `7e71ace145c4c78a0ddaae90fa632f81e92d9fbb3103ebdc364adc91051f5c03` |
-| `forward/lindal_transfer/inputs/lindal_transfer_gravity.nc` | gravity | `f2f4a641564ad57464f568a646e1af144962b39e601f39e65570163a61ddd3a5` |
-| `forward/lindal_transfer/inputs/lindal_transfer_rotation.nc` | rotation | `9cf9f57f47c7358ddae176719a5f506969a008e9167e6a680daa62339dc49cef` |
-| `forward/lindal_transfer/inputs/lindal_transfer_wind.nc` | wind | `d8f46ab1939b09141c2760c4a39f7d8a57c58bee0afff9f61e8e02c198c2f0f3` |
-| `forward/lindal_transfer/inputs/lindal_transfer_composition.nc` | composition | `7e9157f9e8de5714890f395294c4cdd7122c3b9d36a56ab66c3e7666bd45085a` |
-
-REPORT_03_step4's product hash `e6693173...` is superseded by the closure product row above, and
-that row is superseded in turn at the sweep.
+| `lindal_reduction.toml` | manifest | `97e542d6665f525002d2a144a52da5633892f007beb28f778434af245a88dfee` |
+| `lindal_raw.nc` | raw | `992e0ede5554f72b4ea1e99323d57f6fc1ae564b97695b6fa52379c62ebbc93b` |
+| `lindal_thermo.nc` | thermo | `e2c643704c8be1f7a52ade77ddf38362138c715dad0db61636761480a3071338` |
+| `lindal_geodesy.nc` | geodesy | `55015c6c9801fb2274caf1613b9f5a47fdc3039bdf560765adc9a69e434d9655` |
+| `lindal_gravity.nc` | gravity | `32fe232007dd6e45c0030a250648e81c003c4096f4d6b54f995a411a431a24a8` |
+| `lindal_rotation.nc` | rotation | `0e2f556b05f1d6f241f38d082b08d83ac69cf0cc27f1807e19a8d968eabfe50a` |
+| `lindal_wind.nc` | wind | `ff0876a0e8fa6c4f0db1a53c60ef1308f5337c179708e3b000c19a5b3531d7e3` |
+| `lindal_composition.nc` | composition | `67b7073402baa35bf0c55070a4f274a0257684e7988785efb6a9c9f234374765` |
+| `lindal_refractivity.nc` | refractivity | `920304440ee4554648c3aa6321b713741ee26eb0eb1ff223f5a81a8f9b20fd37` |
+| `lindal_closure_composition.nc` | composition | `288297f0989dd2ff75e605cee684e0eeca5fc03b6eb46c91de72710971ed251f` |
+| `lindal_closure_gravity.nc` | gravity | `1b0d873155615badad73e02a30e849a5f53da2a6836d9c29985bf591c262644d` |
+| `lindal_closure_rotation.nc` | rotation | `4574bb43df88b0fcc444717206b3d5cb936c9bf3f963e6a834fadfce92b25b47` |
+| `lindal_closure_wind.nc` | wind | `3840f5ee1ea6b1804949fd76f25c81d765ea73be9199190d7c3e7f44c4741fcf` |
+| `lindal_closure_profile.nc` | profile | `543129c4a17e4155858bee3b4f6d66eb6332c3290d220e08c0a7c1087c2f70f0` |
+| `lindal_transfer_composition.nc` | composition | `2e7eb60106fb17999f59c55d426e83f005c53838664c21ad33e92b42f0a3ae58` |
+| `lindal_transfer_gravity.nc` | gravity | `a604ed4192b322ff4803105774bd8251709c6caa52ada16090534255624719e2` |
+| `lindal_transfer_rotation.nc` | rotation | `6cd222bd520e475827fd27ef450427913bc08746745d55c4fe6678d95dc8f82c` |
+| `lindal_transfer_wind.nc` | wind | `266fdc389c070a50d03d21dfcb32a9144a88e856328650b85464cf3ba11a0337` |
 
 ## 7. Next step
 
