@@ -347,12 +347,29 @@ allows the loop for that reason. The 7.60 s input load is per process and hoists
 that loads once and draws in memory. Nothing is proposed; the numbers are recorded so the Monte
 Carlo wrapper is specified against measurements.
 
-## 6. Hashes
+## 6. Hashes, the Step 1 sweep
 
-Nothing was registered. This step writes no file inside the repository outside `reports/step04_1/`,
-which git ignores. The registered closure product will change when it is next rebuilt, gaining
-`u_column_ms` and `u_column_uncertainty_ms`; it is rebuilt on the clean tree at the sweep after the
-review, and its hash is recorded then.
+Step 1 changed one product: the kind `profile` closure product, which gains `u_column_ms` and its
+NaN companion. Nothing else it touched enters a file, so only that product was rebuilt, by
+`reports/step04_1/sweep.py` on the clean tree at the Step 1 acceptance commit `780a2de`, output
+`reports/step04_1/sweep.txt`. The script refuses to start on a tree whose porcelain output is not
+empty and reads `casspian_git_commit` back from the file it wrote. Every other product of the Step 0
+sweep is untouched by this step and stays as that sweep left it, clean at `1c9b310`, so
+**REPORT_04_step0 section 6 remains the record for the other sixteen** and the row below is the one
+that changes. The rows are named by file, the form the `step02_1` and `step02_6` suites read; those
+two read the reduction chain's hashes, which this step does not touch, so neither needed rerunning.
+
+| File | Kind | SHA-256 |
+|---|---|---|
+| `lindal_closure_profile.nc` | profile | `fcc2e2c4ae71554537d8aa53f07b247724b718a371abab73de31939bae9ae6af` |
+
+It carries `casspian_git_commit = 780a2de0d91b90e06f6906b504a65bc2308261e0`, not `-dirty`. It holds
+24 variables where the Step 0 sweep's held 22: `u_column_ms`, 66 levels all at
+2.16708095051 m/s, which is the closure wind, and `u_column_uncertainty_ms`, all NaN as SPEC_03
+decision 5 requires. The Step 0 sweep's row for this file,
+`543129c4a17e4155858bee3b4f6d66eb6332c3290d220e08c0a7c1087c2f70f0`, is superseded, and so is
+REPORT_03_step4's earlier `e6693173...`. The forward runs' inputs and products are not committed
+(`.gitignore`); they are regenerable from their build control files.
 
 ## 7. Next step
 
