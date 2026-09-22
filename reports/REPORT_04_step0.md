@@ -183,8 +183,8 @@ script's duration; check 0 shows the refusal firing first and quotes it.
 
 ## 4. Findings, and the ruling on each
 
-Findings 1 to 5 are the first filing's, each with the ruling that settled it. Finding 6
-is new, found by the rerun regression.
+Findings 1 to 5 are the first filing's, each with the ruling that settled it. Findings 6 to 8
+are new: 6 found by the rerun regression, 7 and 8 by the deferred suites on the swept tree.
 
 **1. Deliverable 6 defined `sigma_ln_N_measurement` as a quantity that is not an uncertainty of
 `ln N`, and the error was invisible at M = 1.** Measured on the rebuilt kind N:
@@ -238,6 +238,27 @@ later composition did vary. Measured after the change: `step8` is 9 of 9 and `st
 applied to two accepted steps' acceptance records, the same class of change the review accepted
 as finding 5, and it is recorded here for the same reason: it edits closed steps' scripts.
 
+**7. `step02_6` checked the registered kind N against a report list that did not include this
+step's report.** Its one failing check, 6 of 7, read `lindal_thermo.nc` and `lindal_geodesy.nc`
+"hash as REPORT_01_step9 records False": the suite looks the recorded hash up in a list of
+report files, and the Step 0 sweep moved those hashes into `reports/REPORT_04_step0.md`, which
+the list did not name. `reports/REPORT_04_step0.md` was added to it, the same one-line extension
+`step02_1` took. Nothing was relaxed: the check still requires the file's hash to appear in a
+committed report, and it now finds it in the report that records the sweep. `step02_6` is 7 of
+7.
+
+**8. The SPEC_03 Step 4 acceptance called `mean_properties` with no latitude**, in its negative
+controls, and raised `ValueError: operands could not be broadcast together with shapes (66,)
+(66,181)` at `hs.density`: under decision O `mean_properties` returns the whole field unless it
+is told which column to take, and the control then divided a 66-level refractivity by a
+(66, 181) field. The call was given `math.degrees(phi_c)`, the anchor's own latitude, which is
+exactly what `produce` passes, so the control is again computing what it is a control for. The
+uniformity assertion of finding 6 precedes it for the same reason. `step03_4` is 13 of 13, and
+its checks 5 and 7 return the numbers SPEC_03 recorded. This finding did not appear in the
+first two attempts at the deferred suites because a dirty `reports/figures/` made `forward`
+refuse the closure input earlier, so the control was never reached; that is the mechanical
+point recorded in section 5.
+
 Nothing else arose from the refresh. The work of decisions N and O went in without a surprise:
 the one thing worth recording is that the column the reduction now reads is bit-identical to the
 pre-step point file, which is what makes "no value changes" true rather than approximately true.
@@ -275,7 +296,30 @@ relaxed SPEC_02 suites return 7 and 9, theirs.
 
 Deferred to the sweep, each needing clean on-disk products: `step02_1` (whose recorded hashes
 the sweep replaces), `step02_4`, `step02_5`, `step02_6`, `step03_1`, `step03_2`, `step03_4`.
-They are rerun on the swept products and recorded in the sweep record, as REPORT_03_step3 did.
+They were rerun on the swept products by `reports/step04_0/post_sweep_suites.sh`, output
+`reports/step04_0/post_sweep.txt`, after section 6 below carried the swept rows.
+
+| Suite | Result | Reference |
+|---|---|---|
+| `step02_1/accept_step02_1` | 6 of 6 | 6 |
+| `step02_4/accept_step02_4` | 9 of 9 | 9 |
+| `step02_5/accept_step02_5` | 7 of 7 | 7 |
+| `step02_6/accept_step02_6` | 7 of 7, after the change of finding 7 | 7 |
+| `step03_1/accept_step03_1` | 9 of 9 | 9 |
+| `step03_2/accept_step03_2` | 8 of 8 | 8 |
+| `step03_4/accept_step03_4` | 13 of 13, after the change of finding 8 | 13 |
+
+Every deferred suite returns its reference count, 6, 9, 7, 7, 9, 8, 13. Two needed a change
+first, findings 7 and 8 of section 4. Two mechanical points are recorded because each cost a
+run. `step02_5` recopies the committed `reports/figures/`, which leaves the tree dirty, and
+then every product a later suite rebuilds carries `-dirty` and `forward` refuses it, so the
+script restores `reports/figures/` from git after each suite rather than once at the end and
+echoes the porcelain line after each; those lines are empty for all seven. `step02_6` and
+`step03_4` rebuild the registered kind N and the closure run, so both are copied aside before
+the loop and restored byte for byte after: the registered kind N SHA-256 is
+`920304440ee4554648c3aa6321b713741ee26eb0eb1ff223f5a81a8f9b20fd37` (the swept value of section
+6) before and after, equal, and the closure inputs and product restore equal. Porcelain after
+the run is empty.
 
 Restored after the run, measured: the registered kind N SHA-256 is
 `c3662500e5db36f0bc887821447911aefbbb9988bb11de09b54202690ede7813` before and after, equal; the
