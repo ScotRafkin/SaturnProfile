@@ -2,8 +2,10 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.9, 21 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026; v0.9 makes kind C one structure, a field on (level, latitude),
+Version 0.10, 22 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.10 fixes the construction of the cylinder-extended wind
+(decision P) and moves it to Step 2, with the v0.9 values for it withdrawn and remeasured
+(§12); v0.9 made kind C one structure, a field on (level, latitude),
 for every use (decision O), and the mesh self-extending with no declared extent or margin;
 v0.8 applied the author's direction of 21 September on
 consistency checks (decision N) and the rulings of REVIEW_04_step0 (§11), Step 0 to be
@@ -79,7 +81,8 @@ one state in hand: the swept anchor `occul_data/lindal/lindal_refractivity.nc` a
 files are used throughout: the closure wind, which is the cloud-level wind at every level (what
 Lindal assumed), under which the transfer is a small baroclinic one measured independently; and
 the same reference-level wind extended along cylinders by the acceptance script with the
-library's geometry, under which the kernel vanishes and the transfer is an identity. The general
+library's geometry (decision P: pinned on the file's own reference level, built at Step 2),
+under which the kernel vanishes and the transfer is an identity. The general
 paths, a wind with axial shear, a composition varying with latitude, and M = 2, are exercised
 by synthetic files built inside the acceptance scripts, as the linear-T column was for SPEC_03.
 Every expected value below is an instance for the Lindal anchor under these inputs and is
@@ -217,8 +220,11 @@ Delivered altitudes above the 1 bar datum along the local vertical (decision B):
 376,780 m at the top level, 90,067 m at the gauge level, −14,031 m at the bottom, against
 Lindal's 376,700, 90,000 and −14,100 m (the closure residual at 1 bar moves the datum by 68 m;
 the drift geometry gives 15 m at the top); at 10° N under the closure wind 411,132, 98,186 and
-−15,290 m and under the cylinder wind 415,700, 99,263 and −15,457 m; at 60° N under the
-closure wind 328,127, 78,533 and −12,239 m.
+−15,290 m and under the cylinder wind 416,300, 99,290 and −15,456 m (v0.10, decision P: the
+cylinders through the 10° N column reach the 1 bar surface nearer the equator, where the wind
+is stronger, 427 m/s at the top level against 329 m/s on the file's reference level at 10° N,
+and that wind is in the column's gravity); at 60° N under the closure wind 328,127, 78,533 and
+−12,239 m.
 
 ---
 
@@ -415,9 +421,13 @@ being the default so that closure mode is unchanged; the product records the col
 value); the amendment to SPEC_03 is listed in the Appendix; the transfer supplies `wind_at(φ_i, p_k^(i))`
 with `p_k^(i)` the anchor's tabulated pressures on the first pass and its produced pressures
 after. For the closure wind this is 2.167 m/s at every level of the Lindal anchor, which is what
-SPEC_03 used, so the closure product is unchanged; for the cylinder-extended wind it runs from
-2.167 m/s at the reference level to 9.371 m/s at the top level and −0.133 m/s at the bottom,
-moving `Φ` at the top by −271.6 m²/s² (an instance, measured).
+SPEC_03 used, so the closure product is unchanged. For the cylinder-extended wind, built at
+Step 2 by decision P and exercised there, it runs from 2.168 m/s at the 1 bar level (the file's
+reference level, where the extension is pinned) to 3.717 m/s at the gauge level, 9.490 m/s at
+the top level and 1.926 m/s at the bottom, moving `Φ` at the top by −322.3 m²/s² and at the
+bottom by +18.0 (an instance, measured by the reviewing agent at v0.10; the v0.9 values 9.371,
+−0.133 and −271.6 were measured under a construction the reviewing agent could not identify
+afterward and are withdrawn, §12).
 
 **Expected values (instance: the Lindal anchor, the closure inputs).** The surface through
 `(30.805568°, 58,516,188.29 m)`: 60,367,000.0 m at the equator (the reduction anchored there;
@@ -454,6 +464,28 @@ new nodes, and the pass repeated; the extensions are recorded in `transfer_recor
 `wind_on_mesh`), `z_lv(φ, Φ_j)` by `dz/dΦ = 1 / |g_eff|` on the same integration (decision B),
 and on the nodes `g`, `G_φ`, `|g_eff|`, `ψ`, `u`. The columns are rebuilt on every pass of the
 outer loop.
+
+**Deliverable: the cylinder-extended wind file (decision P).** The acceptance script builds
+the second wind file of §1 here, where the columns exist: `u_total(φ, p) = U(s)` with
+`s = r cos φ` the distance from the rotation axis and `U` fixed on the file's own reference
+level, `U(s_ref(φ)) = u_reference(φ)` with `s_ref(φ) = r(φ, Φ_ref) cos φ` the 1 bar isobar's
+distance from the axis at each latitude, so that the file's three parts are the closure
+file's `u_reference`, this `u_total`, and their difference, and the sum identity holds. The
+geometry is the library's: `r(φ, Φ)` the radial columns of this step from the reference
+surface of Step 1, under the flat-isobar map `Φ(p)` of the anchor (interpolated in `ln p`),
+which is exact under `S = 0`. Because the reference surface is marched with the wind at the
+gauge isobar, and that wind is the file's own, the construction is a fixed point: the closure
+file's surface and the closure anchor's `Φ_k` on the first pass, the file's own on the next,
+repeated until the file changes by less than 1e-6 m/s (three passes on the state in hand). The
+file is written on the closure wind's grid with the writer, carries the run's season, and is
+read back through `wind_at` like any other. Expected values (instance, the reviewing agent's
+radial columns, the reference surface marched under the closure wind, a difference below the
+tolerances): on the Lindal anchor's column `u` is 9.490 m/s at the top level, 3.717 at the
+gauge level, 2.168 at the level nearest 1 bar and 1.926 at the bottom; the anchor's `Φ`
+under this wind is lower at the top by 322.3 m²/s² and higher at the bottom by 18.0 than
+under the closure wind (to 1e-2 m/s and 1 m²/s²); at 10° N the column carries 427.09 m/s at
+the top level, 345.98 at the gauge level and 326.40 at the bottom against 329.46 on the file's
+reference level (to 0.05 m/s).
 
 **The staggering (SPEC_00 §7.3 rule ii).** Every quantity lives on the `(φ_i, Φ_j)` nodes
 except: `S` and `S/g`, on the nodes, from the interpolant's derivatives (Step 1 deliverable
@@ -639,8 +671,8 @@ anchor's by 1.103e-2 at the top level, 1.089e-2 at the gauge, 1.084e-2 at the bo
 1e-4); `r0(10°)` 60,128,613.0 m (to 1 m); `altitude_m` 411,132 m at the top level, 98,186 m at
 the gauge level, −15,290 m at the bottom (to 5 m). A second run at 60° N: `T` lower by
 2.51e-3, 2.48e-3 and 2.47e-3; altitudes 328,127, 78,533 and −12,239 m. A third at 10° N with
-the cylinder-extended wind: `T`, `p`, `N` equal to the anchor's to 1e-6, altitudes 415,700,
-99,263 and −15,457 m to 5 m. A fourth at `φ_c` itself: `N` and `Φ` equal to the closure
+the cylinder-extended wind: `T`, `p`, `N` equal to the anchor's to 1e-6, altitudes 416,300,
+99,290 and −15,456 m to 10 m (v0.10). A fourth at `φ_c` itself: `N` and `Φ` equal to the closure
 product's to 1e-12, and `p` and `T` to 1e-5 (the composition regridded from the file's
 tabulated levels onto the produced labels moves `ln ℛ̄` by at most 1.5e-6, at the bottom row;
 §10 finding 5), and altitudes 376,780, 90,067 and −14,031 m. A fifth, the M = 2 run of
@@ -759,6 +791,18 @@ a file edited after it was written; a changed input beside it only warns, as for
 kind. It stays; the Step 0 cascade was the closure's own definition (its inputs must be the
 reduction's), not the reader's.
 
+P. **The cylinder-extended wind is pinned on the file's reference level and built with the
+library's columns at Step 2.** A kind W file's three parts make `u_total(φ, p_ref) =
+u_reference(φ)` an identity, so "the same reference-level wind extended along cylinders" can
+only mean `U(s)` fixed on the 1 bar isobar; pinning it on the gauge isobar, which is what the
+words left open, gives a file whose reference-level wind is not the closure's. The geometry is
+the model's own radial columns under the flat-isobar map, exact under `S = 0`, so the file is
+only as approximate as the wind grid's interpolation, which is what Steps 3 and 4 bound; the
+reference surface and the file are a fixed point, converged in the script. The v0.9 values
+for this file (9.371, −0.133 m/s, −271.6 m²/s²) could not be reproduced by the coding agent
+under any construction the words determine, nor by the reviewing agent afterward; they are
+withdrawn and the v0.10 values stand.
+
 O. **(Author, 21 September 2026) Kind C is one structure for every use:** a field on
 (level, latitude), pressure the vertical coordinate, uniform in latitude when that is the
 hypothesis, the grid declared to the tool that writes it. Every input kind is then a global
@@ -780,6 +824,7 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.10 | 2026-09-22 | Decision P (the cylinder-extended wind pinned on the file's reference level, built with the columns at Step 2 as a fixed point); its v0.9 values withdrawn and remeasured, the Step 5 altitudes under it restated; §12 rulings on REPORT_04_step1 | REVIEW_04_step1 |
 | 0.9 | 2026-09-21 | Decision O (kind C one structure); the mesh self-extending, `geopotential_margin_m2s2` withdrawn; decision N's last sentence corrected (the kind N reader warns on a changed input; the cascade was the closure's definition) | author's direction of 21 September |
 | 0.8 | 2026-09-21 | Decision N (what is checked), applied to Step 0 and the mesh; the `Φ` range derived from the anchors with a declared margin; deliverable 6's uncertainty as `σ_N / N`; §10 corrected (PCHIP); §11 rulings on REPORT_04_step0 | author's direction of 21 September; REVIEW_04_step0 |
 | 0.7 | 2026-09-21 | Accepted by the author at v0.6; Step 0 proceeds; the manuscript draft of record named | author's acceptance of 21 September 2026 |
@@ -871,6 +916,37 @@ Decision 5 is superseded by decision O: kind C is a field on (level, latitude) f
 and the one-latitude form is retired. The fifteen refusal cases of check 11 reduce to the four the Step 0 acceptance now
 names, with the recorded-and-warned season case beside them; the closure namelist's thirteen
 refusals are SPEC_03's and stand.
+
+---
+
+## 12. Rulings on REPORT_04_step1 (22 September 2026)
+
+1. **The march grid overshooting the pole.** `through_anchor` snapping a node within 1e-9 rad
+   of the pole and refusing one beyond is right; `wind_geoid` is left as it stands, its defect
+   changing no value it produced. Accepted.
+2. **The cylinder-extended wind.** Correct that the specification did not state the
+   construction, and correct that the stated values could not be reproduced: the reviewing
+   agent could not reproduce them either, under gauge pinning or reference-level pinning,
+   with a linear or a PCHIP wind, and withdraws them. Decision P fixes the construction:
+   pinned on the file's reference level (the file's own definition decides between the two
+   readings the report names), the library's radial columns under the flat-isobar map, a fixed
+   point with the reference surface. Since the columns are Step 2's, the file is built and
+   its values exercised there; Step 1 deliverable 3 keeps the sentence for the record and its
+   checks 9 (the cylinder half) and 14 are moved to Step 2, not loosened. Decision 11 of the
+   report is superseded. The report's measurement that the ratio of the stated to the built
+   displacement is one factor of 1.30 was the right observation: it is, to a few percent, the
+   height above 1 bar over the height above the gauge at the top of the profile.
+3. **`wind_at` bit-identical to the reduction's callable.** Recorded as measured, not
+   guaranteed; accepted.
+4. **Check 0 of `accept_step04_0` on a clean tree.** The proposal is adopted: the check takes a
+   copy of one registered input with a `-dirty` commit written under `reports/step04_0/` as
+   its subject, so it means "the refusal fires on a `-dirty` input" whatever the tree's state.
+   Applied at the Step 1 acceptance commit, recorded in the report.
+
+Decisions 1 to 10 and 12 are accepted as reported; `WindField` as one class, the coverage as
+the grid's own extent, `ValueError` for extrapolation, the exact partials with the north and
+higher-pressure rule at a node, `u_column` defaulting to the broadcast scalar, the NaN
+companion. Section 5b's costs are noted for the Monte Carlo wrapper; nothing is asked.
 
 ---
 
