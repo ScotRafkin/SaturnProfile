@@ -2,8 +2,11 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.10, 22 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026; v0.10 fixes the construction of the cylinder-extended wind
+Version 0.11, 22 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.11 corrects the Step 2 column checks (the central-field closed
+form in place of a uniform gravity that the constants cannot produce, an absolute bound on the
+cancellation) and completes decision P (per hemisphere, the inversion curve sampled at the mesh
+spacing), §13; v0.10 fixed the construction of the cylinder-extended wind
 (decision P) and moves it to Step 2, with the v0.9 values for it withdrawn and remeasured
 (§12); v0.9 made kind C one structure, a field on (level, latitude),
 for every use (decision O), and the mesh self-extending with no declared extent or margin;
@@ -473,7 +476,16 @@ distance from the axis at each latitude, so that the file's three parts are the 
 file's `u_reference`, this `u_total`, and their difference, and the sum identity holds. The
 geometry is the library's: `r(φ, Φ)` the radial columns of this step from the reference
 surface of Step 1, under the flat-isobar map `Φ(p)` of the anchor (interpolated in `ln p`),
-which is exact under `S = 0`. Because the reference surface is marched with the wind at the
+which is exact under `S = 0`; the map is continued beyond the anchor's levels at the slope of
+its last interval in `ln p`. `U` is one function per hemisphere (v0.11, §13): a cylinder cuts
+the reference surface once in each hemisphere and the wind is not symmetric about the equator,
+so a single `U(s)` cannot return `u_reference` in both; within a hemisphere `du/dz` on a
+cylinder is still zero, so `S = 0` holds wherever a run's span lies in one hemisphere, and a
+symmetric deep wind is a different hypothesis for a tool to make. The inversion curve
+`s_ref(φ)` is sampled at the mesh's latitude spacing over the file's whole latitude range, not
+on the file's 0.5° grid (v0.11: the chord of a 0.5° cell misplaces a mid-cell latitude by
+several thousandths of a degree, which on the steep flank of a jet is several hundredths of a
+metre per second, the size of the departures REPORT_04_step2 measured). Because the reference surface is marched with the wind at the
 gauge isobar, and that wind is the file's own, the construction is a fixed point: the closure
 file's surface and the closure anchor's `Φ_k` on the first pass, the file's own on the next,
 repeated until the file changes by less than 1e-6 m/s (three passes on the state in hand). The
@@ -500,8 +512,10 @@ the top level and −104,098.0 m at the bottom (against the tabulated `h − h_r
 −104,100: the 15 m and 2 m are the second-order drift terms); `r − r0` 288,051.3 m at the top
 and −104,576.8 m at the bottom, `tan²ψ` more than the projected altitude, as §1 says.
 
-**Acceptance.** Uniform gravity (`J = 0`, `Ω = 0`, `u = 0`) returns `r − r0 = Φ / g` and
-`z_lv = r − r0` to 1e-12 relative; the column at `φ_c` reproduces the values above to 0.1 m;
+**Acceptance.** The central field (`J = 0`, `Ω = 0`, `u = 0`, which leaves `GM / r²`, not a
+uniform gravity; v0.11, §13) returns `r = r0 / (1 − r0 Φ / GM)` to 1e-12 relative and
+`z_lv = r − r0` to 1e-7 m absolute (the difference cancels seven digits of `r`, so a relative
+bound below 1e-10 is below double precision); the column at `φ_c` reproduces the values above to 0.1 m;
 `Φ` recomputed from the column's own `r` by the trapezoid of `g` returns the nodes to 1e-9
 relative; the mesh refuses a spacing that is not positive; `extend` adds whole spacings on the named side and the columns on the new nodes match a mesh built with them from the start to 1e-12; a namelist with two anchors at different latitudes gives a mesh with both as exact
 nodes; every quantity on the mesh is finite.
@@ -798,7 +812,8 @@ only mean `U(s)` fixed on the 1 bar isobar; pinning it on the gauge isobar, whic
 words left open, gives a file whose reference-level wind is not the closure's. The geometry is
 the model's own radial columns under the flat-isobar map, exact under `S = 0`, so the file is
 only as approximate as the wind grid's interpolation, which is what Steps 3 and 4 bound; the
-reference surface and the file are a fixed point, converged in the script. The v0.9 values
+reference surface and the file are a fixed point, converged in the script; `U` is one
+function per hemisphere and the inversion curve is sampled at the mesh spacing (v0.11). The v0.9 values
 for this file (9.371, −0.133 m/s, −271.6 m²/s²) could not be reproduced by the coding agent
 under any construction the words determine, nor by the reviewing agent afterward; they are
 withdrawn and the v0.10 values stand.
@@ -824,6 +839,7 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.11 | 2026-09-22 | Step 2's column checks restated (central-field closed form; absolute cancellation bound); decision P completed (per hemisphere; `s_ref` sampled at the mesh spacing; the map continued in `ln p`); §13 rulings on REPORT_04_step2 | REVIEW_04_step2 |
 | 0.10 | 2026-09-22 | Decision P (the cylinder-extended wind pinned on the file's reference level, built with the columns at Step 2 as a fixed point); its v0.9 values withdrawn and remeasured, the Step 5 altitudes under it restated; §12 rulings on REPORT_04_step1 | REVIEW_04_step1 |
 | 0.9 | 2026-09-21 | Decision O (kind C one structure); the mesh self-extending, `geopotential_margin_m2s2` withdrawn; decision N's last sentence corrected (the kind N reader warns on a changed input; the cascade was the closure's definition) | author's direction of 21 September |
 | 0.8 | 2026-09-21 | Decision N (what is checked), applied to Step 0 and the mesh; the `Φ` range derived from the anchors with a declared margin; deliverable 6's uncertainty as `σ_N / N`; §10 corrected (PCHIP); §11 rulings on REPORT_04_step0 | author's direction of 21 September; REVIEW_04_step0 |
@@ -947,6 +963,33 @@ Decisions 1 to 10 and 12 are accepted as reported; `WindField` as one class, the
 the grid's own extent, `ValueError` for extrapolation, the exact partials with the north and
 higher-pressure rule at a node, `u_column` defaulting to the broadcast scalar, the NaN
 companion. Section 5b's costs are noted for the Monte Carlo wrapper; nothing is asked.
+
+---
+
+## 13. Rulings on REPORT_04_step2 (22 September 2026)
+
+1. **The uniform gravity check.** Correct: with `GM / r²` in `lib.gravity` those constants give
+   a central field, and the specification's closed form was wrong. The check is restated as the
+   central field's closed form, `r = r0 / (1 − r0 Φ / GM)`, to 1e-12, which the column meets at
+   8.9e-16.
+2. **The cancellation bound.** Correct; `z_lv = r − r0` to 1e-7 m absolute, seven ulp of `r`.
+3. **The inversion curve's sampling.** Accepted and generalized: `s_ref` is sampled at the mesh's
+   latitude spacing over the file's range, so every latitude a level maps to, not only the
+   anchors and the target, is within a mesh spacing of a sample. The reviewing agent's expected
+   values were measured with a 0.05° sampling, which is why the finer sampling should close on
+   them.
+4. **Per hemisphere.** Correct, and a property of the hypothesis the specification should have
+   stated; decision P now does. Nothing in the run's span crosses the equator.
+5. **`edge_order = 2`.** Correct; recorded in Step 2's staggering as the rule.
+6. **The 10° N bottom level at 0.054 m/s.** Not loosened. The departure is the size and sign of
+   the chord error of finding 3 at the latitude the bottom level maps to (between file nodes at
+   10.0° and 10.5°), and ruling 3 removes it; the check is rerun under the finer sampling
+   against the same values and bound. If it still misses, the report says so with the measured
+   values and the reviewing agent remeasures under the same sampling before any bound moves.
+
+Decisions 1 to 11 are accepted as reported; decision 8 (the flat-isobar map continued at the
+slope of its last interval) is now stated in Step 2, and decisions 9 and 10 are superseded by
+rulings 3 and 4 as generalized.
 
 ---
 
