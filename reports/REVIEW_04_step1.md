@@ -70,3 +70,20 @@ Section 5b is noted for the Monte Carlo wrapper.
 5. Set `STATE.md` Step 1 to accepted with the commits. Step 2 proceeds, and its acceptance
    script builds the cylinder-extended wind by decision P as its first deliverable beyond the
    mesh.
+
+## Refreshed report and sweep verified (22 September 2026)
+
+The report refreshed under v0.10 is thirteen of thirteen, the two cylinder checks moved to
+Step 2 as ruled and the closure half of check 9 still bounded at 1e-3 m/s; ruling 4 applied to
+`accept_step04_0`. The Step 1 acceptance commit is `780a2de` and the sweep rebuilt the one
+product this step changes: the closure product on disk carries commit `780a2de` with no
+`-dirty`, SHA-256 `fcc2e2c4...` as section 6 records, `u_column_ms` at 2.16708095051181 m/s at
+all 66 levels, its companion all NaN, and its pressure and temperature the accepted values to
+the last digit (9998.46545058 Pa and 83.38720186 K at the gauge level, 19.95262315 Pa at the
+top). The four suites that read the closure product pass on the swept one.
+
+Finding 5 (the admitted-additions list of `accept_step04_0` check 6 extended by name with
+`u_column_ms` and `u_column_uncertainty_ms`, the variables Step 1 deliverable 3 required) is
+ratified: the check still fails on any value that changes. **Step 1 is accepted at `780a2de`.**
+Step 2 proceeds, with the cylinder-extended wind built by decision P as its acceptance's first
+deliverable beyond the mesh.
