@@ -22,6 +22,11 @@ Ruling 4 was applied: `step04_0`'s check 0 now takes a `-dirty` copy it writes i
 subject. Both suites were rerun. This section, section 3, finding 2 and section 5a are the refresh
 the review's order of work item 1 asked for.
 
+The sweep of item 4 then turned up one more, finding 5 in section 5c: `step04_0`'s check 6 counted
+this step's two new product variables as changed values, because its list of admitted additions
+names only Step 0's. The list was extended to name them, with the citation, and the finding is
+recorded for ratification because it edits a closed step's acceptance record.
+
 ## 0. Before this step
 
 HEAD `bd98c60`, Step 0 accepted at `1c9b310` with the sweep recorded at `f38c58b` and the deferred
@@ -175,8 +180,8 @@ mode is unchanged, as the Appendix requires.
 
 ## 4. Findings
 
-Findings 1 to 3 come from the acceptance. Finding 4 came from the regression and is recorded
-with it, in section 5a.
+Findings 1 to 3 come from the acceptance. Finding 4 came from the regression and finding 5 from the
+post-sweep rerun; each is recorded with the run that found it, in sections 5a and 5c.
 
 **1. The dense march grid overshoots the pole, and the wind is then asked for a latitude kind W
 does not cover.** `wind_geoid` builds its march grid as
@@ -311,6 +316,45 @@ with `ControlFileError: lindal_transfer_wind.nc carries casspian_git_commit =
 commit, and prints that loading the run from this working tree refuses nothing, which is the state
 the sweep left and the reason the old form of the check could not pass. Output
 `reports/step04_1/rerun_accept_step04_0.txt`.
+
+## 5c. The suites that read the closure product, on the swept product
+
+`reports/step04_1/post_sweep_suites.sh`, output `reports/step04_1/post_sweep.txt`. The four suites
+that read the closure product, rerun on the swept one, `fcc2e2c4`. `step02_1` and `step02_6` are not
+here: they look up recorded hashes, but only the reduction chain's, which this step does not touch.
+
+| Suite | Result | Reference |
+|---|---|---|
+| `step03_3/accept_step03_3` | 16 of 16 | 16 |
+| `step03_4/accept_step03_4` | 13 of 13 | 13 |
+| `step04_0/accept_step04_0` | 15 of 15, after the change of finding 5 | 15 |
+| `step04_1/accept_step04_1` | 13 of 13 | this step |
+
+Each was run from a clean tree and the tree restored after it, and the porcelain line after every
+suite is empty. The registered kind N and the swept closure product both restored equal, the product
+still `fcc2e2c4ae71554537d8aa53f07b247724b718a371abab73de31939bae9ae6af`.
+
+**Finding 5, from this run.** `step04_0`'s check 6, "the cascade rebuilt every product and changed
+no value, group by group", failed on the closure product with
+`unexpected new variables ['u_column_ms', 'u_column_uncertainty_ms']`. The check compares each
+rebuilt product against a copy taken before Step 0 and admits a named list of the additions Step 0
+intended, `u_reference_ms` and `latitude_planetocentric_deg`; anything else it reports as a changed
+value. Step 1's two variables are exactly what deliverable 3 required a later step to add, so the
+list was extended to name them, with the reason and the citation in the code. Nothing else is
+admitted, so a value that does change still fails, and every other product in the check reported
+`unexpected differences none`. Measured after the change, `step04_0` is 15 of 15 with no failing
+check, and the closure product's line reads `variables added ['latitude_planetocentric_deg',
+'u_column_ms', 'u_column_uncertainty_ms', 'u_reference_ms'], removed ['u_cylindrical_ms'],
+attributes removed ['decomposition', 'decomposition_geometry',
+'latitude_planetocentric_absent_meaning']; unexpected differences none`. Output
+`reports/step04_1/post_sweep_accept_step04_0.txt`. This is the same operation Step 0 ruling 3 performed on `step03_3`'s
+baseline and the same class as Step 0 findings 5 to 8: it edits a closed step's acceptance record,
+so it is recorded here for ratification rather than passed over.
+
+The check also prints, and does not fail on, `closure_dropped_wind` losing `decomposition_geometry`
+from the list of attributes the closure comparison dropped. That is Step 0's retirement of the
+attribute, already tolerated by `provenance_attr` and printed rather than waved past, and it is
+unchanged by this step.
 
 ## 5b. Cost, measured
 
