@@ -39,7 +39,8 @@ import numpy as np
 
 from casspian.lib.gravity import G_phi_eff, g_eff_radial, potential_V
 
-__all__ = ["U_rigid", "reference_geoid", "wind_geoid", "radius_at", "ellipsoid_seed"]
+__all__ = ["U_rigid", "reference_geoid", "wind_geoid", "through_anchor", "AnchorSurface",
+           "radius_at", "ellipsoid_seed"]
 
 
 def U_rigid(r, phi_c, Omega, GM, J, degrees, R_norm):
@@ -317,6 +318,104 @@ def wind_geoid(phi_c_grid, r_anchor, anchor_rule, u_of_phi, Omega, GM, J, degree
         anchor_node_latitude_rad={"equatorial_radius": 0.0, "north_pole": pole,
                                   "south_pole": -pole,
                                   "latitude": anchor_latitude}.get(anchor_rule),
+    )
+
+
+@dataclass
+class AnchorSurface:
+    """The reference surface marched through a stated point, and what it reaches."""
+
+    #: The radius on the caller's nodes, in the caller's order.
+    radius: np.ndarray
+    #: The march's own nodes, ascending in latitude, and the radius at each. The acceptance
+    #: compares these against `wind_geoid`'s march node for node, so they are carried out.
+    march_latitude_rad: np.ndarray
+    march_radius_m: np.ndarray
+    anchor_latitude_rad: float
+    anchor_radius_m: float
+    polar_north_m: float
+    polar_south_m: float
+    polar_asymmetry_m: float
+    equator_radius_m: float
+
+    def radius_at_latitude(self, phi_c):
+        """The surface at a latitude, by the module's `radius_at` rule on the march nodes."""
+        return radius_at(phi_c, self.march_latitude_rad, self.march_radius_m)
+
+    def residual(self, phi_c, radius_m):
+        """`r_measured - r0(phi_c)`: how far a measured radius sits off this surface.
+
+        With several occultation anchors the surface is marched through the first and this is
+        every other anchor's departure from it, which SPEC_04 Step 1 deliverable 1 records as
+        `reference_surface_residual_<slug>`. The weighted estimate of the constant from several
+        measured radii belongs to the combination specification, not here.
+        """
+        return np.asarray(radius_m, dtype="float64") - self.radius_at_latitude(phi_c)
+
+
+def through_anchor(phi_c_grid, anchor_latitude_rad, anchor_radius_m, u_of_phi,
+                   Omega, GM, J, degrees, R_norm, march_step_deg=0.05):
+    """The Eq. B3 surface whose constant is fixed by a stated point. SPEC_04 Step 1.
+
+    `wind_geoid` fixes the constant by a rule on the marched outcome, which needs a secant on
+    the polar start because the outcome is not where the march begins. An occultation anchor
+    states the point itself, `(phi_i, r0_i)`, so the constant is known before anything is
+    marched: the march starts there and runs outward to each pole, the two legs of the one
+    surface Eq. B3 carries. No root is found and no tolerance is declared, and the surface
+    passes through the stated point exactly rather than to a converged tolerance.
+
+    `u_of_phi` takes planetocentric latitude in radians and returns the zonal wind in m/s, and
+    is the wind at the pressure the caller means the surface to sit on: SPEC_04 Step 1
+    deliverable 1 supplies `u_total` at the gauge isobar's pressure. It must be zero at both
+    poles, as `wind_geoid` requires and for the same reason.
+
+    The march runs on its own dense grid over both poles, unioned with the caller's nodes, the
+    equator and the anchor latitude, so every latitude the caller asked for and the anchor
+    itself are marched and never interpolated. Returns an `AnchorSurface`.
+    """
+    phi = np.asarray(phi_c_grid, dtype="float64")
+    pole = np.pi / 2
+    anchor_phi = float(anchor_latitude_rad)
+    if not -pole <= anchor_phi <= pole:
+        raise ValueError(
+            f"the anchor latitude {np.degrees(anchor_phi)} degrees is not on the planet"
+        )
+    # The same dense grid `wind_geoid` marches on, so that the two marches take the same steps
+    # and the acceptance's node for node comparison measures the constant and not the grid.
+    dense = np.radians(np.arange(-90.0, 90.0 + 0.5 * march_step_deg, march_step_deg))
+    dense = dense[np.abs(dense) > 1.0e-9]
+    nodes = np.concatenate([phi, dense, [-pole, 0.0, pole], [anchor_phi]])
+    # `arange` accumulates, and a caller's own grid is often built the same way, so a node meant
+    # for a pole can land a few times 1e-11 rad beyond it. Such a node is snapped to the pole; a
+    # node genuinely off the planet is refused. Left alone, the overshoot reaches the march's RK4
+    # midpoints, where the wind is asked for at a latitude kind W does not cover.
+    off = np.abs(nodes) > pole + 1.0e-9
+    if off.any():
+        raise ValueError(
+            f"the latitude grid reaches {np.degrees(nodes[off].max())} degrees, off the planet"
+        )
+    nodes = np.unique(np.clip(nodes, -pole, pole))
+    start = int(np.flatnonzero(nodes == anchor_phi)[0])
+    args = (u_of_phi, Omega, GM, J, degrees, R_norm)
+
+    # Two legs from the one starting value. The southern leg runs on descending nodes, which
+    # RK4 takes with a negative step and no other change.
+    northward = _march_nodes(nodes[start:], anchor_radius_m, *args)
+    southward = _march_nodes(nodes[start::-1], anchor_radius_m, *args)
+    radii = np.concatenate([southward[::-1][:-1], northward])
+
+    equator = int(np.flatnonzero(nodes == 0.0)[0])
+    north, south = float(radii[-1]), float(radii[0])
+    return AnchorSurface(
+        radius=np.interp(phi, nodes, radii),
+        march_latitude_rad=nodes,
+        march_radius_m=radii,
+        anchor_latitude_rad=anchor_phi,
+        anchor_radius_m=float(anchor_radius_m),
+        polar_north_m=north,
+        polar_south_m=south,
+        polar_asymmetry_m=south - north,
+        equator_radius_m=float(radii[equator]),
     )
 
 

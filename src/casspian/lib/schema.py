@@ -155,6 +155,7 @@ SEASON_ABSENT_MEANINGS = frozenset({"uniform"})
 #: `refractivity`, the tabulated pair) carry the provenance of their source and no companion.
 PROFILE_MODELED_VARIABLES = (
     "geopotential_m2s2",
+    "u_column_ms",
     "mean_refractivity_m3",
     "mean_molar_mass_kg_mol",
     "number_density_m3",

@@ -73,6 +73,10 @@ class Production:
     """What `produce` forms on the levels and layers."""
 
     u_ms: float
+    #: The wind the geopotential was formed with, one value per level. In closure mode this is
+    #: `u_ms` at every level; in transfer mode it is the run's wind along the column, which is
+    #: what SPEC_04 Step 1 deliverable 3 supplies.
+    u_column_ms: np.ndarray
     geopotential: gp.GeopotentialProfile
     mean_refractivity_m3: np.ndarray
     mean_molar_mass_kg_mol: np.ndarray
@@ -119,7 +123,7 @@ def mean_properties(composition, latitude_deg=None):
     return red.mean_over_species(x, R_i), red.mean_over_species(x, M_i)
 
 
-def produce(profile: Profile, inputs, gauge: int, p_b: float) -> Production:
+def produce(profile: Profile, inputs, gauge: int, p_b: float, u_column=None) -> Production:
     """The production on one column. Pure: arrays in, arrays out, no file access.
 
     `inputs` carries the run's loaded `composition` (a DataTree on the profile's levels),
@@ -127,6 +131,13 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float) -> Production:
     pressure at the top level. In order: `u(phi_c)` from the wind's reference level; `|g_eff|`,
     `psi` and `Phi` on the levels (Step 1); `R_bar` and `m_bar` from the composition; `n = N /
     R_bar` and `rho = n m_bar` (B4); the layer masses and `p` from the top (B5); `T` (B6).
+
+    `u_column` is the zonal wind in m/s on the profile's levels, which SPEC_04 Step 1
+    deliverable 3 supplies as `wind_at(phi_i, p_k)` so that the geopotential is formed under the
+    run's own wind along the column. Omitted, it is the reference-level wind at the column's
+    latitude at every level, which is what closure mode means and what SPEC_03 formed, so the
+    closure production is unchanged. `u_ms` keeps its meaning either way: the reference-level
+    value at `phi_c`.
     """
     gravity, rotation = inputs.gravity, inputs.rotation
     constants = (
@@ -138,8 +149,18 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float) -> Production:
     )
     phi_c = profile.latitude_planetocentric_rad
     u = float(wind_of_latitude(inputs.wind)(np.array([phi_c]))[0])
+    if u_column is None:
+        u_column = np.full(profile.refractivity.shape, u, dtype="float64")
+    else:
+        u_column = np.asarray(u_column, dtype="float64")
+        if u_column.shape != profile.refractivity.shape:
+            raise ValueError(
+                f"the wind column has shape {u_column.shape} and the profile has "
+                f"{profile.refractivity.shape} levels"
+            )
     geopotential = gp.geopotential_along_profile(
-        u, profile.radius_m, profile.height_above_anchor_isobar_m, phi_c, gauge, *constants)
+        u_column, profile.radius_m, profile.height_above_anchor_isobar_m, phi_c, gauge,
+        *constants)
     R_bar, m_bar = mean_properties(inputs.composition, np.degrees(phi_c))
     N = profile.refractivity
     n = N / R_bar
@@ -149,6 +170,7 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float) -> Production:
     temperature = hs.temperature(pressure, N, R_bar)
     return Production(
         u_ms=u,
+        u_column_ms=u_column,
         geopotential=geopotential,
         mean_refractivity_m3=R_bar,
         mean_molar_mass_kg_mol=m_bar,
@@ -361,6 +383,11 @@ def _product_dataset(namelist, inputs, anchor_root, production, p_tab, T_tab, pr
                    "measured", positive="up")),
         "refractivity": (level, np.asarray(anchor_root["refractivity"].values, dtype="float64"),
                          _attrs("1", f"refractivity, unscaled, {copied}", "derived")),
+        "u_column_ms": (level, production.u_column_ms,
+                        _attrs("m s-1", "the run's zonal wind along the column, the field the "
+                               "geopotential was formed under (SPEC_04 Step 1 deliverable 3)",
+                               "modeled")),
+        "u_column_uncertainty_ms": companion("m s-1", "u_column_ms"),
         "mean_refractivity_m3": (level, production.mean_refractivity_m3,
                                  _attrs("m3", "mean refractivity per molecule from the run's kind C",
                                         "modeled")),
