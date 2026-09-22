@@ -317,6 +317,41 @@ commit, and prints that loading the run from this working tree refuses nothing, 
 the sweep left and the reason the old form of the check could not pass. Output
 `reports/step04_1/rerun_accept_step04_0.txt`.
 
+## 5b. Cost, measured
+
+Recorded because the regression's wall time invites a wrong inference about model cost. The 39
+minutes the regression took is test scaffolding: `step04_0` alone is 5 min 15 s because it spawns a
+full nested run of `step03_3`, which is itself 2 min 35 s and spawns a subprocess per refusal case,
+and every one of those pays a fresh interpreter start and a fresh input load. Model cost, measured
+on this machine:
+
+| Quantity | Cost |
+|---|---|
+| `import casspian` | 1.00 s, once per process |
+| `ctl.load_run_inputs`, every file with its schema checks, hashes and closure comparison | 7.60 s, once per run |
+| `WindField(wind)` | 0.1 ms, once per run |
+| `through_anchor`, 0.05 deg march, 3,607 nodes | 2.13 s, once per run |
+| `wind_on_mesh` over 417 columns by 780 levels, 325,260 nodes | 34 ms |
+| `wind_derivatives` over the same mesh | 53 ms |
+| `produce`, one column of 66 levels | 1.7 ms |
+
+Two of these bear on Step 1 directly. **`through_anchor` is 6.4 times cheaper than the rule it
+replaces**: 2.13 s against 13.60 s for `wind_geoid` under `equatorial_radius`, because the secant
+on the polar start costs seven or eight marches and this needs one. And **`wind_at` costs 17.9 us
+per scalar call against 1.8 us for the `np.interp` callable the reduction uses**, ten times more,
+from the broadcast, the `searchsorted`, the clip and the coverage refusal; the RK4 loop makes 14,424
+such calls, so the march is 2.13 s with `wind_at` against 1.79 s with the cheap callable. That is
+the price of refusing to extrapolate rather than clamping silently, which is finding 1's whole
+point, and it is 16 percent of one march. A scalar fast path would recover it and is not proposed
+here.
+
+The march is the per-draw cost that matters later: 1.79 s of it is the RK4 Python loop, 124 us per
+slope evaluation, which is `lib.gravity` on scalars and not the wind. It cannot be vectorized over
+nodes, since an initial value problem needs the previous result, and SPEC_00 section 3.1 already
+allows the loop for that reason. The 7.60 s input load is per process and hoists out of any wrapper
+that loads once and draws in memory. Nothing is proposed; the numbers are recorded so the Monte
+Carlo wrapper is specified against measurements.
+
 ## 5c. The suites that read the closure product, on the swept product
 
 `reports/step04_1/post_sweep_suites.sh`, output `reports/step04_1/post_sweep.txt`. The four suites
@@ -355,41 +390,6 @@ The check also prints, and does not fail on, `closure_dropped_wind` losing `deco
 from the list of attributes the closure comparison dropped. That is Step 0's retirement of the
 attribute, already tolerated by `provenance_attr` and printed rather than waved past, and it is
 unchanged by this step.
-
-## 5b. Cost, measured
-
-Recorded because the regression's wall time invites a wrong inference about model cost. The 39
-minutes the regression took is test scaffolding: `step04_0` alone is 5 min 15 s because it spawns a
-full nested run of `step03_3`, which is itself 2 min 35 s and spawns a subprocess per refusal case,
-and every one of those pays a fresh interpreter start and a fresh input load. Model cost, measured
-on this machine:
-
-| Quantity | Cost |
-|---|---|
-| `import casspian` | 1.00 s, once per process |
-| `ctl.load_run_inputs`, every file with its schema checks, hashes and closure comparison | 7.60 s, once per run |
-| `WindField(wind)` | 0.1 ms, once per run |
-| `through_anchor`, 0.05 deg march, 3,607 nodes | 2.13 s, once per run |
-| `wind_on_mesh` over 417 columns by 780 levels, 325,260 nodes | 34 ms |
-| `wind_derivatives` over the same mesh | 53 ms |
-| `produce`, one column of 66 levels | 1.7 ms |
-
-Two of these bear on Step 1 directly. **`through_anchor` is 6.4 times cheaper than the rule it
-replaces**: 2.13 s against 13.60 s for `wind_geoid` under `equatorial_radius`, because the secant
-on the polar start costs seven or eight marches and this needs one. And **`wind_at` costs 17.9 us
-per scalar call against 1.8 us for the `np.interp` callable the reduction uses**, ten times more,
-from the broadcast, the `searchsorted`, the clip and the coverage refusal; the RK4 loop makes 14,424
-such calls, so the march is 2.13 s with `wind_at` against 1.79 s with the cheap callable. That is
-the price of refusing to extrapolate rather than clamping silently, which is finding 1's whole
-point, and it is 16 percent of one march. A scalar fast path would recover it and is not proposed
-here.
-
-The march is the per-draw cost that matters later: 1.79 s of it is the RK4 Python loop, 124 us per
-slope evaluation, which is `lib.gravity` on scalars and not the wind. It cannot be vectorized over
-nodes, since an initial value problem needs the previous result, and SPEC_00 section 3.1 already
-allows the loop for that reason. The 7.60 s input load is per process and hoists out of any wrapper
-that loads once and draws in memory. Nothing is proposed; the numbers are recorded so the Monte
-Carlo wrapper is specified against measurements.
 
 ## 6. Hashes, the Step 1 sweep
 
