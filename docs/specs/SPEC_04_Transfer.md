@@ -2,8 +2,10 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.11, 22 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026; v0.11 corrects the Step 2 column checks (the central-field closed
+Version 0.12, 23 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.12 states the truncation floor of a gridded wind hypothesis
+(decision Q) and restates the cylinder-wind checks of Steps 3, 4 and 5 as the line integral the
+transfer applies, at that floor, §14; v0.11 corrected the Step 2 column checks (the central-field closed
 form in place of a uniform gravity that the constants cannot produce, an absolute bound on the
 cancellation) and completes decision P (per hemisphere, the inversion curve sampled at the mesh
 spacing), §13; v0.10 fixed the construction of the cylinder-extended wind
@@ -541,13 +543,28 @@ curve from `S/g` (bilinear on the mesh) and the composition term (linear in lati
 mesh, `u'` the file's piecewise-constant slopes: 12.07 m/s per degree southward of the node at
 31.0°, so the largest `|S/g|` sits on the interval holding the anchor); the model returns
 `S/g = 2 Ω_abs cos φ u'/g` at every node to round-off, since no difference is taken (the v0.5
-convergence claim for a centered difference is withdrawn, §10 finding 6). Cylinder-extended wind: `S ≡ 0` analytically (`u = f(R) r cos φ`, for
-which the two terms of `(∂u/∂Z)_R` cancel for any `f`); on the mesh the residual comes from the
-file's grid and the interpolation of `u` in `ln p`, reported as the largest `|S/g|` and the
-resulting `|Δ ln N|` over the run's span, which must be below 1e-6 and converge as the wind
-file's pressure grid is refined. Synthetic: `u = β r sin φ` applied at every node (β = 1e-6
-per second) has `(∂u/∂Z)_R = β` exactly, so `S = 2 Ω_abs r β` to the truncation error of the
-differences; a solid-body offset `u = ΔΩ r cos φ` has `S = 0` to round-off; a synthetic
+convergence claim for a centered difference is withdrawn, §10 finding 6). Cylinder-extended wind (v0.12, decision Q): `S ≡ 0` analytically (`u = f(R) r cos φ`, for
+which the two terms of `(∂u/∂Z)_R` cancel for any `f`), and on the mesh the residual is the
+truncation of the file's linear interpolant, whose derivatives jump at the file's nodes, so
+the cancellation fails inside the cells holding a jump and nowhere else: `S/g` is a spiky,
+sign-alternating field there whose largest value does not fall under refinement while its
+integral does. What is measured is therefore the line integral of `S/g` along each of the
+anchor's isobars over the run's span (flat isobars, the first-order estimate of `Δ ln N`),
+which must be below 2e-3 at every level, and the vertical integral `I` and the isobar shift
+`−∫ I dφ` it implies, below 300 m²/s²; the largest `|S/g|` is reported, not bounded. Expected
+(instance, the reviewing agent's kernel on the coding agent's Step 2 file, the map continued
+per Step 2 decision 8, a 0.05° mesh): `Δ ln N` +1.2e-4 at the top level, −5.2e-4 at 10 mbar,
+−1.7e-4 at the gauge, −1.1e-3 at the bottom, largest 1.1e-3; largest `|S/g|` 0.050 per
+radian on the span; shift +107 at the top, −10 at the bottom, largest 224 m²/s². The line
+integral is remeasured with the file's latitude sampling at 0.25° and 0.1° (the cylinder
+construction resampled, the mesh unchanged) and the ratios reported, no order claimed. The
+map is continued at the slope of its last interval beyond the anchor's levels, as Step 2
+decision 8 states; a clamped map puts a slope discontinuity at the ends and a spurious
+residual an order of magnitude larger there (§14). Synthetic: `u = β r sin φ` applied at
+every node (β = 1e-6 per second) has `(∂u/∂Z)_R = β` exactly, so `S = 2 Ω_abs r β` to the
+truncation error of the interpolant, reported; a solid-body offset `u = ΔΩ r cos φ` has
+`S = 0` analytically and on the mesh `|S/g|` below 1e-4 per radian (v0.12; the truncation of
+the same interpolant, measured 3.4e-5); a synthetic
 composition file whose `x_He` varies as `0.06 + 0.02 sin φ` with H2 as the closure gives the
 composition term equal to its closed form (evaluated analytically in the script from the
 species table) to 1e-8, and the transfer composition (identical columns) gives zero.
@@ -598,8 +615,10 @@ From `C(Φ)` at `φ_r` the curves are traced to the target and `C` transferred a
 to 60° N the shift −7,117.0 and +2,585.1 m²/s² and `Δ ln N` +2.5119e-3, +2.4922e-3, +2.4840e-3,
 +2.4749e-3. To be reproduced to 1e-4 in `Δ ln N` and 1 percent in the shift at the default
 spacings, and to 2e-5 and 0.2 percent with both spacings halved, the ratio reported. Instance,
-cylinder-extended wind: `Φ_k(φ) = Φ_k` to 10 m²/s² and `ln N_k(φ) = ln N_k` to 1e-6 at every
-node, both improving as the wind file's pressure grid is refined. **M = 2, the identity test:**
+cylinder-extended wind: `Φ_k(φ) = Φ_k` to 300 m²/s² and `ln N_k(φ) = ln N_k` to 2e-3 at every
+node (v0.12, decision Q: the truncation floor of the file's grid, measured at Step 3 as 224
+m²/s² and 1.1e-3 by the first-order line integrals; the traced values reported beside them,
+and their ratio to the Step 3 estimates). **M = 2, the identity test:**
 the closure-wind run to 60° N is written by the acceptance script as a synthetic kind N anchor
 at 60° N (`radius_m` from the column at its arrival levels, `height_above_anchor_isobar_m` the
 `z_lv` there, `refractivity` the transferred `N`, the thermo group's pressures the Lindal anchor's
@@ -685,7 +704,8 @@ anchor's by 1.103e-2 at the top level, 1.089e-2 at the gauge, 1.084e-2 at the bo
 1e-4); `r0(10°)` 60,128,613.0 m (to 1 m); `altitude_m` 411,132 m at the top level, 98,186 m at
 the gauge level, −15,290 m at the bottom (to 5 m). A second run at 60° N: `T` lower by
 2.51e-3, 2.48e-3 and 2.47e-3; altitudes 328,127, 78,533 and −12,239 m. A third at 10° N with
-the cylinder-extended wind: `T`, `p`, `N` equal to the anchor's to 1e-6, altitudes 416,300,
+the cylinder-extended wind: `T`, `p`, `N` equal to the anchor's to 2e-3 (v0.12, decision Q;
+the Step 4 values), altitudes 416,300,
 99,290 and −15,456 m to 10 m (v0.10). A fourth at `φ_c` itself: `N` and `Φ` equal to the closure
 product's to 1e-12, and `p` and `T` to 1e-5 (the composition regridded from the file's
 tabulated levels onto the produced labels moves `ln ℛ̄` by at most 1.5e-6, at the bottom row;
@@ -805,6 +825,21 @@ a file edited after it was written; a changed input beside it only warns, as for
 kind. It stays; the Step 0 cascade was the closure's own definition (its inputs must be the
 reduction's), not the reader's.
 
+Q. **A wind hypothesis on a grid carries a truncation floor, and the model reports it rather
+than hiding it.** Under decision L the kernel is formed from the derivatives of the file's
+linear interpolant, which jump at the file's nodes. For a wind with vertical shear the two
+terms of A15 cancel only to that truncation, so a field that is barotropic analytically (the
+cylinder-extended wind) is transferred as if it carried a small shear: on the Lindal state
+with the 0.5° grid, `Δ ln N` up to 1.1e-3 over 21° of latitude (0.1 K) and isobar shifts up to
+224 m²/s², against 1.1e-2 and 31,000 m²/s² under the closure wind. This is a property of the
+data's resolution, not of the code, and it is the floor a wind hypothesis on that grid can
+claim; a tool wanting a smaller floor writes a finer grid (the integral falls with the
+sampling; the largest local value does not). The checks that call the cylinder state an
+"identity" are stated at that floor, the local maximum is reported and not bounded, and the
+manuscript carries the floor once where the wind hypothesis is described. A wind with no
+vertical shear is exempt: the vertical derivative is exactly zero and the kernel is the closed
+form to round-off, which is what the closure wind shows.
+
 P. **The cylinder-extended wind is pinned on the file's reference level and built with the
 library's columns at Step 2.** A kind W file's three parts make `u_total(φ, p_ref) =
 u_reference(φ)` an identity, so "the same reference-level wind extended along cylinders" can
@@ -839,6 +874,7 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.12 | 2026-09-23 | Decision Q (the truncation floor of a gridded wind); the cylinder-wind checks of Steps 3, 4 and 5 restated as line integrals at that floor with the maximum reported; the solid-body bound; §14 rulings on REPORT_04_step3 | REVIEW_04_step3 |
 | 0.11 | 2026-09-22 | Step 2's column checks restated (central-field closed form; absolute cancellation bound); decision P completed (per hemisphere; `s_ref` sampled at the mesh spacing; the map continued in `ln p`); §13 rulings on REPORT_04_step2 | REVIEW_04_step2 |
 | 0.10 | 2026-09-22 | Decision P (the cylinder-extended wind pinned on the file's reference level, built with the columns at Step 2 as a fixed point); its v0.9 values withdrawn and remeasured, the Step 5 altitudes under it restated; §12 rulings on REPORT_04_step1 | REVIEW_04_step1 |
 | 0.9 | 2026-09-21 | Decision O (kind C one structure); the mesh self-extending, `geopotential_margin_m2s2` withdrawn; decision N's last sentence corrected (the kind N reader warns on a changed input; the cascade was the closure's definition) | author's direction of 21 September |
@@ -990,6 +1026,45 @@ companion. Section 5b's costs are noted for the Monte Carlo wrapper; nothing is 
 Decisions 1 to 11 are accepted as reported; decision 8 (the flat-isobar map continued at the
 slope of its last interval) is now stated in Step 2, and decisions 9 and 10 are superseded by
 rulings 3 and 4 as generalized.
+
+---
+
+## 14. Rulings on REPORT_04_step3 (23 September 2026)
+
+The reviewing agent rebuilt the kernel independently on the coding agent's own Step 2 cylinder
+file (the bilinear interpolant, its piecewise-constant partials, the conversion to fixed `r`
+with the column map, the columns marched under the file's wind) before ruling.
+
+1. **Finding 1, the solid-body check.** Correct: "to round-off" was written for analytic
+   derivatives; under decision L the residual is the interpolant's truncation. Restated as
+   `|S/g|` below 1e-4 per radian, measured 3.4e-5.
+2. **Finding 2, the map's continuation.** The Step 3 script clamps the flat-isobar map at the
+   anchor's ends; Step 2 decision 8 continues it at the slope of its last interval, which is
+   continuous in slope and leaves no kink. The eightfold degradation at the ends, the NaN of
+   finding 4 (two pressure nodes coinciding) and most of check 9's maximum are that clamp:
+   the reviewing agent measures the largest `|S/g|` on the span at 0.050 per radian with the
+   map continued and 0.136 with it clamped, the excess at the clamped rows and their
+   neighbors through the two-sided difference. The script follows decision 8; no change to
+   the specification's text.
+3. **Finding 3, the exact zero.** The difference form is right and is the rule for the
+   composition term. Accepted.
+4. **Finding 4.** The synthetic states posed on the mesh's own geometry is right. The NaN is
+   the clamp's (ruling 2), and a valid kind W file has strictly increasing nodes, which is the
+   schema's business; no guard in `lib.windfield` (decision N). Accepted.
+5. **Finding 5, the cylinder-extended wind.** Right about the mechanism, wrong about the
+   measure and the size. The kernel of a piecewise-linear wind does have a spiky,
+   sign-alternating residual in the cells holding a slope jump, and its maximum does not fall
+   under refinement. But the transfer applies the integral of the kernel along an isobar, not
+   its maximum, and `max |S/g|` times the span is not `Δ ln N`: the reviewing agent's line
+   integrals along the anchor's isobars give `Δ ln N` up to 1.1e-3 over the span (1.2e-4 at
+   the top level, 5.2e-4 at 10 mbar, 1.7e-4 at the gauge, 1.1e-3 at the bottom) and isobar
+   shifts up to 224 m²/s², where the report's bound implied 7.6e-2. Decision L and A15 are
+   not in tension; a gridded wind has a truncation floor, decision Q states it, and the
+   cylinder checks of Steps 3, 4 and 5 are restated at that floor as line integrals, with the
+   maximum reported. Neither decision L nor decision P changes. The report's correction of its
+   own `d ln N` column is noted; the replacement column was still the wrong quantity.
+
+Decisions 1 to 6 are accepted as reported.
 
 ---
 
