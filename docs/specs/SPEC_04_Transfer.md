@@ -2,8 +2,10 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.12, 23 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026; v0.12 states the truncation floor of a gridded wind hypothesis
+Version 0.13, 23 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.13 records that the per-level line integrals under the
+cylinder wind are sampling-dependent and that only their bounds are checked (§14 addendum), and
+states the kernel's signature as built; v0.12 stated the truncation floor of a gridded wind hypothesis
 (decision Q) and restates the cylinder-wind checks of Steps 3, 4 and 5 as the line integral the
 transfer applies, at that floor, §14; v0.11 corrected the Step 2 column checks (the central-field closed
 form in place of a uniform gravity that the constants cannot produce, an absolute bound on the
@@ -526,7 +528,9 @@ nodes; every quantity on the mesh is finite.
 
 ## 5. Step 3: the kernels
 
-**Deliverable: `lib.kernel`.** `shear_kernel(mesh)`: `S` on the nodes by A15 from the
+**Deliverable: `lib.kernel`.** `shear_kernel(mesh, radius, pressure, g, u, field, Ω)`
+(v0.13, as built: the mesh carries the nodes and the difference rule, the caller the state on
+them; returns `S` and `(∂u/∂Z)_R`): `S` on the nodes by A15 from the
 interpolant's derivatives at the node's `(φ, p)` (Step 1 deliverable 2, decision L), converted
 to fixed `r`: `(∂u/∂φ)_r = (∂u/∂φ)_p + (∂u/∂ln p)_φ (∂ln p/∂φ)_r` and `(∂u/∂r)_φ =
 (∂u/∂ln p)_φ (∂ln p/∂r)_φ`, the slopes of the isobar map by centered differences on the mesh
@@ -555,7 +559,13 @@ which must be below 2e-3 at every level, and the vertical integral `I` and the i
 (instance, the reviewing agent's kernel on the coding agent's Step 2 file, the map continued
 per Step 2 decision 8, a 0.05° mesh): `Δ ln N` +1.2e-4 at the top level, −5.2e-4 at 10 mbar,
 −1.7e-4 at the gauge, −1.1e-3 at the bottom, largest 1.1e-3; largest `|S/g|` 0.050 per
-radian on the span; shift +107 at the top, −10 at the bottom, largest 224 m²/s². The line
+radian on the span; shift +107 at the top, −10 at the bottom, largest 224 m²/s². The coding
+agent's kernel on the same file gives the same maximum (0.054) and shift class (130 m²/s²)
+but per-level integrals that differ by factors of five to nine and in one sign (largest
+4.7e-4; the gauge level −1.78e-4 against −1.7e-4): the integrand alternates in sign cell by
+cell and its integral at a given level depends on where the mesh and the level fall relative
+to the file's slope jumps, so the per-level values are the size class, not values to
+reproduce, and only the bounds are checked (v0.13). The line
 integral is remeasured with the file's latitude sampling at 0.25° and 0.1° (the cylinder
 construction resampled, the mesh unchanged) and the ratios reported, no order claimed. The
 map is continued at the slope of its last interval beyond the anchor's levels, as Step 2
@@ -616,8 +626,9 @@ to 60° N the shift −7,117.0 and +2,585.1 m²/s² and `Δ ln N` +2.5119e-3, +2
 +2.4749e-3. To be reproduced to 1e-4 in `Δ ln N` and 1 percent in the shift at the default
 spacings, and to 2e-5 and 0.2 percent with both spacings halved, the ratio reported. Instance,
 cylinder-extended wind: `Φ_k(φ) = Φ_k` to 300 m²/s² and `ln N_k(φ) = ln N_k` to 2e-3 at every
-node (v0.12, decision Q: the truncation floor of the file's grid, measured at Step 3 as 224
-m²/s² and 1.1e-3 by the first-order line integrals; the traced values reported beside them,
+node (v0.12, decision Q: the truncation floor of the file's grid, measured at Step 3 by the
+first-order line integrals as 130 to 224 m²/s² and 4.7e-4 to 1.1e-3, the two kernels'
+values; the traced values reported beside them,
 and their ratio to the Step 3 estimates). **M = 2, the identity test:**
 the closure-wind run to 60° N is written by the acceptance script as a synthetic kind N anchor
 at 60° N (`radius_m` from the column at its arrival levels, `height_above_anchor_isobar_m` the
@@ -874,6 +885,7 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.13 | 2026-09-23 | The kernel's signature as built; the per-level cylinder integrals stated as a size class with only the bounds checked; §14 addendum accepting Step 3 | REPORT_04_step3 refreshed |
 | 0.12 | 2026-09-23 | Decision Q (the truncation floor of a gridded wind); the cylinder-wind checks of Steps 3, 4 and 5 restated as line integrals at that floor with the maximum reported; the solid-body bound; §14 rulings on REPORT_04_step3 | REVIEW_04_step3 |
 | 0.11 | 2026-09-22 | Step 2's column checks restated (central-field closed form; absolute cancellation bound); decision P completed (per hemisphere; `s_ref` sampled at the mesh spacing; the map continued in `ln p`); §13 rulings on REPORT_04_step2 | REVIEW_04_step2 |
 | 0.10 | 2026-09-22 | Decision P (the cylinder-extended wind pinned on the file's reference level, built with the columns at Step 2 as a fixed point); its v0.9 values withdrawn and remeasured, the Step 5 altitudes under it restated; §12 rulings on REPORT_04_step1 | REVIEW_04_step1 |
@@ -1065,6 +1077,14 @@ with the column map, the columns marched under the file's wind) before ruling.
    own `d ln N` column is noted; the replacement column was still the wrong quantity.
 
 Decisions 1 to 6 are accepted as reported.
+
+**Addendum (23 September 2026, the refreshed report).** Nine of nine under v0.12. The coding
+agent's line integrals on the file's grid (largest `Δ ln N` 4.7e-4, shift 130 m²/s², largest
+`|S/g|` 0.054) and the reviewing agent's (1.1e-3, 224, 0.050) agree on the aggregate and
+disagree per level, which is the sampling of a sign-alternating integrand and not a defect in
+either; the Step 3 expected values say so and the bounds are the check. The refinement
+sequence (4.7e-4, 3.4e-4, 3.9e-4 at 0.5°, 0.25°, 0.1°) is recorded with no order claimed.
+Step 3 is accepted.
 
 ---
 

@@ -66,3 +66,18 @@ is noted; the replacement was still the wrong quantity, and the line integral is
 3. Commit the author's documents (SPEC_04 v0.12, this review, `STATE.md`) in their own commit.
 4. The acceptance commit for Step 3. Push. No product changes; `STATE.md` to accepted. Step 4
    proceeds, with its cylinder-wind identity at the v0.12 tolerances.
+
+## Refreshed report verified (23 September 2026)
+
+Nine of nine under v0.12, the regression complete at every reference count. The script's clamped
+inverse map was the source of the eightfold degradation, the coinciding pressure nodes and most
+of the first filing's cylinder maximum, as ruling 2 said; corrected, check 4 measures the whole
+mesh. Check 5 at 3.2e-5 per radian and check 9 at 4.7e-4 in `Δ ln N` and 130 m²/s² in the
+isobars, inside the v0.12 bounds. The coding agent's aggregate values agree with the reviewing
+agent's (largest `|S/g|` 0.054 against 0.050; shift 130 against up to 224); its per-level line
+integrals differ by factors of five to nine and one sign, which the reviewing agent accepts as
+the sampling of a sign-alternating integrand and not as a defect in either kernel, and SPEC_04
+v0.13 says so: the per-level values are a size class and the bounds are the check. The
+report's candor on its own `d ln N` column is noted. **Step 3 is accepted.** Order of work from
+item 3: the author's documents commit (SPEC_04 v0.13, this review, `STATE.md`), the acceptance
+commit, push, `STATE.md` to accepted, Step 4.
