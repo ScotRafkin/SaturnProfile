@@ -264,6 +264,12 @@ floor on the Lindal state at 0.5 degrees is 4.7e-4 in `d ln N` and 130 m2/s2 in 
 against 1.1e-2 and 31,000 under the closure wind. The closure wind is exempt: its vertical
 derivative is exactly zero and the kernel is the closed form to 4.163e-17.
 
+**Amendment, 23 September 2026, under SPEC_04 v0.13.** The author's addendum to section 14 accepts
+this step and states the floor Step 4 works from as the two kernels' values together, 130 to 224
+m2/s2 and 4.7e-4 to 1.1e-3, not this report's 130.3 and 4.746e-04 alone. The per-level line
+integrals under the cylinder wind are a size class and not values to reproduce; only their bounds
+are checked. Finding 5 stands as written.
+
 Nothing in this step is left open. The five findings are ruled on in section 14 and applied.
 
 For the record, three defects in this step's own scaffolding were caught by `lib.windfield`
