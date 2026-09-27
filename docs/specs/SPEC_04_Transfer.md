@@ -2,8 +2,15 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.13, 23 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026; v0.13 records that the per-level line integrals under the
+Version 0.16, 26 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.16 states the floor of the M = 2 identity through a written
+anchor (decision G's placement over the anchor's own levels, 6.5e-8, mesh-independent) and
+bounds it at 1e-7 with the tracing's own identity bounded separately (§16); v0.15 ruled on REPORT_04_step4 (§15): the M = 2 identity test
+written on the run's own mesh so that it is an identity at round-off, the lattice difference
+reported beside it; `produce` taking the composition on the isobar labels at Step 5; the
+production namelist's geopotential spacing at Step 5; v0.14 added the author's direction on cost and on the geoid march
+step to the work that follows this specification (§0, decision R), touching no step of it;
+v0.13 recorded that the per-level line integrals under the
 cylinder wind are sampling-dependent and that only their bounds are checked (§14 addendum), and
 states the kernel's signature as built; v0.12 stated the truncation floor of a gridded wind hypothesis
 (decision Q) and restates the cylinder-wind checks of Steps 3, 4 and 5 as the line integral the
@@ -81,6 +88,33 @@ geopotential as its coordinate
 parameterized shear, the diagnostic tool that decomposes a kind W file on a given geometry into
 its barotropic and baroclinic parts), which follow SPEC_05 so that the transfer can then be
 exercised under other assumed states; the end-to-end tests (SPEC_05); the Monte Carlo wrapper.
+
+**The performance step (author, 24 September 2026; decision R).** A run at this
+specification's spacings takes minutes, which is acceptable for a run by hand and not for the
+hundreds to thousands of draws the Monte Carlo wrapper makes. Nothing here changes for it, and
+no step of this specification is to be optimized while it is being verified; a performance step
+precedes the Monte Carlo specification and works from these measurements: the cost is Python
+overhead in scalar loops, not arithmetic (124 µs per gravity evaluation on a scalar, 1.3 million
+of them per column pass, REPORT_04_step1 §5b), and the columns share their geopotential nodes
+across latitudes, the traced curves share their latitude nodes across levels, and the
+reference-surface march is one integration per draw, so all three vectorize in NumPy across
+latitudes, levels and draws respectively with the existing broadcasting of `lib.gravity`, the
+acceptance being agreement with the scalar path to round-off and a measured time per draw under
+a stated target. The mesh was oversampled in geopotential by an order of magnitude (the
+reviewing agent measures 9e-7 in `Δ ln N` between 5,000 and 50,000 m²/s² spacings) and the
+production namelist takes the coarser value at Step 5 with the expected values remeasured; in
+latitude the kernel is a staircase with a step at every wind-file node under decision L, so the
+transfer's quadrature is first order at the file's own spacing (3e-4 in `Δ ln N` at 0.5°,
+1.2e-4 at 0.25°, against the 0.05° reference), and a quadrature that integrates per file cell
+recovers the reference accuracy at the file's spacing; that change belongs to the performance
+step, not to Step 4. The reference-surface march step, 0.05° as a default argument in
+`lib.geoid` since SPEC_01, is not to be a number in code (author): it is either a key of
+`[numerics.reference_surface]` beside the scheme, or computed from the data, the march nodes
+being the wind file's latitude nodes united with the mesh's and the anchor's, which is the
+resolution the surface's slope actually has under decision L; the performance step decides
+between the two on measurement and the namelist records what a run used either way. Compiled
+code is not on this path unless the vectorized Python misses the target, and then for the one
+routine that misses it.
 
 **The state the steps are coded against.** Every step codes against the closure inputs, the
 one state in hand: the swept anchor `occul_data/lindal/lindal_refractivity.nc` and the inputs of
@@ -324,7 +358,7 @@ datum_isobar_Pa = 1.0e5
 latitude_planetocentric_deg = 10.0
 
 [grid]
-geopotential_spacing_m2s2 = 5.0e3
+geopotential_spacing_m2s2 = 5.0e4
 latitude_spacing_deg      = 0.05
 
 [numerics.reference_surface]
@@ -629,18 +663,33 @@ cylinder-extended wind: `Φ_k(φ) = Φ_k` to 300 m²/s² and `ln N_k(φ) = ln N_
 node (v0.12, decision Q: the truncation floor of the file's grid, measured at Step 3 by the
 first-order line integrals as 130 to 224 m²/s² and 4.7e-4 to 1.1e-3, the two kernels'
 values; the traced values reported beside them,
-and their ratio to the Step 3 estimates). **M = 2, the identity test:**
-the closure-wind run to 60° N is written by the acceptance script as a synthetic kind N anchor
-at 60° N (`radius_m` from the column at its arrival levels, `height_above_anchor_isobar_m` the
+and their ratio to the Step 3 estimates). **M = 2, the identity test (v0.15, §15 ruling 1):** the
+Lindal anchor's trace to 60° N on the M = 2 run's own mesh is written by the acceptance script
+as a synthetic kind N anchor at 60° N; the script builds that mesh first, for the M = 2 run's
+required latitudes (the mesh builder takes them as a list, Step 2), traces the Lindal anchor on
+it, writes the anchor from that trace, and forms the M = 2 run on the same mesh, so the check
+is an identity of the transfer and not a comparison of two lattices. The variant written from a
+separate M = 1 run to 60° N, whose lattice starts at the Lindal latitude, is run beside it and
+its `D_12` and target difference are reported, not bounded, as the tracing's discretization at
+the namelist's spacings (measured 1.2e-4 and 6.0e-5; the anchor differs between the lattices
+by 3.3e-5 in `ln N` and 94 m²/s² in `Φ`). The anchor (`radius_m` from the column at its arrival levels, `height_above_anchor_isobar_m` the
 `z_lv` there, `refractivity` the transferred `N`, the thermo group's pressures the Lindal anchor's
 tabulated pressures (the same isobars, by construction; decision M, so the gauge level matches
 `gauge_isobar_Pa` exactly and the anchor isobar is the gauge level) and its temperatures
 `p_tab ℛ̄ / (k_B N)` so that the reduction identity returns the transferred `N` exactly, its
 anchor radius `r0(60°)` at that level, its `ψ` at 60°, the run's four
-inputs embedded, the Lindal companions copied, slug `synthetic60`); a namelist with both
+inputs embedded, the Lindal companions copied as relative uncertainty so that `σ_ln N` is the
+Lindal anchor's, slug `synthetic60`); a namelist with both
 anchors and the target at 10° N: `φ_r` at the weighted centroid (the two `σ_i` equal, so the
-midpoint 45.40°), `D_12` below 1e-5 at every common level, the reduced chi-square below one,
-the target profile equal to the M = 1 product's `ln N`, `p` and `T` to 1e-5, and the
+midpoint 45.40°), `D_12` below 1e-7 at every common level and the target profile equal to
+the M = 1 product's `ln N`, `p` and `T` to 1e-7 (v0.16, §16: the identity of the transfer
+through a written anchor, whose floor is decision G's placement, the field-line integral of
+`|g_eff|` over the anchor's own 66 tabulated levels against the characteristic the mesh traced,
+0.041 m²/s² at 60° N, the same at two mesh resolutions a factor of ten apart, times
+`d ln N / dΦ`, 6.5e-8; the synthetic anchor's `radius_m` and height are taken from the
+column integrated on the traced `Φ`, not interpolated from the mesh's nodes), the tracing's own
+identity, the traced `Φ` and `ln N` substituted into the estimate with no file between, below
+1e-12 (measured 3.6e-15), the reduced chi-square below one, and the
 reference-surface residual of the synthetic anchor below 1 m. Sheared synthetic state: a wind
 file built in the script with `u_total(φ, p) = u_reference(φ) [1 + β ln(p_ref / p)]` for
 `p < p_ref` and `u_reference` below, `β = 0.1`, `p_ref` 1 bar, the three parts written:
@@ -665,7 +714,11 @@ appears in the product's anchor group, and changes nothing else in the identity 
 
 **Deliverable 1: production at the target.** `produce_on_geopotential(N, Phi, R_bar, m_bar,
 p_b)`, the SPEC_03 production entered with `Φ` given (the closure path computes `Φ` first and
-calls the same function). At the target the arrival levels and `exp C` there, `ℛ̄` and `m̄`
+calls the same function); `ℛ̄` and `m̄` are given on the levels produced, which at the target
+are the union's, so `produce` takes the composition on the isobar labels as an argument rather
+than reading it level by level from the file (v0.15, §15 ruling 4; one path, the closure's
+levels being its own labels). The driver closes every file it reads before opening another
+(§15 ruling 3). At the target the arrival levels and `exp C` there, `ℛ̄` and `m̄`
 from the run's composition at the target latitude on the isobar labels, `p_b` by decision F.
 The pressure identity `p_produced / p_label − 1` at every level, its largest magnitude,
 recorded and drawn.
@@ -690,7 +743,8 @@ season and the run's, the hook's record, its reference-surface residual, its `C_
 `sigma_ln_N_measurement`, `sigma_ln_N_season` (with `season_term`) and `P_i` on the union
 levels, and its weights); `reference_surface` (`r0(φ)` on the latitude nodes); `isobars` (every anchor's
 `Φ_k(φ_i)` and `ln N_k(φ_i)` on the nodes, and the gauge-to-target curves); `estimate`
-(`φ_r`, the union levels, `C`, its variance, `D_ij`, the chi-square, the label agreement);
+(`φ_r`, the union levels, `C`, its variance, `D_ij`, the chi-square, the label agreement, and
+`identity_floor`, the 6.5e-8 of §16 as an attribute);
 `transfer_record` (the mesh spacings, range and node counts, the outer loop's passes and
 residuals, the largest `|S/g|`, the largest isobar shift and its level, the pressure identity
 statistics, the estimation keys, the wind and composition seasons against the run's, the
@@ -707,8 +761,11 @@ transfer mode draws the pressure identity residual against the label pressure; a
 the delivered `T(p)` and `N(Φ)` beside each anchor's, the isobar shift against `p`, and at
 M ≥ 2 `D_ij` against `p`.
 
-**Expected values (instance, measured, §1).** `casspian-forward
-forward/lindal_transfer/lindal_transfer.toml` (10° N, closure wind, M = 1): `p` equal to the
+**Expected values (instance, measured, §1).** The production namelist carries
+`geopotential_spacing_m2s2 = 5.0e4` from Step 5 (decision R; the reviewing agent measures the
+change from 5,000 to 50,000 at 9e-7 in `Δ ln N` and 0.2 m²/s² in the shift, so every value
+below stands within its tolerance; Steps 0 to 4 were run and accepted at 5,000, recorded).
+`casspian-forward forward/lindal_transfer/lindal_transfer.toml` (10° N, closure wind, M = 1): `p` equal to the
 labels to the tracing's discretization error, reported at every level (4.1e-7 on the reviewing
 agent's mesh; the report's value must fall under halving); `T` on every isobar below the
 anchor's by 1.103e-2 at the top level, 1.089e-2 at the gauge, 1.084e-2 at the bottom (to
@@ -716,7 +773,7 @@ anchor's by 1.103e-2 at the top level, 1.089e-2 at the gauge, 1.084e-2 at the bo
 the gauge level, −15,290 m at the bottom (to 5 m). A second run at 60° N: `T` lower by
 2.51e-3, 2.48e-3 and 2.47e-3; altitudes 328,127, 78,533 and −12,239 m. A third at 10° N with
 the cylinder-extended wind: `T`, `p`, `N` equal to the anchor's to 2e-3 (v0.12, decision Q;
-the Step 4 values), altitudes 416,300,
+Step 4 measured 1.06e-3 in `ln N` and 163 m²/s² in the isobars), altitudes 416,300,
 99,290 and −15,456 m to 10 m (v0.10). A fourth at `φ_c` itself: `N` and `Φ` equal to the closure
 product's to 1e-12, and `p` and `T` to 1e-5 (the composition regridded from the file's
 tabulated levels onto the produced labels moves `ln ℛ̄` by at most 1.5e-6, at the bottom row;
@@ -885,6 +942,9 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.16 | 2026-09-26 | The M = 2 identity through a written anchor bounded at 1e-7 (decision G's placement floor, 6.5e-8), the tracing's own identity at 1e-12, the script's column interpolation removed; `identity_floor` in the estimate group; §16 | REPORT_04_step4 refreshed |
+| 0.15 | 2026-09-25 | The M = 2 identity written on the run's own mesh (bound 1e-10), the lattice variant reported; `produce` with the composition on the labels; the production namelist at 50,000 m²/s²; §15 rulings on REPORT_04_step4 | REVIEW_04_step4 |
+| 0.14 | 2026-09-24 | Decision R: the performance step before the Monte Carlo wrapper (vectorization across latitudes, levels and draws; the geopotential spacing coarsened at Step 5; a cell-wise quadrature in latitude; the geoid march step a namelist key or computed from the data); no step changed | author's direction of 24 September 2026 |
 | 0.13 | 2026-09-23 | The kernel's signature as built; the per-level cylinder integrals stated as a size class with only the bounds checked; §14 addendum accepting Step 3 | REPORT_04_step3 refreshed |
 | 0.12 | 2026-09-23 | Decision Q (the truncation floor of a gridded wind); the cylinder-wind checks of Steps 3, 4 and 5 restated as line integrals at that floor with the maximum reported; the solid-body bound; §14 rulings on REPORT_04_step3 | REVIEW_04_step3 |
 | 0.11 | 2026-09-22 | Step 2's column checks restated (central-field closed form; absolute cancellation bound); decision P completed (per hemisphere; `s_ref` sampled at the mesh spacing; the map continued in `ln p`); §13 rulings on REPORT_04_step2 | REVIEW_04_step2 |
@@ -1085,6 +1145,58 @@ disagree per level, which is the sampling of a sign-alternating integrand and no
 either; the Step 3 expected values say so and the bounds are the check. The refinement
 sequence (4.7e-4, 3.4e-4, 3.9e-4 at 0.5°, 0.25°, 0.1°) is recorded with no order claimed.
 Step 3 is accepted.
+
+---
+
+## 15. Rulings on REPORT_04_step4 (25 September 2026)
+
+1. **Finding 1, the M = 2 identity.** The first of the two ways: the synthetic anchor is
+   written from the Lindal anchor's trace on the M = 2 run's own mesh, so the check is what its
+   name says, an identity of the transfer, at round-off (bound 1e-10, measured 3.6e-15). The
+   construction as posed measured the difference between two lattices and called it an
+   identity; that difference is worth having as the tracing's discretization at the namelist's
+   spacings, so the lattice variant is run beside the identity and its numbers reported, not
+   bounded. Decision M's text and Step 4's test are restated.
+2. **Finding 4, the mesh extension doubling.** Ratified. "The caller extends the mesh and
+   repeats" says nothing about the amount, the doubling is a sensible amount, both are
+   recorded, and no measured value moved. Decision R's "not optimized while verified" is about
+   rewriting for speed, not about an extension rule the step needed to run at all.
+3. **Finding 5, the unclosed read handle.** Recorded as a rule for Step 5's driver: every read
+   is closed before another is opened, as `lib.control` does.
+4. **Finding 6, `produce` at the target.** `produce` takes the composition on the isobar labels
+   as an argument at Step 5, one path for closure and transfer, the closure's levels being its
+   own labels.
+5. **Finding 7, the map's seam between anchors.** Recorded for the combination specification,
+   as the report says; under a wind with vertical shear the nearest-anchor map puts a step in
+   `S` at the midpoint between anchors, and a map that blends is that specification's.
+6. **Findings 2, 3 and 8.** Accepted as reported: the cylinder check compares the construction
+   with the stated values and reports the file's read-back beside it (decision Q at the wind,
+   0.17 m/s on the file's grid); the lower-edge test fires; no order is claimed against the
+   reviewing agent's values, which are a measurement.
+
+Decisions 1 to 12 are accepted as reported; decision 11 (relative uncertainty copied) is now
+in the test's text. The step's cost (four hours for eleven runs, 200 to 500 s per column pass)
+is the baseline decision R works from.
+
+---
+
+## 16. Rulings on REPORT_04_step4 refreshed (26 September 2026)
+
+1. **The floor of the identity through a written anchor.** Ruling 1 of §15 removed the lattice
+   difference (`D_12` from 1.2e-4 to 8.2e-8) and set the bound at 1e-10 from a number that had
+   not passed through a written anchor; the report's correction of that is adopted. What
+   remains is decision G: an anchor read from a kind N file is placed by the field-line
+   integral over its own tabulated levels, and no mesh refines the anchor's levels. The bound
+   is 1e-7 for the identity through a written anchor and 1e-12 for the tracing's own, two
+   quantities bounded separately, as the report proposes. The script's interpolation of the
+   anchor's radius and height from the mesh nodes (the smaller part, 1.0 m²/s² at coarse
+   spacing) is removed in the same pass, the column integrated on the traced `Φ`.
+2. **What the floor means downstream.** Two anchors whose isobars coincide will disagree in
+   `D_12` at the 6.5e-8 level for no physical reason; the combination specification and SPEC_05
+   read `D_12` and the reduced chi-square as evidence about the atmosphere only above that,
+   which is invisible against the anchors' declared uncertainties (2.3e-2 for Lindal) and is
+   stated once in the product's `estimate` group as `identity_floor`.
+3. The lattice variant stays reported beside the identity, as v0.15 states.
 
 ---
 
