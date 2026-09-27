@@ -2,7 +2,9 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.22, 28 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+Version 0.23, 28 September 2026. Author of record: S. Rafkin. **Status: closed at the Step 5
+acceptance commit `e71d59e` on 28 September 2026, the Appendix amendments applied to SPEC_00
+(v0.21) and SPEC_03 (v0.15) at that closure; accepted by the author
 at v0.6 on 21 September 2026; v0.22 amends the regression rule of §0 at the author's direction
 (rerun what the change can reach: a change that cannot move a number reruns no calculation, a
 change that can reruns everything downstream of it); v0.21 restates F8's height panel on a common datum (each profile
@@ -1011,6 +1013,7 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.23 | 2026-09-28 | Step 5 accepted at `e71d59e`; SPEC_04 closed; the Appendix amendments applied to SPEC_00 (v0.21) and SPEC_03 (v0.15) | the Step 5 acceptance |
 | 0.22 | 2026-09-28 | §0: the regression reruns what the change can reach; a change that cannot move a number reruns no calculation, a figure change reruns the figure checks of the steps it draws for, a change that can move a result reruns every suite downstream of it; the report names the suites rerun | the author's direction |
 | 0.21 | 2026-09-28 | F8's altitude panel on a common datum, each profile above its own 1 bar level; `shear_kernel_<slug>_per_rad` in the `isobars` group (deliverable 3, the report's decision 5); §18 ruling 5, the author's viewing of F8 and F9 | the author's viewing; REPORT_04_step5 refreshed |
 | 0.20 | 2026-09-28 | The author's direction recorded at F9: the posterior wind of the combination specification is to be drawn as a second `u(φ, p)` panel beside the hypothesis; no change to Step 5 | the author's direction |

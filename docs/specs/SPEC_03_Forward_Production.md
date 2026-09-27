@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.14, 16 September 2026. Author of record: S. Rafkin. **Status: closed at commit `545b385` (the Step 4 record, 16 September 2026); accepted by the author
+Version 0.15, 28 September 2026. Author of record: S. Rafkin. **Status: closed; v0.15 records the amendment SPEC_04 carried in its Appendix, applied at SPEC_04's acceptance and closure: Step 4's `produce` gains the wind along the column and the composition on the isobar labels, and the production proper is `produce_on_geopotential`, the point the closure and transfer paths meet; closure mode and every expected value of this specification are unchanged and the closure product is bit-identical. Closed at commit `545b385` (the Step 4 record, 16 September 2026); accepted by the author
 at v0.2 (14 September 2026); v0.4 and v0.5 apply the coding agent's pre-execution review of
 Step 0 and Step 3, v0.6 the REPORT_03_step0 findings (rulings in §8). Step 0 accepted
 (REVIEW_03_step0) and swept at `5cdf07e`; Step 1 accepted (REVIEW_03_step1, `b3efc3d`); Step 2 accepted (REVIEW_03_step2, `994c787`); Step 3
@@ -556,6 +556,21 @@ a leading `/` in every path-bearing attribute.
 
 ## 5. Step 4: `forward.production`, the closure run, the product, F5 and F6
 
+**Amended at SPEC_04's acceptance (28 September 2026), this specification being closed.** Three
+things changed in `forward.production` when SPEC_04 Step 5 put the transfer through the same
+production, and none of them changes closure mode or any value in this step's expected list.
+`produce` gains an optional wind on the anchor's levels, the scalar it forms today being the
+default, and the product gains `u_column_ms(level)` (SPEC_04 Step 1). `produce` gains an
+optional `label_pressure_Pa`, because at a target the levels produced are the union of the
+anchors' arrival levels and the composition must be read onto each isobar's label rather than
+level by level; on a profile's own levels, whose labels are their own pressures, the two reads
+return bit-identical values, which is why closure mode is untouched (SPEC_04 section 15 ruling
+4). And the production proper is `produce_on_geopotential(N, Phi, R_bar, m_bar, p_b)`, the point
+both paths enter: the closure path forms `Phi` first and calls it, the transfer path is given
+`Phi` by the tracing. That the closure production remains bit-identical to the registered
+product after that refactor is checked by SPEC_04's own acceptance and should be checked again
+after any change to this module.
+
 **Purpose.** The production (B7) as a function that will serve any latitude: given a
 refractivity profile on its levels, the run's composition, gravity, rotation and wind, a gauge
 and a boundary pressure, return geopotential, pressure and temperature. Its first use, and this
@@ -822,6 +837,7 @@ SPEC_04; the retrieval leg and the seasonal propagator are later specifications.
 | 0.1 | 2026-09-14 | First draft: Step 0 (pressure grid, B1 projection, rebuild), Steps 1 to 4 (geopotential, hydrostatic, namelist and product kind, the closure) with the staggering table, the residual budget and the negative control; decisions 1 to 6, 8 to 10; amendments to SPEC_00, SPEC_01 and SPEC_02 listed for application at acceptance | handoff §8 and §11; the reviewing agent's independent closure of 14 September 2026; author decisions of 14 September 2026 |
 | 0.2 | 2026-09-14 | "Closure" renamed the hydrostatic closure throughout, and stated to be a test of the production, not the model; the transfer identity tests placed in SPEC_04 after the transfer exists; `forward/production.py` with a `produce` function the transfer will reuse; the run gets its own `inputs/` built by the tools under the run prefix with `casspian-run-inputs`, and closure mode checks them against the anchor's embedded copies (decision 7); `[inputs]` required in the namelist as SPEC_00 §7.2 always said; §6: end-to-end tests placed in a separate SPEC_05 after the SPEC_04 build | author markup of v0.1 |
 | 0.3 | 2026-09-14 | Accepted by the author; Step 0 proceeds; amendments applied to SPEC_00 v0.16, SPEC_01 v0.21 and SPEC_02 v0.10 | author acceptance of v0.2 |
+| 0.15 | 2026-09-28 | Step 4 amended as the SPEC_04 Appendix states: `produce` with the wind along the column and with the composition on the isobar labels, the production proper `produce_on_geopotential` where the two paths meet; closure mode, its expected values and the registered product unchanged | SPEC_04 acceptance |
 | 0.14 | 2026-09-16 | Status line: closed at `545b385`; Step 4 accepted at `1504056`, the closure product's hash recorded in REPORT_03_step4 section 8 | the Step 4 record |
 | 0.13 | 2026-09-16 | REVIEW_03_step4: the closure statistics and the acceptance bounds stated in pressure bins (above 2 mbar, 2 to 10, 10 to 100, below 100 excluding the bottom row, bottom row, mean below 10 mbar); expected values gain the 2 to 10 mbar figure and the note on the deep trend; the closure namelist declares `date`; §8 rulings on REPORT_03_step4; status line: Step 4 accepted, SPEC_03 closes at its record; dependency SPEC_00 v0.20 | REVIEW_03_step4 |
 | 0.12 | 2026-09-15 | Author decision on REVIEW_03_step3 finding 1: every file of the Lindal chain and of the closure run carries `epoch = "1981-08-26"`, the occultation date, the source's own dating in `epoch_note`; G and R build-file sections carry `epoch`; dependencies SPEC_00 v0.19, SPEC_01 v0.28 | author, 15 September 2026 |
