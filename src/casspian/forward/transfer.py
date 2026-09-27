@@ -849,6 +849,25 @@ def _transfer_product(namelist, inputs, anchors, state, estimate, target_run, cu
     return dataset
 
 
+def _copied(nodes, vertical: str) -> dict:
+    """A copied subtree's nodes with its own vertical dimension renamed away from `level`.
+
+    A transfer product's `level` is the union of the anchors' arrival levels, which at M >= 2 is
+    neither the anchor's level count nor an input's, and an `xarray` DataTree child cannot carry a
+    dimension of the parent's name with another size: the M = 2 product could be written and not
+    read back, which is how this was found. So a copied file's own vertical dimension is named for
+    whose levels it is, at M = 1 as well, and the product's structure does not change with the
+    number of anchors. The variables, their values and their attributes are the copied file's
+    unchanged, which is what "verbatim" means here.
+    """
+    renamed = {}
+    for name, node in nodes.items():
+        if "level" in node.dims and "level" not in node.variables:
+            node = node.rename_dims({"level": vertical})
+        renamed[name] = node
+    return renamed
+
+
 def _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target_run,
                      curves_to_target):
     """The groups a transfer product carries beyond the inputs and the namelist.
@@ -861,7 +880,8 @@ def _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target
     groups = {}
     for index, anchor in enumerate(anchors):
         slug = anchor.slug
-        groups.update(fp._nodes(anchor.tree, f"anchors/{slug}"))
+        groups.update(_copied(fp._nodes(anchor.tree, f"anchors/{slug}"),
+                              "anchor_level"))
         present = estimate.present[index]
         groups[f"anchors/{slug}/transfer"] = xr.Dataset(
             {
@@ -870,11 +890,11 @@ def _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target
                                   "latitude, ln N transferred there (Eq. A29); absent where the "
                                   "anchor does not span the level", "modeled")),
                 "sigma_ln_N_measurement": (
-                    ("level",), np.asarray(anchor.sigma_ln_N_measurement, dtype="float64"),
+                    ("anchor_level",), np.asarray(anchor.sigma_ln_N_measurement, dtype="float64"),
                     fp._attrs("1", "the anchor's own uncertainty of ln N as reduced, scaled by its "
                               "measurement_uncertainty_scale (decision J)", "derived")),
                 "sigma_ln_N_season": (
-                    ("level",), np.asarray(anchor.sigma_ln_N_season, dtype="float64"),
+                    ("anchor_level",), np.asarray(anchor.sigma_ln_N_season, dtype="float64"),
                     fp._attrs("1", "the seasonal term of the anchor's uncertainty (decision J)",
                               "derived", season_term=anchor.season_term)),
                 "sigma_ln_N_on_union": (("union_level",),
@@ -889,7 +909,7 @@ def _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target
                                      fp._attrs("1", "whether the anchor spans each union level",
                                                "index")),
                 "geopotential_arrival_m2s2": (
-                    ("level",), arrived[index].curves.geopotential_m2s2[
+                    ("anchor_level",), arrived[index].curves.geopotential_m2s2[
                         :, state.mesh.latitude_index(estimate.gauge_latitude_rad)],
                     fp._attrs("m2 s-2", "where this anchor's isobars arrive at the gauge latitude",
                               "modeled", positive="up")),
@@ -925,12 +945,15 @@ def _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target
                                                fp._attrs("degrees_north", "the mesh's latitude "
                                                          "nodes", "index"))}
     for index, anchor in enumerate(anchors):
+        # Each anchor's curves are on its own levels, which need not be one another's and are not
+        # the union the root carries: one dimension per anchor, named for it.
+        vertical = f"level_{anchor.slug}"
         isobars[f"geopotential_{anchor.slug}_m2s2"] = (
-            ("level", "latitude_planetocentric"), arrived[index].curves.geopotential_m2s2,
+            (vertical, "latitude_planetocentric"), arrived[index].curves.geopotential_m2s2,
             fp._attrs("m2 s-2", f"Phi_k(phi) for {anchor.slug}, the traced isobars (Eq. A24)",
                       "modeled", positive="up"))
         isobars[f"ln_refractivity_{anchor.slug}"] = (
-            ("level", "latitude_planetocentric"), arrived[index].ln_N_along,
+            (vertical, "latitude_planetocentric"), arrived[index].ln_N_along,
             fp._attrs("1", f"ln N_k(phi) for {anchor.slug} along its isobars (Eq. A28)", "modeled"))
     isobars["geopotential_gauge_to_target_m2s2"] = (
         ("union_level", "latitude_gauge_to_target"), curves_to_target.geopotential_m2s2,
@@ -1040,6 +1063,98 @@ def _transfer_record(namelist, inputs, anchors, state, estimate, target_run) -> 
     }
 
 
+@dataclass(frozen=True)
+class Carried:
+    """What a run leaves between the outer loop and the product."""
+
+    state: TransferState
+    estimate: object
+    arrived: tuple
+    curves_to_target: Curves
+    target: MappingProxyType
+
+
+def chain(inputs, anchors, *, gauge_latitude_rad, target_latitude_rad, gauge_isobar_Pa, p_b,
+          latitude_spacing_rad, geopotential_spacing_m2s2, relative_tolerance_ln_p,
+          max_iterations, kernel_uncertainty_per_rad, datum_isobar_Pa, field=None,
+          mesh=None) -> Carried:
+    """The outer loop, every anchor to the gauge, the estimate there, `C` to the target, and the
+    production at the target. SPEC_04 Step 5 deliverable 4 between the inputs and the product.
+
+    `run` is this with the namelist read, the product written and the figures rendered. It is a
+    function of its own rather than part of `run` so that a run built on a mesh given to the outer
+    loop can be measured, which the M = 2 identity needs (SPEC_04 v0.15 Step 4 ruling 1) and which
+    `run`, taking everything from the namelist, has no argument for.
+    """
+    anchors = tuple(anchors)
+    field = wf.WindField(inputs.wind) if field is None else field
+    state = outer_loop(
+        inputs, list(anchors), gauge_latitude_rad=gauge_latitude_rad,
+        target_latitude_rad=target_latitude_rad, gauge_isobar_Pa=gauge_isobar_Pa, p_b=p_b,
+        latitude_spacing_rad=latitude_spacing_rad,
+        geopotential_spacing_m2s2=geopotential_spacing_m2s2,
+        relative_tolerance_ln_p=relative_tolerance_ln_p, max_iterations=max_iterations,
+        field=field, mesh=mesh)
+
+    arrived, arrivals = [], []
+    at_gauge_node = state.mesh.latitude_index(gauge_latitude_rad)
+    for index, anchor in enumerate(anchors):
+        placement = state.placements[index]
+        curves, at_gauge, along = carry_to(
+            state, inputs, placement.latitude_rad, gauge_latitude_rad,
+            placement.geopotential_m2s2, anchor.ln_N, placement.label_pressure_Pa)
+        arrivals.append(fe.Arrival(
+            slug=anchor.slug, latitude_rad=placement.latitude_rad, weight=anchor.weight,
+            geopotential_m2s2=state.curves[index].geopotential_m2s2[:, at_gauge_node],
+            C_i=along[:, at_gauge], sigma_ln_N=fe.sigma_ln_N(anchor),
+            label_pressure_Pa=placement.label_pressure_Pa))
+        arrived.append(Arrived(anchor=anchor, curves=state.curves[index],
+                               ln_N_along=transfer(
+                                   state.mesh, state.s_over_g, state.curves[index], anchor.ln_N,
+                                   *lk.composition_term(inputs.composition,
+                                                        placement.label_pressure_Pa)),
+                               arrival=arrivals[-1]))
+
+    estimate = fe.estimate(arrivals, float(kernel_uncertainty_per_rad), gauge_latitude_rad)
+    curves_to_target, at_target, carried = carry_to(
+        state, inputs, gauge_latitude_rad, target_latitude_rad, estimate.geopotential_m2s2,
+        estimate.C, estimate.label_pressure_Pa)
+    target_run = produce_at_target(
+        state, inputs, target_latitude_rad, curves_to_target.geopotential_m2s2[:, at_target],
+        carried[:, at_target], estimate.label_pressure_Pa, p_b, field, float(datum_isobar_Pa))
+    return Carried(state=state, estimate=estimate, arrived=tuple(arrived),
+                   curves_to_target=curves_to_target, target=target_run)
+
+
+def write_product(namelist, inputs, anchors, state, estimate, arrived, target_run,
+                  curves_to_target):
+    """Write kind `profile` in transfer mode and return the path. Step 5 deliverable 3.
+
+    The root, the groups of deliverable 3, the four inputs, the namelist and the record, in the
+    order kind `profile` carries them. `run` writes its product with this, and so does the M = 2
+    acceptance run, which is built on a mesh given to the outer loop rather than one the loop
+    builds (SPEC_04 v0.15 Step 4 ruling 1) and therefore cannot go through `run`: one path, so
+    that what a suite writes is what a run writes.
+    """
+    product = namelist.product
+    dataset = _transfer_product(namelist, inputs, anchors, state, estimate, target_run,
+                                curves_to_target, product)
+    groups = _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target_run,
+                              curves_to_target)
+    for key in ctl.RUN_INPUT_KINDS:
+        loaded = getattr(inputs, key)
+        if isinstance(loaded, xr.DataTree):
+            groups.update(_copied(fp._nodes(loaded, f"inputs/{key}"), "input_level"))
+        else:
+            groups.update(_copied({f"inputs/{key}": loaded}, "input_level"))
+    groups["namelist"] = xr.Dataset(attrs={
+        "text": namelist.text, "sha256": namelist.sha256,
+        "resolved": fp._resolved_namelist(namelist, inputs, product)})
+    groups["transfer_record"] = xr.Dataset(attrs=_transfer_record(
+        namelist, inputs, anchors, state, estimate, target_run))
+    return cio.write(product, dataset, "profile", groups=groups, created_by=fp.TOOL)
+
+
 def run(namelist_path) -> TransferResult:
     """The transfer run of SPEC_04 Step 5 deliverable 4.
 
@@ -1063,61 +1178,19 @@ def run(namelist_path) -> TransferResult:
     field = wf.WindField(inputs.wind)
     loop = namelist.numerics["outer_loop"]
 
-    state = outer_loop(
-        inputs, list(anchors), gauge_latitude_rad=gauge_latitude_rad,
+    carried = chain(
+        inputs, anchors, gauge_latitude_rad=gauge_latitude_rad,
         target_latitude_rad=target_latitude_rad, gauge_isobar_Pa=namelist.gauge_isobar_Pa,
         p_b=p_b, latitude_spacing_rad=math.radians(float(namelist.grid["latitude_spacing_deg"])),
         geopotential_spacing_m2s2=float(namelist.grid["geopotential_spacing_m2s2"]),
         relative_tolerance_ln_p=loop["relative_tolerance_ln_p"],
-        max_iterations=loop["max_iterations"], field=field)
+        max_iterations=loop["max_iterations"],
+        kernel_uncertainty_per_rad=float(namelist.estimation["kernel_uncertainty_per_rad"]),
+        datum_isobar_Pa=float(namelist.datum_isobar_Pa), field=field)
+    state, estimate, target_run = carried.state, carried.estimate, carried.target
 
-    arrived, arrivals = [], []
-    at_gauge_node = state.mesh.latitude_index(gauge_latitude_rad)
-    for index, anchor in enumerate(anchors):
-        placement = state.placements[index]
-        curves, at_gauge, along = carry_to(
-            state, inputs, placement.latitude_rad, gauge_latitude_rad,
-            placement.geopotential_m2s2, anchor.ln_N, placement.label_pressure_Pa)
-        arrivals.append(fe.Arrival(
-            slug=anchor.slug, latitude_rad=placement.latitude_rad, weight=anchor.weight,
-            geopotential_m2s2=state.curves[index].geopotential_m2s2[:, at_gauge_node],
-            C_i=along[:, at_gauge], sigma_ln_N=fe.sigma_ln_N(anchor),
-            label_pressure_Pa=placement.label_pressure_Pa))
-        arrived.append(Arrived(anchor=anchor, curves=state.curves[index],
-                               ln_N_along=transfer(
-                                   state.mesh, state.s_over_g, state.curves[index], anchor.ln_N,
-                                   *lk.composition_term(inputs.composition,
-                                                        placement.label_pressure_Pa)),
-                               arrival=arrivals[-1]))
-
-    estimate = fe.estimate(arrivals,
-                           float(namelist.estimation["kernel_uncertainty_per_rad"]),
-                           gauge_latitude_rad)
-    curves_to_target, at_target, carried = carry_to(
-        state, inputs, gauge_latitude_rad, target_latitude_rad, estimate.geopotential_m2s2,
-        estimate.C, estimate.label_pressure_Pa)
-    target_run = produce_at_target(
-        state, inputs, target_latitude_rad, curves_to_target.geopotential_m2s2[:, at_target],
-        carried[:, at_target], estimate.label_pressure_Pa, p_b, field,
-        float(namelist.datum_isobar_Pa))
-
-    product = namelist.product
-    dataset = _transfer_product(namelist, inputs, anchors, state, estimate, target_run,
-                               curves_to_target, product)
-    groups = _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target_run,
-                              curves_to_target)
-    for key in ctl.RUN_INPUT_KINDS:
-        loaded = getattr(inputs, key)
-        if isinstance(loaded, xr.DataTree):
-            groups.update(fp._nodes(loaded, f"inputs/{key}"))
-        else:
-            groups[f"inputs/{key}"] = loaded
-    groups["namelist"] = xr.Dataset(attrs={
-        "text": namelist.text, "sha256": namelist.sha256,
-        "resolved": fp._resolved_namelist(namelist, inputs, product)})
-    groups["transfer_record"] = xr.Dataset(attrs=_transfer_record(
-        namelist, inputs, anchors, state, estimate, target_run))
-    written = cio.write(product, dataset, "profile", groups=groups, created_by=fp.TOOL)
+    written = write_product(namelist, inputs, anchors, state, estimate, carried.arrived,
+                            target_run, carried.curves_to_target)
 
     figures = None
     diagnostics = dict(namelist.diagnostics)
@@ -1127,5 +1200,5 @@ def run(namelist_path) -> TransferResult:
 
         figures = render(written, namelist.output_directory / "figures", diagnostics["format"],
                          int(diagnostics["dpi"]))
-    return TransferResult(product=written, state=state, estimate=estimate, arrived=tuple(arrived),
-                          target=target_run, figures=figures)
+    return TransferResult(product=written, state=state, estimate=estimate,
+                          arrived=carried.arrived, target=target_run, figures=figures)
