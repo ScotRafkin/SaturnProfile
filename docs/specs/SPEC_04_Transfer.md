@@ -2,8 +2,20 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.17, 27 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026; v0.17 rules on the interim Step 5 report (§17: the product's
+Version 0.22, 28 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.22 amends the regression rule of §0 at the author's direction
+(rerun what the change can reach: a change that cannot move a number reruns no calculation, a
+change that can reruns everything downstream of it); v0.21 restates F8's height panel on a common datum (each profile
+above its own 1 bar level; the v0.18 wording put the anchor on its anchor isobar and the
+delivered profile on the datum, which the author read as a 100 km shift), adds the kernel the
+`isobars` group now carries to deliverable 3 (the report's decision 5), and records the
+author's viewing of F8 and F9 (§18); v0.20 records the author's direction that F9 is to carry the
+posterior wind as a second field once the combination specification produces it; v0.19 added
+F9, the wind the run assumed, to deliverable 4 at the author's request; v0.18 rules on REPORT_04_step5 (§18: the delivered pressure
+identity's composition floor stated and the convergence condition placed on the tracing's part;
+the cylinder-wind altitudes restated at decision P's fixed point and bounded at decision Q's
+floor in altitude, the reviewing agent's column reproducing the delivered altitudes to 0.1 m at
+the run's own arrival geopotential; the author's figure F8 added to deliverable 4); v0.17 rules on the interim Step 5 report (§17: the product's
 per-anchor subgroup, one record group per profile, the pressure identity residual as derived,
 an accepted suite pinned to its spacings, the figures) and records how Step 5's uncommitted
 work is carried across the change of coding agent; v0.16 stated the floor of the M = 2 identity through a written
@@ -56,10 +68,25 @@ manuscript's Appendix A (A13 to A34, A39) and B (B3 to B7). See §9 for the revi
 The protocol of SPEC_03 §0 applies unchanged: one step at a time; the status line and
 `STATE.md` read before any step; acceptance scripts under `reports/step04_<N>/`; figures a
 report cites under `reports/figures/`; `REPORT_04_step<N>.md` and `REVIEW_04_step<N>.md`;
-commit on acceptance, then the sweep over `occul_data/` and `forward/`; the full regression
-after any change to `lib`, `refrac`, `forward` or `tools`; radians in `lib`; no dashes; no
+commit on acceptance, then the sweep over `occul_data/` and `forward/`; the regression as the
+next paragraph states; radians in `lib`; no dashes; no
 silent choices. The in-memory candidate rule for a step that changes an input file (SPEC_03 §0)
 applies to Step 0, which rebuilds input files.
+
+**What the regression covers (author, 28 September 2026; v0.22, replacing SPEC_03 §0's "the
+full regression after any change to `lib`, `refrac`, `forward` or `tools`").** A change reruns
+what it can reach and nothing else. A change that cannot move a numerical result (the figure
+modules under `tools/plots`, a docstring, a message, a report) reruns no calculation: a change
+to a figure module reruns the figure checks of the steps whose figures that module draws
+(here check 10, `step02_5`, `step03_4`), so that the figures are redrawn and compared, and no
+suite that computes. A change that can move a result reruns every accepted suite downstream
+of it, that is, every suite that imports the changed code or reads a product made with it,
+and the figures those suites draw; a change to `lib` reaches everything and is the full set.
+The report names the suites rerun and the reason the others were not, in one sentence, and the
+reviewing agent may disagree; the bit-identity checks the suites already carry (the closure
+production against the registered product, `array_equal` on the chain) are the evidence that
+a change did not move a number, and a change claimed not to move one that does is a finding.
+The sweep over registered products is unchanged.
 
 **What is checked (decision N, author, 21 September 2026).** The pipeline assumes its inputs
 came from the prior steps. The code refuses only what would silently produce a wrong number or
@@ -529,7 +556,7 @@ symmetric deep wind is a different hypothesis for a tool to make. The inversion 
 `s_ref(φ)` is sampled at the mesh's latitude spacing over the file's whole latitude range, not
 on the file's 0.5° grid (v0.11: the chord of a 0.5° cell misplaces a mid-cell latitude by
 several thousandths of a degree, which on the steep flank of a jet is several hundredths of a
-metre per second, the size of the departures REPORT_04_step2 measured). Because the reference surface is marched with the wind at the
+meter per second, the size of the departures REPORT_04_step2 measured). Because the reference surface is marched with the wind at the
 gauge isobar, and that wind is the file's own, the construction is a fixed point: the closure
 file's surface and the closure anchor's `Φ_k` on the first pass, the file's own on the next,
 repeated until the file changes by less than 1e-6 m/s (three passes on the state in hand). The
@@ -749,7 +776,9 @@ subgroup `anchors/<slug>/transfer` holding what this run made of it (v0.17, §17
 season and the run's, the hook's record, its reference-surface residual, its `C_i`, its
 `sigma_ln_N_measurement`, `sigma_ln_N_season` (with `season_term`) and `P_i` on the union
 levels, the presence mask, the arrival geopotential, and its weights; `reference_surface` (`r0(φ)` on the latitude nodes); `isobars` (every anchor's
-`Φ_k(φ_i)` and `ln N_k(φ_i)` on the nodes, and the gauge-to-target curves); `estimate`
+`Φ_k(φ_i)` and `ln N_k(φ_i)` on the nodes, `shear_kernel_<slug>_per_rad`, `S/g` at the same
+nodes as `transfer` sampled it (v0.21, the report's decision 5), and the gauge-to-target
+curves); `estimate`
 (`φ_r`, the union levels, `C`, its variance, `D_ij`, the chi-square, the label agreement, and
 `identity_floor`, the 6.5e-8 of §16 as an attribute);
 `transfer_record` (the mesh spacings, range and node counts, the outer loop's passes and
@@ -769,22 +798,51 @@ estimate, trace to the target, produce, altitude, datum, write, figures. F5 gain
 isobars in the `(φ, Φ)` plane with every anchor, the gauge and the target marked; F6 in
 transfer mode draws the pressure identity residual against the label pressure; a new F7 draws
 the delivered `T(p)` and `N(Φ)` beside each anchor's, the isobar shift against `p`, and at
-M ≥ 2 `D_ij` against `p`.
+M ≥ 2 `D_ij` against `p`. F8 (v0.18, the author's request on viewing F7) draws the transfer
+along the isobars: `S/g` against latitude between the gauge and the target on five isobars
+(the top level, 10 mbar, the gauge, 1 bar, the bottom level), the cumulative temperature
+change in kelvin along the same isobars, which ends at the delivered `T` minus the anchor's
+and is the integrated shear the author asked to see beside the offset, and the delivered `T`
+against altitude and against radius, each beside the anchor's own `T`. On the altitude panel
+both profiles are drawn above their own 1 bar level (v0.21): the delivered above the run's
+datum, the anchor above the 1 bar level located on its kind N heights by the datum's own
+log-linear rule; so the panel compares the thickness of the two columns and not their
+reference levels (the v0.18 wording put the anchor above its anchor isobar, 90 km from its
+1 bar level, and the author read the offset as a shift). On the radius panel the anchor's
+radii are the kind N file's and the delivered are `radius_m`; the offset between them is the
+reference surface's, 1,612 km between 30.8° and 10° N, and is the point of the panel. The
+kernel and `ln N_k(φ_i)` are the `isobars` group's; nothing is recomputed for the figure. F9 (v0.19, the author's request)
+draws the wind the run assumed, from the product's `inputs/wind` group as the run read it:
+`u_reference(φ)` over the file's whole latitude range with the anchors, the gauge and the
+target marked and the transfer's span shaded, and `u_total(φ, p)` as filled contours over the
+mesh's latitude range and the profile's pressure range, the file's `source` and
+`vertical_structure` in the panel title, so that a run under a sheared hypothesis shows the
+shear it was given beside the temperature it delivered. Nothing is recomputed. The author's
+direction (28 September 2026): F9 draws the hypothesis; when the combination specification
+produces the posterior wind (A35, the answer), that field is drawn as a second `u(φ, p)` panel
+of the same figure, hypothesis beside posterior, and the combination specification states it.
+Nothing in this step anticipates it beyond this sentence.
 
 **Expected values (instance, measured, §1).** The production namelist carries
 `geopotential_spacing_m2s2 = 5.0e4` from Step 5 (decision R; the reviewing agent measures the
 change from 5,000 to 50,000 at 9e-7 in `Δ ln N` and 0.2 m²/s² in the shift, so every value
 below stands within its tolerance; Steps 0 to 4 were run and accepted at 5,000, recorded).
 `casspian-forward forward/lindal_transfer/lindal_transfer.toml` (10° N, closure wind, M = 1): `p` equal to the
-labels to the tracing's discretization error, reported at every level (4.1e-7 on the reviewing
-agent's mesh; the report's value must fall under halving); `T` on every isobar below the
+labels to 1e-6 at every level, reported at every level (v0.18, §18 ruling 1: the delivered
+identity carries a floor near 5e-7 for this state, the composition read at the labels against
+the closure's read at the tabulated pressures, and does not fall with the mesh; the tracing's
+own part, measured in the acceptance with the composition held on the tabulated axis, must
+fall under halving; 4.1e-7 on the reviewing agent's mesh); `T` on every isobar below the
 anchor's by 1.103e-2 at the top level, 1.089e-2 at the gauge, 1.084e-2 at the bottom (to
 1e-4); `r0(10°)` 60,128,613.0 m (to 1 m); `altitude_m` 411,132 m at the top level, 98,186 m at
 the gauge level, −15,290 m at the bottom (to 5 m). A second run at 60° N: `T` lower by
 2.51e-3, 2.48e-3 and 2.47e-3; altitudes 328,127, 78,533 and −12,239 m. A third at 10° N with
 the cylinder-extended wind: `T`, `p`, `N` equal to the anchor's to 2e-3 (v0.12, decision Q;
-Step 4 measured 1.06e-3 in `ln N` and 163 m²/s² in the isobars), altitudes 416,300,
-99,290 and −15,456 m to 10 m (v0.10). A fourth at `φ_c` itself: `N` and `Φ` equal to the closure
+Step 4 measured 1.06e-3 in `ln N` and 163 m²/s² in the isobars), altitudes 416,320,
+99,295 and −15,457 m (v0.18: the reference surface at decision P's fixed point, marched under
+the file's own gauge wind, `r0(10°)` 60,129,726 m; the v0.10 values were measured with the
+surface marched under the closure wind), to 60 m, which is decision Q's floor in altitude
+(300 m²/s² of isobar shift at the level and at the datum, over `g`; §18 ruling 2). A fourth at `φ_c` itself: `N` and `Φ` equal to the closure
 product's to 1e-12, and `p` and `T` to 1e-5 (the composition regridded from the file's
 tabulated levels onto the produced labels moves `ln ℛ̄` by at most 1.5e-6, at the bottom row;
 §10 finding 5), and altitudes 376,780, 90,067 and −14,031 m. A fifth, the M = 2 run of
@@ -794,8 +852,9 @@ Step 4, carried through production: its product equal to the first run's to 1e-5
 `DataTree` with the groups listed, one `anchors/<slug>` group per anchor; the datum refused
 when placed outside the produced range; the sheared synthetic run carried through production
 with its pressure identity reported and converging; F5 with its panel, F6 and F7 rendered by
-the driver and by `casspian-plots` by hand, identical apart from the footer; the author views
-F5 and F7 and accepts them by eye; the full regression passes.
+the driver and by `casspian-plots` by hand, identical apart from the footer (F8 and F9 with them
+from v0.19); the author views F5, F7, F8 and F9 and accepts them by eye; the full regression
+passes.
 
 ---
 
@@ -952,6 +1011,11 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.22 | 2026-09-28 | §0: the regression reruns what the change can reach; a change that cannot move a number reruns no calculation, a figure change reruns the figure checks of the steps it draws for, a change that can move a result reruns every suite downstream of it; the report names the suites rerun | the author's direction |
+| 0.21 | 2026-09-28 | F8's altitude panel on a common datum, each profile above its own 1 bar level; `shear_kernel_<slug>_per_rad` in the `isobars` group (deliverable 3, the report's decision 5); §18 ruling 5, the author's viewing of F8 and F9 | the author's viewing; REPORT_04_step5 refreshed |
+| 0.20 | 2026-09-28 | The author's direction recorded at F9: the posterior wind of the combination specification is to be drawn as a second `u(φ, p)` panel beside the hypothesis; no change to Step 5 | the author's direction |
+| 0.19 | 2026-09-28 | F9, the wind the run assumed (`u_reference(φ)` and `u_total(φ, p)` from the product's `inputs/wind` group), added to deliverable 4 and to check 10 at the author's request | the author's direction |
+| 0.18 | 2026-09-28 | §18 rulings on REPORT_04_step5: the delivered pressure identity's composition floor stated and bounded at 1e-6, the convergence condition on the tracing's part; the cylinder-wind altitudes restated at decision P's fixed point and bounded at decision Q's floor in altitude; F8 added to deliverable 4 at the author's request; findings 1 and 2 and decisions 1 to 4 accepted | REVIEW_04_step5 |
 | 0.17 | 2026-09-27 | §17: rulings on the interim Step 5 report (the per-anchor subgroup, one record group, the derived residual, an accepted suite pinned to its spacings, the figures); the carry of Step 5's uncommitted work on a branch across the change of coding agent | interim Step 5 report; the author's direction |
 | 0.16 | 2026-09-26 | The M = 2 identity through a written anchor bounded at 1e-7 (decision G's placement floor, 6.5e-8), the tracing's own identity at 1e-12, the script's column interpolation removed; `identity_floor` in the estimate group; §16 | REPORT_04_step4 refreshed |
 | 0.15 | 2026-09-25 | The M = 2 identity written on the run's own mesh (bound 1e-10), the lattice variant reported; `produce` with the composition on the labels; the production namelist at 50,000 m²/s²; §15 rulings on REPORT_04_step4 | REVIEW_04_step4 |
@@ -1244,6 +1308,99 @@ incoming agent works on that branch, the review is made there, and at acceptance
 commits of the protocol land on the branch and `main` is fast-forwarded to it. The branch is
 the working copy's safety net and carries no acceptance meaning; `reports/step04_5/` stays
 ignored by git as every step directory is, and its contents survive on the machine.
+
+---
+
+## 18. Rulings on REPORT_04_step5 (28 September 2026)
+
+The report is `reports/REPORT_04_step5.md`, ten of eleven at the pinned spacings, the full
+regression at every reference count. Findings 1 and 2 (the script's comparison axis; the
+copied subtrees' vertical dimensions renamed so that an M ≥ 2 product reads back) and
+decisions 1 to 4 (`chain` and `write_product` extracted from `run`; the renaming at M = 1 as
+well; the pin as an assertion naming the namelist; the sheared pair at the pinned spacing and
+half of it, since twice 50,000 m²/s² asks the wind above its coverage) are accepted as
+reported.
+
+1. **The pressure identity's floor (finding 3).** The report is right that the delivered
+   identity cannot close below about 5e-7 for this state however fine the mesh: a level's
+   label is the closure production's pressure, formed with the composition read at the
+   anchor's tabulated pressures (SPEC_03's definition, accepted and registered), while the
+   transfer production reads the composition at the labels (§15 ruling 4, required at a target
+   where the levels are the union's), and the two arguments differ by the closure residual,
+   3.3e-3 at the bottom row, moving `ln ℛ̄` by 1.3e-6. §7 already carried this mechanism for
+   the fourth run (`p` and `T` to 1e-5 against the closure product, the regrid at 1.5e-6) and
+   did not carry it for the first; that was the specification's omission. The closure path is
+   not changed: reading the composition at the produced pressure would mean iterating the
+   closure and would move a registered product by a part in a million for no gain. The ruling
+   is the report's first alternative: the convergence condition of §7 applies to the tracing's
+   part, measured in the acceptance with the composition held on the tabulated axis (1.293e-7
+   and 1.200e-7 under halving), and the delivered identity is reported at every level as
+   decision H requires and bounded at 1e-6 for this state (5.777e-7). No new product variable;
+   the floor is a property of the two productions' definitions and is stated here and in the
+   review.
+
+2. **The cylinder-wind altitudes (finding 4, check 4).** The failure is the specification's,
+   twice over, and the delivered altitudes are right. First, the stated values of v0.10 were
+   measured by the reviewing agent with the reference surface marched under the closure wind,
+   whereas decision P makes the surface and the cylinder file a fixed point, the surface
+   marched under the file's own gauge wind; at 10° N that surface is 1,113 m higher
+   (60,129,726 m against 60,128,613 m, the report's 60,129,732 m six meters from the reviewing
+   agent's) and the altitude above the datum is larger by 20 m at the top level. Under the
+   exact hypothesis, the isobars unmoved and the surface at the fixed point, the reviewing
+   agent's altitudes are 416,320, 99,295 and −15,457 m, and those are the stated values from
+   v0.18. Second, decision Q (v0.12) restated this run's `T`, `p` and `N` tolerance at the
+   truncation floor of the gridded cylinder file but left the altitude bound at 10 m, which the
+   same floor cannot meet: the arrival isobars of the gridded file are shifted from the anchor's
+   by up to 180 m²/s² at the production spacing (the top level +180, the datum −127, inside the
+   130 to 224 the Step 3 kernels gave), and the altitude of a level above the datum moves by
+   the difference of the two shifts over `g`, 33 m at the top. The reviewing agent's column at
+   10° N, given the run's own arrival geopotential and datum, reproduces the delivered
+   altitudes to 0.1 m at all three spacings the report's diagnostic ran (416,353.9 against
+   416,353.8; 99,308.7 against 99,308.7; −15,450.3 against −15,450.3 at 50,000 m²/s²; the same
+   agreement at 25,000 and 5,000), so the altitude path is verified and the 3.494 m/s the
+   report inferred is not a wind error; it is the shifted isobars read as one. The bound from
+   v0.18 is 60 m, decision Q's 300 m²/s² at the level and at the datum over `g`; measured 34 m
+   at the production spacing. The 12 m that moves with the geopotential spacing when the wind
+   varies along a column is recorded for the performance step, as the report asks.
+
+3. **The regression script edited while running.** Recorded as the report records it; the
+   separate verification stands. The rule the report writes down is adopted.
+
+4. **The author's viewing of F5 and F7 (28 September).** Accepted, with a request: F8 as
+   deliverable 4 now states it, the kernel and the accumulated temperature change along the
+   isobars beside the delivered `T` on altitude and on radius, and F9 (v0.19), the wind the
+   run assumed, `u_reference(φ)` and `u_total(φ, p)`, beside them. Check 10 covers F8 and F9
+   with the others. The figure module changes, so the regression runs again by the protocol's
+   rule.
+
+5. **The author's viewing of F8 and F9 (28 September, the refreshed report).** F9 accepted.
+   On F8 the author asked whether the staircase in `S/g` means the wind is under-resolved on
+   the mesh. It does not: under decision L the wind is linear between the file's 0.5° nodes,
+   so its derivative, and with it `S = 2Ω cos φ ∂u/∂φ`, is constant on each half-degree
+   interval and steps at every node; the mesh at 0.05° resolves those steps exactly, and a
+   finer mesh would draw the same staircase. The alternation between 14.5° and 17° (steps of
+   −4.8 to −15.5 m/s per half degree, one after another) is the source curve's own
+   node-to-node roughness, digitized from Ingersoll and Pollard's figure, and the kinks in the
+   accumulated temperature there are its integral; the alternation cancels in the integral,
+   which is why the offset is smooth to the eye and why decision Q's class of truncation is
+   small. Smoothing, if wanted, belongs to the wind tool (SPEC_05's forward-inputs tools),
+   not to the model, which reads what it is given (SPEC_00 §3.4); `kernel_uncertainty_per_rad`
+   at 0.02 is the size of those steps, which is worth remembering when it is set for real.
+   The altitude panel's 100 km offset was the specification's wording (each profile on its
+   own reference level, 90 km apart), restated at v0.21 on a common datum; the radius panel's
+   1,612 km is the reference surface between the two latitudes and the two panels do not
+   contradict each other: one measures from each column's 1 bar level, the other from the
+   center. The report's decision 5, the kernel carried in `isobars`, is accepted and is now
+   deliverable 3's text. Check 10 reruns with the panel restated; the figure module changes
+   again, and under the §0 rule of v0.22 that reruns check 10, `step02_5` and `step03_4` and
+   no suite that computes.
+
+Step 5 is accepted once check 4 is rerun against the v0.18 values and bound, check 2's
+convergence measured on the tracing's part, F8 and F9 rendered and viewed, and the regression
+rerun as §0 states;
+the report's head, section 3 and findings 3 and 4 refreshed. Then the three protocol commits
+on `step04_5-wip`, `main` fast-forwarded (§17), `STATE.md` to accepted, and SPEC_04 is
+closed; the Appendix amendments apply at that commit.
 
 ---
 
