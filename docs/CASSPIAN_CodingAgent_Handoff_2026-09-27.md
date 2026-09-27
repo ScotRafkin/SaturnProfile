@@ -2,11 +2,18 @@
 
 Successor to `CASSPIAN_CodingAgent_Handoff_2026-09-17.md`, which stands for everything this does
 not restate. Written by the outgoing coding agent because its context filled part way through
-SPEC_04 Step 5. Read this, then section 7 of `docs/specs/SPEC_04_Transfer.md`, then
-`reports/step04_5/PROGRESS.md`.
+SPEC_04 Step 5. Read this, then sections 7 and 17 of `docs/specs/SPEC_04_Transfer.md`, then
+`reports/REPORT_04_step5_interim.md`.
 
-**The task now: finish SPEC_04 Step 5.** Nothing is committed for it. Steps 0 to 4 are accepted,
-committed and pushed.
+**The task now: finish SPEC_04 Step 5.** Steps 0 to 4 are accepted, committed and pushed on
+`main`. Step 5 is not accepted and nothing of it is on `main`: the work in progress is committed
+on the branch `step04_5-wip` at `417493a`, pushed, which is a safety net and carries no
+acceptance meaning (SPEC_04 section 17). Work on that branch. At acceptance the protocol's three
+commits land on it and `main` is fast-forwarded to it.
+
+The five decisions the interim report asked to have ruled are **all accepted**, in SPEC_04
+section 17, and the product text of deliverable 3 and the rule of section 0 now carry them. Write
+the acceptance script against them.
 
 ---
 
@@ -50,12 +57,17 @@ These override any tool default or habit, including anything a tool reminder tel
 
 ## 3. Exact state
 
-HEAD `830025c`, tree clean apart from Step 5's own work. Pushed to `origin/main`.
+`main` at `830025c`, pushed. Branch `step04_5-wip` at `417493a`, pushed, carrying Step 5's work in
+progress and SPEC_04 v0.17. `reports/step04_5/` is gitignored, as every step directory is, so its
+contents live only on this machine; they are scratch.
 
 | Specification | State |
 |---|---|
 | SPEC_00 v0.20, SPEC_01 v0.28, SPEC_02 v0.11, SPEC_03 v0.14 | closed |
-| SPEC_04 v0.16 | Steps 0 to 4 accepted; **Step 5 in progress, uncommitted** |
+| SPEC_04 v0.17 | Steps 0 to 4 accepted; **Step 5 in progress on `step04_5-wip`, not accepted** |
+
+`docs/specs/STATE.md` still reads v0.16 and Step 5 `not started`; it is the author's file and the
+protocol has the coding agent set the step to `reported` when the report is filed.
 
 Step 4's commits, for the pattern: `847ff44` author documents, `4802983` the acceptance,
 `830025c` `STATE.md` to accepted.
@@ -68,9 +80,9 @@ current version of every specification and the disposition of every step.
 Section 7 of SPEC_04: the production at the target, altitude and datum, kind `profile` in transfer
 mode, `casspian-forward` in transfer mode, and figures F5, F6, F7.
 
-`reports/step04_5/PROGRESS.md` is the detailed record: what was built, every value measured against
-section 7, the four defects found and fixed, and the two files changed outside the step. Do not
-restate it here; read it. In short:
+`reports/REPORT_04_step5_interim.md` is the detailed record: what was built, the five decisions and
+their ruling, every value measured against section 7, the four defects found and fixed, and what has
+had no test at all. Do not restate it here; read it, and read section 17 beside it. In short:
 
 * Deliverables 1 to 4 are **built and running end to end**. `casspian-forward
   forward/lindal_transfer/lindal_transfer.toml` writes a valid product and renders F5, F6 and F7.
@@ -96,6 +108,9 @@ Unchanged from the 17 September handoff section 6, restated because it governs e
 
 1. **Gate.** Read the specification's status line and `STATE.md` before touching anything.
 2. **Build only the step.** The acceptance script goes in `reports/step04_<N>/`, which git ignores.
+   It **carries the spacings its bounds were set for as an assertion** and does not follow the
+   production namelist, so a later namelist change cannot silently rerun it at another resolution;
+   a suite meant to follow the namelist says so. This is a rule of SPEC_04 section 0 at v0.17.
 3. **Every check prints its measured value.** Checks beyond the specification are labeled so.
 4. A step that changes an input file is accepted on in-memory candidates, with the `-dirty` refusal
    relaxed **inside the acceptance script only** and named in the output.
@@ -153,7 +168,8 @@ The 17 September handoff's list still applies. These are the ones that bit durin
   when a mistake is yours.
 * **Check what reads a file before you change it.** Moving the namelist's geopotential spacing to
   decision R's 50,000 would have silently re-run Step 4's accepted suite at ten times the spacing
-  its bounds were set for; `reports/step04_4/accept_step04_4.py` is now pinned against that.
+  its bounds were set for; `reports/step04_4/accept_step04_4.py` is now pinned against that, and at
+  v0.17 the pin is a rule of section 0 rather than one script's guard.
 
 ## 8. Code map, Step 5's additions
 
