@@ -409,12 +409,20 @@ def read(path, kind: str):
 
 
 def _check_profile_anchor_groups(groups, where: str) -> None:
-    """Kind `profile` carries each anchor verbatim under `anchors/<slug>` (SPEC_03 Step 3)."""
+    """Kind `profile` carries each anchor verbatim under `anchors/<slug>` (SPEC_03 Step 3), and one
+    record group: `production_record` in closure mode, `transfer_record` in transfer mode."""
     anchors = [g for g in groups if g.startswith("anchors/") and g.count("/") == 1]
     if not anchors:
         raise CasspianSchemaError(
             f"{where}: kind profile carries every anchor it used as a group anchors/<slug>, the "
             "kind N file verbatim; none is present (SPEC_03 Step 3 deliverable 3)."
+        )
+    records = [name for name in ("production_record", "transfer_record") if name in groups]
+    if len(records) != 1:
+        raise CasspianSchemaError(
+            f"{where}: kind profile carries exactly one record group, production_record in "
+            f"closure mode or transfer_record in transfer mode; this has {records or 'neither'} "
+            "(SPEC_03 Step 3 deliverable 3, SPEC_04 Step 5 deliverable 3)."
         )
 
 

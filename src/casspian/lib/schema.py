@@ -415,6 +415,19 @@ _PROFILE = KindSpec(
         # Closure mode only, and then both (SPEC_03 Step 3 deliverable 3).
         VarSpec("pressure_tabulated_Pa", required=False, dims=("level",), units="Pa"),
         VarSpec("temperature_tabulated_K", required=False, dims=("level",), units="K"),
+        # Transfer mode only (SPEC_04 Step 5 deliverable 3). Absent in closure mode, where the
+        # levels are the anchor's own and there is nothing to label, carry or place a datum from.
+        VarSpec("pressure_label_Pa", required=False, dims=("level",), units="Pa"),
+        VarSpec("pressure_identity_residual", required=False, dims=("level",), units="1"),
+        VarSpec("refractivity_gauge", required=False, dims=("level",), units="1"),
+        VarSpec("geopotential_gauge_m2s2", required=False, dims=("level",), units="m2 s-2"),
+        VarSpec("altitude_m", required=False, dims=("level",), units="m"),
+        VarSpec("gauge_latitude_planetocentric_deg", required=False, dims=(),
+                units="degrees_north"),
+        VarSpec("datum_isobar_Pa", required=False, dims=(), units="Pa"),
+        VarSpec("datum_geopotential_m2s2", required=False, dims=(), units="m2 s-2"),
+        VarSpec("datum_radius_m", required=False, dims=(), units="m"),
+        VarSpec("reference_surface_radius_m", required=False, dims=(), units="m"),
         VarSpec("latitude_planetocentric_deg", dims=(), units="degrees_north"),
         VarSpec("psi_deg", dims=(), units="degrees"),
         VarSpec("gauge_isobar_Pa", dims=(), units="Pa"),
@@ -429,14 +442,20 @@ _PROFILE = KindSpec(
         "inputs/rotation",
         "inputs/wind",
         "namelist",
-        "production_record",
     ),
     grouped=True,
     notes=(
-        "SPEC_00 v0.16 section 6.8, SPEC_03 Step 3 deliverable 3. Written by forward, role "
-        "forward, one latitude; every anchor verbatim under anchors/<slug>."
+        "SPEC_00 v0.16 section 6.8, SPEC_03 Step 3 deliverable 3, SPEC_04 Step 5 deliverable 3. "
+        "Written by forward, role forward, one latitude; every anchor verbatim under "
+        "anchors/<slug>; the run's record in production_record in closure mode and in "
+        "transfer_record in transfer mode, exactly one of the two."
     ),
 )
+
+#: SPEC_04 Step 5 deliverable 3: the groups a transfer-mode product carries beyond the closure's.
+#: `reference_surface` and `isobars` hold fields on the mesh's latitude nodes rather than on the
+#: profile's levels, so they are groups and not variables of the root.
+PROFILE_TRANSFER_GROUPS = ("estimate", "isobars", "reference_surface", "transfer_record")
 
 _RAW = KindSpec(
     name="raw",

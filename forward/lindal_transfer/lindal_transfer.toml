@@ -35,7 +35,10 @@ datum_isobar_Pa = 1.0e5
 latitude_planetocentric_deg = 10.0
 
 [grid]
-geopotential_spacing_m2s2 = 5.0e3
+# 50,000 m2/s2 from Step 5 (SPEC_04 decision R): the mesh was oversampled in geopotential by an
+# order of magnitude, the change from 5,000 costing 9e-7 in d ln N and 0.2 m2/s2 in the isobar
+# shift. Steps 0 to 4 were run and accepted at 5,000, which their suites pin.
+geopotential_spacing_m2s2 = 5.0e4
 latitude_spacing_deg      = 0.05
 
 [numerics.reference_surface]

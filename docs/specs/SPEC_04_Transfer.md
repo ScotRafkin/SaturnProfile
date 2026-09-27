@@ -2,8 +2,11 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.16, 26 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
-at v0.6 on 21 September 2026; v0.16 states the floor of the M = 2 identity through a written
+Version 0.17, 27 September 2026. Author of record: S. Rafkin. **Status: accepted by the author
+at v0.6 on 21 September 2026; v0.17 rules on the interim Step 5 report (§17: the product's
+per-anchor subgroup, one record group per profile, the pressure identity residual as derived,
+an accepted suite pinned to its spacings, the figures) and records how Step 5's uncommitted
+work is carried across the change of coding agent; v0.16 stated the floor of the M = 2 identity through a written
 anchor (decision G's placement over the anchor's own levels, 6.5e-8, mesh-independent) and
 bounds it at 1e-7 with the tracing's own identity bounded separately (§16); v0.15 ruled on REPORT_04_step4 (§15): the M = 2 identity test
 written on the run's own mesh so that it is an identity at round-off, the lattice difference
@@ -114,7 +117,10 @@ being the wind file's latitude nodes united with the mesh's and the anchor's, wh
 resolution the surface's slope actually has under decision L; the performance step decides
 between the two on measurement and the namelist records what a run used either way. Compiled
 code is not on this path unless the vectorized Python misses the target, and then for the one
-routine that misses it.
+routine that misses it. An accepted suite is pinned to the spacings its bounds were set for
+(v0.17, §17 ruling 4): the acceptance script carries them as an assertion and does not follow
+the production namelist, so that a later change to the namelist cannot silently rerun an
+accepted suite at another resolution; a suite that is meant to follow the namelist says so.
 
 **The state the steps are coded against.** Every step codes against the closure inputs, the
 one state in hand: the swept anchor `occul_data/lindal/lindal_refractivity.nc` and the inputs of
@@ -738,18 +744,22 @@ carried as `radius_m`.
 above the datum along the local vertical, `radius_m(level)` at the target;
 `latitude_planetocentric_deg` the target, `gauge_latitude_planetocentric_deg`; scalars
 `datum_isobar_Pa`, `datum_geopotential_m2s2`, `datum_radius_m`, `reference_surface_radius_m`
-(`r0(φ_t)`); groups `anchors/<slug>` for every anchor (the kind N file verbatim, with its
+(`r0(φ_t)`); groups `anchors/<slug>` for every anchor, the kind N file verbatim, with a
+subgroup `anchors/<slug>/transfer` holding what this run made of it (v0.17, §17 ruling 1): its
 season and the run's, the hook's record, its reference-surface residual, its `C_i`, its
 `sigma_ln_N_measurement`, `sigma_ln_N_season` (with `season_term`) and `P_i` on the union
-levels, and its weights); `reference_surface` (`r0(φ)` on the latitude nodes); `isobars` (every anchor's
+levels, the presence mask, the arrival geopotential, and its weights; `reference_surface` (`r0(φ)` on the latitude nodes); `isobars` (every anchor's
 `Φ_k(φ_i)` and `ln N_k(φ_i)` on the nodes, and the gauge-to-target curves); `estimate`
 (`φ_r`, the union levels, `C`, its variance, `D_ij`, the chi-square, the label agreement, and
 `identity_floor`, the 6.5e-8 of §16 as an attribute);
 `transfer_record` (the mesh spacings, range and node counts, the outer loop's passes and
 residuals, the largest `|S/g|`, the largest isobar shift and its level, the pressure identity
 statistics, the estimation keys, the wind and composition seasons against the run's, the
-neglected drift). Uncertainty companions NaN with the terms unstated, as SPEC_03, `kernel_error` and
-`propagation` added to the list; the estimate's variance is a diagnostic in its group, not the product's
+neglected drift). A profile carries exactly one record group, `production_record` in closure
+mode or `transfer_record` in transfer mode, the check naming the fault when neither or both are
+present (v0.17). Uncertainty companions NaN with the terms unstated, as SPEC_03, `kernel_error` and
+`propagation` added to the list; `pressure_identity_residual` is `derived` (arithmetic on two
+variables in the file) and carries none; the estimate's variance is a diagnostic in its group, not the product's
 uncertainty.
 
 **Deliverable 4: the driver and the figures.** `casspian-forward` dispatches `mode =
@@ -942,6 +952,7 @@ log-linear interpolation is a later rule).
 
 | Version | Date | Change | Cause |
 |---|---|---|---|
+| 0.17 | 2026-09-27 | §17: rulings on the interim Step 5 report (the per-anchor subgroup, one record group, the derived residual, an accepted suite pinned to its spacings, the figures); the carry of Step 5's uncommitted work on a branch across the change of coding agent | interim Step 5 report; the author's direction |
 | 0.16 | 2026-09-26 | The M = 2 identity through a written anchor bounded at 1e-7 (decision G's placement floor, 6.5e-8), the tracing's own identity at 1e-12, the script's column interpolation removed; `identity_floor` in the estimate group; §16 | REPORT_04_step4 refreshed |
 | 0.15 | 2026-09-25 | The M = 2 identity written on the run's own mesh (bound 1e-10), the lattice variant reported; `produce` with the composition on the labels; the production namelist at 50,000 m²/s²; §15 rulings on REPORT_04_step4 | REVIEW_04_step4 |
 | 0.14 | 2026-09-24 | Decision R: the performance step before the Monte Carlo wrapper (vectorization across latitudes, levels and draws; the geopotential spacing coarsened at Step 5; a cell-wise quadrature in latitude; the geoid march step a namelist key or computed from the data); no step changed | author's direction of 24 September 2026 |
@@ -1197,6 +1208,42 @@ is the baseline decision R works from.
    which is invisible against the anchors' declared uncertainties (2.3e-2 for Lindal) and is
    stated once in the product's `estimate` group as `identity_floor`.
 3. The lattice variant stays reported beside the identity, as v0.15 states.
+
+---
+
+## 17. Rulings on the interim Step 5 report (27 September 2026)
+
+The outgoing coding agent's context filled part way through Step 5 and it filed
+`reports/REPORT_04_step5_interim.md` and `docs/CASSPIAN_CodingAgent_Handoff_2026-09-27.md`.
+The five decisions it asks to have ruled before the acceptance script is written against them:
+
+1. **`anchors/<slug>` verbatim, the run's arrays in `anchors/<slug>/transfer`.** Accepted; the
+   product text says so.
+2. **`pressure_identity_residual` as `derived`, no companion.** Accepted.
+3. **Exactly one record group per profile.** Accepted; SPEC_00 §6.8 amended at acceptance.
+4. **An accepted suite pinned to the spacings it was accepted at.** Accepted and made a rule of
+   §0: an acceptance script carries the spacings its bounds were set for, so that a later
+   change to the production namelist (decision R) cannot silently rerun an accepted suite at
+   another resolution; the pin is an assertion, and a suite that is meant to follow the
+   namelist says so.
+5. **F5's reference surface drawn as `Φ = 0` with the radius range on the axis; F7's `D_ij`
+   panel only at M ≥ 2.** Accepted, subject to the author's viewing of the figures at
+   acceptance, which the Step 5 acceptance already requires.
+
+The interim measurements at the production spacing (pressure identity 5.8e-7 at 10° N,
+altitudes within 3 m of the stated values, the closure production bit-identical to the
+registered product after the refactor, the run at `φ_c` returning the closure product to one
+ulp in `N` and exactly in `Φ`) are consistent with §1 and are targets for the acceptance script
+to reproduce, as the report says, not results.
+
+**Carrying the uncommitted work across the change of agent (author, 27 September 2026).**
+Step 5's source, the interim report and the handoff are uncommitted in the working tree, and
+the acceptance protocol commits only after review. So that nothing is lost, the work is
+committed as it stands to a branch, `step04_5-wip`, pushed, with `main` left at `830025c`; the
+incoming agent works on that branch, the review is made there, and at acceptance the three
+commits of the protocol land on the branch and `main` is fast-forwarded to it. The branch is
+the working copy's safety net and carries no acceptance meaning; `reports/step04_5/` stays
+ignored by git as every step directory is, and its contents survive on the machine.
 
 ---
 

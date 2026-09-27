@@ -38,8 +38,9 @@ from casspian.lib.constants import CODATA_RELEASE
 from casspian.lib.schema import PROFILE_EPOCH_WITHOUT_DATE, uncertainty_companion
 from casspian.refrac.anchor import wind_of_latitude
 
-__all__ = ["TOOL", "Profile", "Production", "closure_statistics", "main", "mean_properties",
-           "produce", "profile_from_anchor", "run"]
+__all__ = ["TOOL", "Profile", "Production", "closure_statistics", "datum_geopotential", "main",
+           "mean_properties", "mean_properties_on_labels", "produce", "produce_on_geopotential",
+           "profile_from_anchor", "run"]
 
 TOOL = "casspian-forward"
 
@@ -123,7 +124,52 @@ def mean_properties(composition, latitude_deg=None):
     return red.mean_over_species(x, R_i), red.mean_over_species(x, M_i)
 
 
-def produce(profile: Profile, inputs, gauge: int, p_b: float, u_column=None) -> Production:
+def mean_properties_on_labels(composition, latitude_deg, label_pressure_Pa):
+    """`(R_bar, m_bar)` at one latitude on the isobar labels, log-linearly in pressure.
+
+    SPEC_04 section 10 finding 5 and section 15 ruling 4: transfer mode reads the composition onto
+    each isobar's label, because the levels produced at a target are the union's and not the
+    composition file's. Closure mode's levels are its own labels, so `mean_properties` on the file's
+    levels and this on those levels' own labels are the same read, and the one path is this one.
+    """
+    R_bar, m_bar = mean_properties(composition, latitude_deg)
+    levels = np.asarray(composition.to_dataset(inherit=False)["pressure_Pa"].values,
+                        dtype="float64")
+    rising = np.argsort(np.log(levels))
+    x = np.log(levels)[rising]
+    labels = np.log(np.asarray(label_pressure_Pa, dtype="float64"))
+    return (np.interp(labels, x, np.asarray(R_bar, dtype="float64")[rising]),
+            np.interp(labels, x, np.asarray(m_bar, dtype="float64")[rising]))
+
+
+def produce_on_geopotential(refractivity, geopotential_m2s2, R_bar, m_bar, p_b: float):
+    """B4, B5 and B6 with the geopotential given. SPEC_04 Step 5 deliverable 1.
+
+    The production entered where both paths meet: `n = N / R_bar` and `rho = n m_bar` (B4), the
+    layer masses and `p` from the top (B5), `T` (B6). The closure path forms `Phi` from the
+    profile's own geometry and calls this; the transfer path has `Phi` from the tracing and calls
+    the same function, which is what makes the two one production rather than two.
+
+    Returns `(number_density, density, layer_mass, pressure, temperature)`, every one on the levels
+    given, top down as `pressure_from_top` needs them.
+    """
+    N = np.asarray(refractivity, dtype="float64")
+    Phi = np.asarray(geopotential_m2s2, dtype="float64")
+    R_bar = np.asarray(R_bar, dtype="float64")
+    m_bar = np.asarray(m_bar, dtype="float64")
+    if not (N.shape == Phi.shape == R_bar.shape == m_bar.shape):
+        raise ValueError(
+            f"the production needs one value per level: N {N.shape}, Phi {Phi.shape}, R_bar "
+            f"{R_bar.shape}, m_bar {m_bar.shape}"
+        )
+    density = hs.density(N, R_bar, m_bar)
+    layer_mass = hs.layer_mass(density, Phi)
+    pressure = hs.pressure_from_top(float(p_b), layer_mass)
+    return (N / R_bar, density, layer_mass, pressure, hs.temperature(pressure, N, R_bar))
+
+
+def produce(profile: Profile, inputs, gauge: int, p_b: float, u_column=None,
+            label_pressure_Pa=None) -> Production:
     """The production on one column. Pure: arrays in, arrays out, no file access.
 
     `inputs` carries the run's loaded `composition` (a DataTree on the profile's levels),
@@ -138,6 +184,11 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float, u_column=None) -> 
     latitude at every level, which is what closure mode means and what SPEC_03 formed, so the
     closure production is unchanged. `u_ms` keeps its meaning either way: the reference-level
     value at `phi_c`.
+
+    `label_pressure_Pa` is the isobar label of each level, on which the composition is read
+    (SPEC_04 section 15 ruling 4). Omitted, the composition is read level by level from the file,
+    which is closure mode's levels being its own labels and leaves the closure production
+    unchanged.
     """
     gravity, rotation = inputs.gravity, inputs.rotation
     constants = (
@@ -161,13 +212,14 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float, u_column=None) -> 
     geopotential = gp.geopotential_along_profile(
         u_column, profile.radius_m, profile.height_above_anchor_isobar_m, phi_c, gauge,
         *constants)
-    R_bar, m_bar = mean_properties(inputs.composition, np.degrees(phi_c))
+    if label_pressure_Pa is None:
+        R_bar, m_bar = mean_properties(inputs.composition, np.degrees(phi_c))
+    else:
+        R_bar, m_bar = mean_properties_on_labels(inputs.composition, np.degrees(phi_c),
+                                                 label_pressure_Pa)
     N = profile.refractivity
-    n = N / R_bar
-    rho = hs.density(N, R_bar, m_bar)
-    layer_mass = hs.layer_mass(rho, geopotential.geopotential_m2s2)
-    pressure = hs.pressure_from_top(p_b, layer_mass)
-    temperature = hs.temperature(pressure, N, R_bar)
+    n, rho, layer_mass, pressure, temperature = produce_on_geopotential(
+        N, geopotential.geopotential_m2s2, R_bar, m_bar, p_b)
     return Production(
         u_ms=u,
         u_column_ms=u_column,
@@ -182,6 +234,30 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float, u_column=None) -> 
         gauge_level_index=int(gauge),
         boundary_pressure_Pa=float(p_b),
     )
+
+
+def datum_geopotential(pressure_Pa, geopotential_m2s2, datum_isobar_Pa: float) -> float:
+    """`Phi_d`, where the produced pressure equals the datum isobar. SPEC_04 Step 5 deliverable 2.
+
+    Log-linear in pressure between the two levels that bracket it, which is the rule the rest of
+    the chain reads pressure with (decision L). Refused when the datum is outside the produced
+    range: the delivered altitude is measured from a surface the run produced, and extrapolating
+    the profile to find one would put the datum where no level is (decision N, a named failure).
+    """
+    p = np.asarray(pressure_Pa, dtype="float64")
+    Phi = np.asarray(geopotential_m2s2, dtype="float64")
+    if p.shape != Phi.shape or p.ndim != 1 or p.size < 2:
+        raise ValueError(f"the datum needs pressure and geopotential on one set of levels; got "
+                         f"{p.shape} and {Phi.shape}")
+    datum = float(datum_isobar_Pa)
+    if not p.min() <= datum <= p.max():
+        raise ValueError(
+            f"the datum isobar {datum} Pa is outside the produced range [{p.min()}, {p.max()}] Pa; "
+            "the delivered altitude is measured from a surface this run produced "
+            "(SPEC_04 Step 5 deliverable 2)"
+        )
+    rising = np.argsort(np.log(p))
+    return float(np.interp(np.log(datum), np.log(p)[rising], Phi[rising]))
 
 
 def closure_statistics(pressure, pressure_tabulated, temperature, temperature_tabulated) -> dict:
@@ -501,10 +577,20 @@ def _production_record(namelist, inputs, anchor, production, statistics) -> dict
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        prog=TOOL, description="Run a forward model namelist (SPEC_03: closure mode).")
+        prog=TOOL,
+        description="Run a forward model namelist: closure mode (SPEC_03) or transfer mode "
+                    "(SPEC_04 Step 5).")
     parser.add_argument("namelist", help="path to <run>.toml")
     args = parser.parse_args(argv)
-    result = run(args.namelist)
+    # The namelist declares the mode and the driver follows it (SPEC_00 section 7.2). The read is
+    # cheap and the run repeats it, which keeps each driver the one place its own mode is checked.
+    mode = ctl.read_run_namelist(args.namelist).mode
+    if mode == "transfer":
+        from casspian.forward import transfer as tr
+
+        result = tr.run(args.namelist)
+    else:
+        result = run(args.namelist)
     print(f"wrote {result.product}")
     if result.figures is not None:
         from casspian.tools.plots import describe
