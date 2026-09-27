@@ -955,6 +955,17 @@ def _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target
         isobars[f"ln_refractivity_{anchor.slug}"] = (
             (vertical, "latitude_planetocentric"), arrived[index].ln_N_along,
             fp._attrs("1", f"ln N_k(phi) for {anchor.slug} along its isobars (Eq. A28)", "modeled"))
+        # The shear term of the kernel at the nodes of this anchor's own curves, as `transfer`
+        # samples it there (Eq. A27, bilinearly on the mesh). It is carried so that F8 draws the
+        # transfer along the isobars from the product rather than recomputing it (SPEC_04 v0.18
+        # deliverable 4); the composition term is not added, because F8 draws `S/g`.
+        isobars[f"shear_kernel_{anchor.slug}_per_rad"] = (
+            (vertical, "latitude_planetocentric"),
+            lk.transfer_kernel(state.mesh, state.s_over_g,
+                               arrived[index].curves.latitude_rad[None, :],
+                               arrived[index].curves.geopotential_m2s2),
+            fp._attrs("rad-1", f"S/g at the nodes of {anchor.slug}'s isobars, the shear term of "
+                      "the kernel (Eq. A27)", "modeled"))
     isobars["geopotential_gauge_to_target_m2s2"] = (
         ("union_level", "latitude_gauge_to_target"), curves_to_target.geopotential_m2s2,
         fp._attrs("m2 s-2", "the curves carrying C from the gauge latitude to the target",

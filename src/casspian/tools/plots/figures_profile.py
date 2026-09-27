@@ -329,10 +329,231 @@ FIGURES = (
 #: SPEC_04 Step 5 deliverable 4: what a transfer product draws. F5 keeps its name and gains a
 #: panel, F6 draws the pressure identity where the closure draws the hydrostatic closure, and F7 is
 #: the delivered profile beside each anchor's.
+def _five_isobars(pr: _Profile, labels):
+    """The five levels F8 draws along: the top, 10 mbar, the gauge, 1 bar and the bottom.
+
+    Named by their label pressure, and duplicates dropped, so a profile whose gauge is 10 mbar
+    draws four curves rather than the same one twice.
+    """
+    wanted = [("the top level", 0),
+              ("10 mbar", int(np.argmin(np.abs(labels - 1.0e3)))),
+              ("the gauge", pr.gauge),
+              ("1 bar", int(np.argmin(np.abs(labels - 1.0e5)))),
+              ("the bottom", labels.size - 1)]
+    seen, out = set(), []
+    for name, level in wanted:
+        if level not in seen:
+            seen.add(level)
+            out.append((f"{name}, {labels[level] / 100.0:.3g} mbar", level))
+    return out
+
+
+def figure_8(pr: _Profile):
+    """F8, transfer mode only: the transfer along the isobars, and T on altitude and on radius.
+
+    SPEC_04 v0.18 deliverable 4, the author's request on viewing F7. Four panels: `S/g` against
+    latitude on five isobars over the span the transfer crossed, from the `isobars` group's
+    `shear_kernel_<slug>_per_rad`; the temperature change accumulated along the same isobars; and
+    the delivered `T` against altitude and against radius, each beside the first anchor's own `T`
+    from the kind N file. On the altitude panel both profiles are above their own datum level
+    (v0.21), the anchor's located on its kind N heights by the log-linear rule the datum itself is
+    placed with, so the panel compares the thickness of the two columns; on the radius panel the
+    offset between them is the reference surface between the two latitudes, which is the point of
+    that panel.
+
+    **The staircase in the first panel is the wind file, not the mesh** (SPEC_04 section 18
+    ruling 5). Under decision L the wind is linear between the file's half-degree nodes, so
+    `S = 2 Omega cos(phi) du/dphi` is constant on each interval and steps at every node; a mesh at
+    0.05 degrees resolves those steps exactly and a finer one draws the same staircase. The
+    alternation over a few degrees of the flank is the source curve's own node-to-node roughness,
+    and the kinks in the second panel are its integral, which is why the accumulated offset is
+    smooth: the alternation cancels. Smoothing belongs to the wind tool, not to the model, which
+    reads what it is given (SPEC_00 section 3.4).
+
+    Nothing is recomputed. The accumulated change is read off `ln N_k(phi)`, which is the integral
+    of the kernel the first panel draws: on an isobar the pressure is the label, so
+    `T = p_label R_bar / (k_B N)` and the change from the anchor's latitude is
+    `T(phi) - T(phi_a)` with `R_bar` the run's own composition on that label, from the product's
+    `inputs/composition` group. The curve therefore starts at zero at the anchor and ends at the
+    delivered temperature less the model's temperature at the anchor on the same isobar, which is
+    the offset F7 draws against the anchor's tabulated column.
+    """
+    from casspian.forward.production import mean_properties_on_labels
+
+    isobars = pr.tree["isobars"].to_dataset(inherit=False)
+    labels = np.asarray(pr.root["pressure_label_Pa"].values, dtype="float64")
+    latitude = np.asarray(isobars["latitude_planetocentric_deg"].values, dtype="float64")
+    slug = pr.anchor_slug
+    kernel = np.asarray(isobars[f"shear_kernel_{slug}_per_rad"].values, dtype="float64")
+    ln_N = np.asarray(isobars[f"ln_refractivity_{slug}"].values, dtype="float64")
+    anchor_deg = float(pr.tree[f"anchors/{slug}/transfer"]
+                       .attrs["latitude_planetocentric_deg"])
+    target_deg = float(pr.root["latitude_planetocentric_deg"].values)
+    gauge_deg = float(pr.root["gauge_latitude_planetocentric_deg"].values)
+    span = (latitude >= min(gauge_deg, target_deg)) & (latitude <= max(gauge_deg, target_deg))
+    at_anchor = int(np.argmin(np.abs(latitude - anchor_deg)))
+
+    # R_bar on each isobar's label, at every latitude of the span, from the run's composition.
+    composition = pr.tree["inputs/composition"]
+    R_bar = np.stack([mean_properties_on_labels(composition, float(deg), labels)[0]
+                      for deg in latitude[span]], axis=1)
+    R_bar_anchor = mean_properties_on_labels(composition, anchor_deg, labels)[0]
+    T_anchor_column = np.asarray(pr.root["temperature_K"].values, dtype="float64")
+
+    fig = Figure(figsize=(style.FIGSIZE_WIDE[0] * 1.6, style.FIGSIZE_WIDE[1]))
+    axes = fig.subplots(1, 4)
+    style.layout(fig, rows=1)
+    chosen = _five_isobars(pr, labels)
+    data = {"latitude_planetocentric_deg": latitude[span]}
+    # Under a wind that does not vary along a column the kernel is the same on every isobar and
+    # the curves lie on one another, which is the file's own statement and worth seeing; the widths
+    # step down so that a coincident set still shows every member.
+    for position, (name, level) in enumerate(chosen):
+        color = f"C{position}"
+        width = 2.6 - 0.45 * position
+        axes[0].plot(latitude[span], kernel[level][span], color=color, linewidth=width,
+                     alpha=0.85, label=name)
+        # T on the isobar, up to the constant p_label / k_B, which cancels in the difference.
+        ratio = (np.exp(ln_N[level][at_anchor] - ln_N[level][span])
+                 * R_bar[level] / R_bar_anchor[level])
+        delta_T = T_anchor_column[level] * (ratio - 1.0)
+        axes[1].plot(latitude[span], delta_T, color=color, linewidth=width, alpha=0.85,
+                     label=name)
+        data[f"shear_kernel_level_{level}"] = kernel[level][span]
+        data[f"delta_temperature_level_{level}"] = delta_T
+    for ax, title, ylabel in ((axes[0], "the shear term S/g along the isobars (Eq. A27)",
+                               "S/g (per radian)"),
+                              (axes[1], "the temperature change accumulated along them",
+                               "T(phi) - T(anchor) (K)")):
+        ax.axvline(anchor_deg, **style.ANCHOR_LINE)
+        ax.axvline(target_deg, color=style.COLOR["height"], linestyle="--", linewidth=1.0)
+        ax.axhline(0.0, color="0.6", linewidth=0.8)
+        ax.set_xlabel("planetocentric latitude (degrees)")
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.legend(loc="best", fontsize=6.5)
+
+    altitude = np.asarray(pr.root["altitude_m"].values, dtype="float64")
+    radius = np.asarray(pr.root["radius_m"].values, dtype="float64")
+    datum = float(pr.root["datum_isobar_Pa"].values)
+    anchor = pr.tree[f"anchors/{slug}"].to_dataset(inherit=False)
+    T_anchor = np.asarray(pr.thermo["temperature_K"].values, dtype="float64")
+    h_anchor = np.asarray(anchor["height_above_anchor_isobar_m"].values, dtype="float64")
+    r_anchor = np.asarray(anchor["radius_m"].values, dtype="float64")
+    # Both profiles above their own datum level (v0.21). The anchor's is located on its own kind N
+    # heights by the rule the datum itself is placed with, log-linear in pressure, so the panel
+    # compares the thickness of the two columns and not the two files' reference levels.
+    p_anchor = np.asarray(pr.thermo["pressure_Pa"].values, dtype="float64")
+    rising = np.argsort(np.log(p_anchor))
+    h_anchor_datum = float(np.interp(np.log(datum), np.log(p_anchor)[rising], h_anchor[rising]))
+    axes[2].plot(T_anchor_column, altitude / 1000.0, color=style.COLOR["temperature"],
+                 label=f"delivered at {target_deg:g} degrees")
+    axes[2].plot(T_anchor, (h_anchor - h_anchor_datum) / 1000.0, linestyle="--", linewidth=0.9,
+                 color="0.35", label=f"{slug}, tabulated")
+    axes[2].axhline(0.0, color="0.6", linewidth=0.8)
+    axes[2].set_ylabel(f"height above the {datum / 100:g} mbar level (km)")
+    axes[2].set_title("the delivered T on altitude, both on their own datum")
+    axes[3].plot(T_anchor_column, radius / 1000.0, color=style.COLOR["temperature"],
+                 label=f"delivered at {target_deg:g} degrees")
+    # The offset named is the one at the gauge isobar, where the delivered radius is r0 at the
+    # target and the anchor's is its own anchor isobar radius, so the difference is the reference
+    # surface between the two latitudes and nothing else. At the bottom level it is 1,602 km, which
+    # is the same quantity plus the two columns' thicknesses and is not what the words say.
+    surface_km = abs(radius[pr.gauge] - r_anchor[pr.gauge]) / 1000.0
+    axes[3].plot(T_anchor, r_anchor / 1000.0, linestyle="--", linewidth=0.9, color="0.35",
+                 label=f"{slug}, tabulated, {surface_km:.0f} km below at the gauge")
+    axes[3].text(0.03, 0.03, "the gap at the gauge isobar is the reference surface\n"
+                             "between the two latitudes", transform=axes[3].transAxes,
+                 fontsize=6.5, color="0.25", va="bottom",
+                 bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", pad=1.5))
+    axes[3].set_ylabel("radius (km)")
+    axes[3].set_title("and on radius, from the center")
+    for ax in (axes[2], axes[3]):
+        ax.set_xlabel("temperature (K)")
+        ax.legend(loc="best", fontsize=6.5)
+    data.update({"altitude_m": altitude, "radius_m": radius, "temperature_K": T_anchor_column,
+                 "anchor_temperature_K": T_anchor, "anchor_height_m": h_anchor,
+                 "anchor_radius_m": r_anchor,
+                 "levels_drawn": np.asarray([level for _, level in chosen])})
+    fig.suptitle(f"F8. The transfer along the isobars, {pr.slug} at {target_deg:g} degrees, "
+                 f"anchor {slug} at {anchor_deg:.3f}", fontsize=10)
+    return fig, data
+
+
+def figure_9(pr: _Profile):
+    """F9, transfer mode only: the wind the run assumed, from the product's own inputs.
+
+    SPEC_04 v0.19 deliverable 4, the author's request. `u_reference(phi)` over the file's whole
+    latitude range, with the anchors, the gauge and the target marked and the span the transfer
+    crossed shaded, and `u_total(phi, p)` as filled contours over the mesh's latitude range and the
+    delivered profile's pressure range. The file's `source` and `vertical_structure` are in the
+    second panel's title, so that a run under a sheared hypothesis shows the shear it was given.
+    Nothing is recomputed: both panels are the `inputs/wind` group as the run read it.
+
+    The author's direction of 28 September 2026 is that the posterior wind of the combination
+    specification is drawn here as a second `u(phi, p)` panel once that specification produces it.
+    Nothing here anticipates it.
+    """
+    wind = pr.tree["inputs/wind"].to_dataset(inherit=False)
+    isobars = pr.tree["isobars"].to_dataset(inherit=False)
+    latitude = np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64")
+    pressure = np.asarray(wind["pressure_Pa"].values, dtype="float64")
+    u_reference = np.asarray(wind["u_reference_ms"].values, dtype="float64")
+    u_total = np.asarray(wind["u_total_ms"].values, dtype="float64")
+    mesh_latitude = np.asarray(isobars["latitude_planetocentric_deg"].values, dtype="float64")
+    labels = np.asarray(pr.root["pressure_label_Pa"].values, dtype="float64")
+    target_deg = float(pr.root["latitude_planetocentric_deg"].values)
+    gauge_deg = float(pr.root["gauge_latitude_planetocentric_deg"].values)
+
+    fig = Figure(figsize=style.FIGSIZE_WIDE)
+    axes = fig.subplots(1, 2)
+    style.layout(fig, rows=1)
+    axes[0].plot(latitude, u_reference, color=style.COLOR["wind"], linewidth=1.0,
+                 label=f"u_reference at {float(wind['reference_level_pressure_Pa']) / 100:g} mbar")
+    axes[0].axvspan(mesh_latitude.min(), mesh_latitude.max(), color=style.COLOR["band"],
+                    alpha=0.35, linewidth=0,
+                    label=f"the mesh, {mesh_latitude.min():g} to {mesh_latitude.max():g} degrees")
+    for slug in sorted(pr.tree["anchors"].children):
+        anchor_deg = float(pr.tree[f"anchors/{slug}/transfer"]
+                           .attrs["latitude_planetocentric_deg"])
+        axes[0].axvline(anchor_deg, color="0.35", linestyle=":", linewidth=0.9,
+                        label=f"anchor {slug}, {anchor_deg:.3f}")
+    axes[0].axvline(gauge_deg, **style.ANCHOR_LINE, label=f"gauge {gauge_deg:.3f}")
+    axes[0].axvline(target_deg, color=style.COLOR["height"], linestyle="--", linewidth=1.0,
+                    label=f"target {target_deg:g}")
+    axes[0].set_xlabel("planetocentric latitude (degrees)")
+    axes[0].set_ylabel("u (m/s)")
+    axes[0].set_title("the wind at the reference level")
+    axes[0].legend(loc="best", fontsize=6.5)
+
+    inside = ((latitude >= mesh_latitude.min()) & (latitude <= mesh_latitude.max()))
+    within = ((pressure >= labels.min()) & (pressure <= labels.max()))
+    field = u_total[np.ix_(inside, within)]
+    filled = axes[1].contourf(latitude[inside], pressure[within] / 100.0, field.T, levels=18)
+    fig.colorbar(filled, ax=axes[1], label="u_total (m/s)")
+    axes[1].set_yscale("log")
+    axes[1].invert_yaxis()
+    axes[1].axvline(target_deg, color=style.COLOR["height"], linestyle="--", linewidth=1.0)
+    axes[1].axvline(gauge_deg, **style.ANCHOR_LINE)
+    axes[1].set_xlabel("planetocentric latitude (degrees)")
+    axes[1].set_ylabel("pressure (mbar)")
+    axes[1].set_title(f"u_total, {str(wind.attrs.get('vertical_structure', 'unstated'))}")
+    source = str(wind.attrs.get("source", "source unstated"))
+    if len(source) > 78:
+        source = source[:78].rsplit(" ", 1)[0] + " ..."
+    fig.suptitle(f"F9. The wind assumed, {pr.slug}. {source}", fontsize=9)
+    return fig, {"latitude_planetocentric_deg": latitude, "u_reference_ms": u_reference,
+                 "pressure_Pa": pressure[within], "u_total_ms": field,
+                 "vertical_structure": str(wind.attrs.get("vertical_structure", "")),
+                 "source": str(wind.attrs.get("source", ""))}
+
+
 FIGURES_TRANSFER = (
     ("F5", "geopotential", figure_5, None),
     ("F6", "pressure_identity", figure_6_transfer, "pressure_label_Pa"),
     ("F7", "delivered", figure_7, "pressure_label_Pa"),
+    ("F8", "along_isobars", figure_8, "pressure_label_Pa"),
+    ("F9", "wind_assumed", figure_9, "pressure_label_Pa"),
 )
 
 
