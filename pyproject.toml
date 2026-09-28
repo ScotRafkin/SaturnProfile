@@ -12,6 +12,7 @@ dependencies = [
     "scipy",
     "xarray",
     "netCDF4",
+    "matplotlib",
 ]
 
 # Console entry points are added as the tools of SPEC_01 appear.

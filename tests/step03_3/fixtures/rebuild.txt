@@ -1,0 +1,36 @@
+== casspian-lindal-raw
+wrote C:\Users\srafkin\SaturnProfile\occul_data\lindal\raw\lindal_raw.nc
+== casspian-gravity-file occul_data/lindal/lindal_build.toml
+wrote C:\Users\srafkin\SaturnProfile\occul_data\lindal\lindal_gravity.nc
+== casspian-rotation-file occul_data/lindal/lindal_build.toml
+wrote C:\Users\srafkin\SaturnProfile\occul_data\lindal\lindal_rotation.nc
+== casspian-wind-from-curve occul_data/lindal/lindal_build.toml
+wrote C:\Users\srafkin\SaturnProfile\occul_data\lindal\lindal_wind.nc
+== casspian-composition-lindal occul_data/lindal/lindal_build.toml
+wrote C:\Users\srafkin\SaturnProfile\occul_data\lindal\lindal_composition.nc
+== casspian-lindal-inputs occul_data/lindal/lindal_build.toml
+C:\Users\srafkin\SaturnProfile\src\casspian\tools\lindal\build_inputs.py:89: UserWarning: lindal_thermo.nc: input_hashes entry raw/lindal_raw.nc does not match the file now at that path beside it. The embedded copy and the recorded hash remain authoritative (SPEC_00 section 8).
+  handle = cio.read(path, kind)
+C:\Users\srafkin\SaturnProfile\src\casspian\tools\lindal\build_inputs.py:89: UserWarning: lindal_thermo.nc: input_hashes entry lindal_build.toml does not match the file now at that path beside it. The embedded copy and the recorded hash remain authoritative (SPEC_00 section 8).
+  handle = cio.read(path, kind)
+C:\Users\srafkin\SaturnProfile\src\casspian\tools\lindal\build_inputs.py:89: UserWarning: lindal_geodesy.nc: input_hashes entry raw/lindal_raw.nc does not match the file now at that path beside it. The embedded copy and the recorded hash remain authoritative (SPEC_00 section 8).
+  handle = cio.read(path, kind)
+C:\Users\srafkin\SaturnProfile\src\casspian\tools\lindal\build_inputs.py:89: UserWarning: lindal_geodesy.nc: input_hashes entry lindal_build.toml does not match the file now at that path beside it. The embedded copy and the recorded hash remain authoritative (SPEC_00 section 8).
+  handle = cio.read(path, kind)
+ready C:\Users\srafkin\SaturnProfile\occul_data\lindal\lindal_thermo.nc
+ready C:\Users\srafkin\SaturnProfile\occul_data\lindal\lindal_geodesy.nc
+ready C:\Users\srafkin\SaturnProfile\occul_data\lindal\lindal_reduction.toml
+== python reports/step03_3/build_candidate.py
+candidate product C:\Users\srafkin\SaturnProfile\reports\step03_3\candidate\lindal_refractivity.nc
+inputs relaxed in memory: ['lindal_thermo.nc', 'lindal_composition.nc', 'lindal_geodesy.nc', 'lindal_gravity.nc', 'lindal_rotation.nc', 'lindal_wind.nc']
+  figure reports\step03_3\candidate\figures\lindal_diag_F1_inputs.png
+  figure reports\step03_3\candidate\figures\lindal_diag_F2_gravity_profile.png
+  figure reports\step03_3\candidate\figures\lindal_diag_F3_gravity_latitude.png
+  figure reports\step03_3\candidate\figures\lindal_diag_F4_product.png
+  combined reports\step03_3\candidate\figures\lindal_diag.pdf
+== casspian-run-inputs forward/lindal_closure/lindal_closure_build.toml
+wrote C:\Users\srafkin\SaturnProfile\forward\lindal_closure\inputs\lindal_closure_gravity.nc
+wrote C:\Users\srafkin\SaturnProfile\forward\lindal_closure\inputs\lindal_closure_rotation.nc
+wrote C:\Users\srafkin\SaturnProfile\forward\lindal_closure\inputs\lindal_closure_wind.nc
+wrote C:\Users\srafkin\SaturnProfile\forward\lindal_closure\inputs\lindal_closure_composition.nc
+DONE

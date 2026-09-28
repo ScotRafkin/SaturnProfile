@@ -19,9 +19,11 @@ occul_data/*/*.nc
 occul_data/*/raw/*.nc
 
 # `reports/` is the committed build record: REPORT_01_stepN.md and REVIEW_01_stepN.md.
-# Only the per step working directories are ignored, holding each step's acceptance
-# scripts and their printed output, deletable after acceptance (SPEC_00 section 2).
+# Only the per step working directories are ignored, holding what each step's acceptance
+# scripts write; the scripts themselves are under tests/ (SPEC_00 v0.22 section 2).
 reports/step*/
+# What the regression driver writes (tests/run_regression.sh).
+reports/regression/
 
 # Standard diagnostic figures are regenerable from their product (SPEC_02 Step 5).
 occul_data/*/figures/
