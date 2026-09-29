@@ -1,6 +1,6 @@
 # CASSPIAN runbook: from a clean clone to the transfer product
 
-Version 0.2, 28 September 2026. Author of record: S. Rafkin. Status: sections 2 to 5 run by the
+Version 0.3, 29 September 2026. Author of record: S. Rafkin. Status: sections 2 to 5 run by the
 author on a clean clone of `e71d59e` on a CentOS 7 machine (glibc 2.17, bash 4.2, no C++
 compiler, system Python 3.7.4, Anaconda on the path), every value reproduced; section 6, the
 regression, waits on the acceptance scripts being committed under `tests/` (SPEC_00 v0.22). This is the document
@@ -149,9 +149,12 @@ nohup bash tests/run_regression.sh > regression_console.txt 2>&1 &
                                              # nohup so that closing the terminal does not stop it
 ```
 
-Every row must read `N of N checks pass` at its reference count; the rows are written to
-`reports/regression/regression.txt` with each suite's log beside it, and the reference counts are
-the ones in `docs/specs/STATE.md`. The script sets the
+Each suite's passing count is checked against the reference count in the driver's own table,
+which is where those counts live (a suite whose count legitimately changes at an acceptance has
+its row changed in the same commit). Rows and per-suite logs are written to
+`reports/regression/`, and the last line reads `26 of 26 suites at their reference counts`; the
+script exits nonzero on any mismatch. `bash tests/run_regression.sh step04_5 step03_4` runs only
+the suites named, which is how a change that reaches only some suites is rerun (SPEC_04 §0). The script sets the
 registered products aside and restores them after each suite, so it is run on the products of
 sections 3 and 4. A suite that needs a fixture the clone does not have (a `before/` baseline, a
 `-dirty` copy) is a finding for the runbook, not a failure of the code.
@@ -169,5 +172,6 @@ Windows ones.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3 | 2026-09-29 | Section 6: reference counts live in the driver's table, the 26-suite summary line and exit code, running named suites |
 | 0.2 | 2026-09-29 | Sections 2 to 5 run by the author on a CentOS 7 clone: the `uv` route with `--seed`, `--only-binary=:all:` and `--no-deps` for glibc 2.17 without a compiler, the measured versions, values and wall time; section 6 with `nohup` and the regression driver at `tests/run_regression.sh` |
 | 0.1 | 2026-09-28 | Written from the repository at `e71d59e` |

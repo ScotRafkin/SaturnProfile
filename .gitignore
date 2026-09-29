@@ -30,3 +30,7 @@ occul_data/*/figures/
 
 # Working notes from the chat assistant; not part of the build record.
 Claude outputs/
+
+# The author's working documents, kept outside git.
+docs/CONTROL_FILES.md
+docs/USER_GUIDE.md
