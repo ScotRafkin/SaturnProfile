@@ -175,13 +175,15 @@ def git_commit(start=None) -> str:
     here = Path(start) if start is not None else Path(__file__).resolve().parent
     try:
         sha = subprocess.run(
-            ["git", "-C", str(here), "rev-parse", "HEAD"],
+            ["git", "rev-parse", "HEAD"],
+            cwd=here,
             capture_output=True,
             text=True,
             check=True,
         ).stdout.strip()
         dirty = subprocess.run(
-            ["git", "-C", str(here), "status", "--porcelain"],
+            ["git", "status", "--porcelain"],
+            cwd=here,
             capture_output=True,
             text=True,
             check=True,

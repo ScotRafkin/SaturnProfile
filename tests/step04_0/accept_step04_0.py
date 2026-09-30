@@ -18,7 +18,7 @@ the sweep and their hashes recorded in the report then.
 rebuilt by `build_swept.py` in a git worktree at `5f23a8b` whose tree is clean, so they carry
 that commit and not `-dirty`. Nothing in the reduction chain changed between the registered
 sweep at `6ae113e` and `5f23a8b`, so their values are the swept values. `SWEPT` below points at
-that worktree.
+their committed copies, `tests/step04_0/fixtures/swept/`.
 
 Run from the repository root.
 """
@@ -50,8 +50,7 @@ CLOSURE = Path("forward/lindal_closure")
 TRANSFER = Path("forward/lindal_transfer")
 SWEPT = Path(os.environ.get(
     "CASSPIAN_SWEPT",
-    r"C:\Users\srafkin\AppData\Local\Temp\claude\C--Users-srafkin"
-    r"\4619a4a5-8782-4076-843a-eb67e445cf60\scratchpad\swept"))
+    Path(__file__).resolve().parent / "fixtures" / "swept"))
 
 results = []
 

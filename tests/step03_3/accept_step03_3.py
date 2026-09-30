@@ -11,6 +11,7 @@ the output; the one case that tests the refusal itself turns the relaxation off.
 """
 
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -344,7 +345,7 @@ def run_case(name, text, composition_edit=None, extra_inputs=()):
         shutil.copy2(source, directory / target)
     if composition_edit:
         composition_edit(directory / "inputs/lindal_closure_composition.nc")
-    relative = Path("../../../candidate/lindal_refractivity.nc")
+    relative = Path(os.path.relpath(CANDIDATE, directory.resolve()))
     namelist = directory / "lindal_closure.toml"
     namelist.write_text(text.replace(ANCHOR_LINE, f'path   = "{relative.as_posix()}"'), encoding="utf-8")
     return namelist

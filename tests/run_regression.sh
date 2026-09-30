@@ -67,7 +67,9 @@ mkdir -p "$B/transfer" && cp -r "$T/inputs" "$B/transfer/" || exit 1
 before=$(python -c "from casspian.lib import io; print(io.sha256('$B/lindal_refractivity.nc'))")
 fbefore=$(cd "$F" && sha256sum inputs/*.nc output/lindal_closure_profile.nc | sha256sum)
 tbefore=$(cd "$T" && sha256sum inputs/*.nc | sha256sum)
+dirty() { git status --porcelain | sed 's/^/        /'; }
 echo "the tree carries $(git status --porcelain | wc -l) paths of its own before the run" >> "$out"
+dirty >> "$out"
 
 restore() {
   cp "$B/lindal_refractivity.nc" "$D/lindal_refractivity.nc" || exit 1
@@ -96,6 +98,7 @@ while read -r s ref; do
   echo "$mark ${passed:-?} of ${total:-?} checks pass, reference $ref, ${took} s   <- $s" >> "$out"
   restore
   echo "    paths dirty after $s: $(git status --porcelain | wc -l)" >> "$out"
+  dirty >> "$out"
 done <<< "$selected"
 
 after=$(python -c "from casspian.lib import io; print(io.sha256('$D/lindal_refractivity.nc'))")

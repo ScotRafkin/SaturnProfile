@@ -4,19 +4,16 @@ build/
 dist/
 .pytest_cache/
 
-# Forward run products are transient and regenerable from the run directory.
-forward/*/output/
-
-# A run's inputs are regenerable from its build control file with casspian-run-inputs; whether
-# they are committed is the author's call, and until then they stay out like every other netCDF
-# product (SPEC_03 Step 3 deliverable 1, section 8 ruling 5).
+# Forward run products are transient and regenerable from the run directory, except the
+# registered closure product. The registered products, the reduction chain under occul_data/,
+# the runs' inputs and the closure product, are committed: another platform rebuilds them equal
+# only to the last few bits, so the bytes the accepted suites compare against live in git
+# (author's decision, 30 September 2026; SPEC_00 section 2.4).
+forward/*/output/*
+!forward/lindal_closure/output/lindal_closure_profile.nc
 forward/*/inputs/*.nc
-
-# Generated netCDF under occul_data is regenerable from raw/ and data_static/.
-# These two rules are removed once a reduction is accepted, so that the
-# registered product is committed as the anchor of every run (SPEC_00 section 2.4).
-occul_data/*/*.nc
-occul_data/*/raw/*.nc
+!forward/lindal_closure/inputs/*.nc
+!forward/lindal_transfer/inputs/*.nc
 
 # `reports/` is the committed build record: REPORT_01_stepN.md and REVIEW_01_stepN.md.
 # Only the per step working directories are ignored, holding what each step's acceptance
