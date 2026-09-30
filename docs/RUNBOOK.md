@@ -144,7 +144,8 @@ agent's first commit), the regression is the proof that the clone is the same co
 
 ```
 git pull                                     # on the clone, after that commit is pushed
-nohup bash tests/run_regression.sh > regression_console.txt 2>&1 &
+mkdir -p reports/regression
+nohup bash tests/run_regression.sh > reports/regression/console.txt 2>&1 &
                                              # about seven hours on Windows, four and a half of them step04_4;
                                              # nohup so that closing the terminal does not stop it
 ```
@@ -172,6 +173,6 @@ Windows ones.
 
 | Version | Date | Change |
 |---|---|---|
-| 0.3 | 2026-09-29 | Section 6: reference counts live in the driver's table, the 26-suite summary line and exit code, running named suites |
+| 0.3 | 2026-09-29 | Section 6: reference counts live in the driver's table, the 26-suite summary line and exit code, running named suites; the console log written under the ignored `reports/regression/` |
 | 0.2 | 2026-09-29 | Sections 2 to 5 run by the author on a CentOS 7 clone: the `uv` route with `--seed`, `--only-binary=:all:` and `--no-deps` for glibc 2.17 without a compiler, the measured versions, values and wall time; section 6 with `nohup` and the regression driver at `tests/run_regression.sh` |
 | 0.1 | 2026-09-28 | Written from the repository at `e71d59e` |
