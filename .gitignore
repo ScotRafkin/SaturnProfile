@@ -5,12 +5,13 @@ dist/
 .pytest_cache/
 
 # Forward run products are transient and regenerable from the run directory, except the
-# registered closure product. The registered products, the reduction chain under occul_data/,
+# registered closure and transfer products (SPEC_05 section 1a). The registered products, the reduction chain under occul_data/,
 # the runs' inputs and the closure product, are committed: another platform rebuilds them equal
 # only to the last few bits, so the bytes the accepted suites compare against live in git
 # (author's decision, 30 September 2026; SPEC_00 section 2.4).
 forward/*/output/*
 !forward/lindal_closure/output/lindal_closure_profile.nc
+!forward/lindal_transfer/output/lindal_transfer_profile.nc
 forward/*/inputs/*.nc
 !forward/lindal_closure/inputs/*.nc
 !forward/lindal_transfer/inputs/*.nc
