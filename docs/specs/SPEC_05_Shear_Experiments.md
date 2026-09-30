@@ -2,9 +2,9 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.3, 29 September 2026. Author of record: S. Rafkin. **Status: accepted by the author at
-v0.3 on 29 September 2026. Step 0 closes with the review of `REPORT_05_step0`; Step 1 begins after the coding
-agent's pre-execution review is ruled on.** Built from the design
+Version 0.4, 30 September 2026. Author of record: S. Rafkin. **Status: accepted by the author at
+v0.3 on 29 September 2026. Step 0 closes with the review of `REPORT_05_step0`; the pre-execution review is ruled on
+at v0.4 (§7); Step 1 begins once the transfer product is registered (§1a).** Built from the design
 note `claude/SPEC_05_shear_design_2026-09-29.md` and its review
 `claude/SPEC_05_shear_design_review_2026-09-29.md` (the review is the later word where they
 differ), with the author's rulings of 29 September. Depends on `SPEC_00_Architecture_and_Data_Files.md`
@@ -89,11 +89,11 @@ Every shear hypothesis is therefore a kind W file written by a tool. No model co
   is how far the hypothesis departs from the source at the source's own level, and a reader
   should see it.
 
-A consequence stated here so nobody infers otherwise: a wind file used by a reduction is read by
-the reduction at its reference pressure as the source's wind, so a shear case there would move
-the anchor itself. Whatever tool or script makes a reduction's wind file (for the Lindal anchor
-it happens to be `casspian-lindal-inputs`), it is made without a shear case. Shear cases belong
-to the wind files of forward runs, where the shear step is part of every build (§3).
+A note, not a rule: a reduction reads its wind file's `u_total` at the reference pressure as the
+source's wind, so a case that changes the wind at that pressure would move the anchor itself.
+The tool does not police where its output is used (author, 30 September); it is written for the
+forward runs, where the shear step is part of every build (§3), and may be used anywhere else a
+person has a reason to.
 
 ### 1.3 Reading u_s
 
@@ -181,26 +181,40 @@ with the wind on the outermost cylinder that still meets the `p_s` surface, and 
 
 ### 1.7 What the output file carries besides the wind
 
-- **`u_total_uncertainty_ms`**: set by the optional control key `uncertainty_ms` (m/s),
-  accepted by every case except `identity`, which returns its input untouched. With no value,
-  the input's field passes through unchanged, its `long_name` stating that it is the source's
-  uncertainty; it is never scaled with the wind (author, 29 September: a smaller wind is not a
-  better known one). With a value, that value replaces the input's at every node, the
-  `long_name` saying it was set in the shear control file. The model does not read this field
-  until the combination specification.
-- **`value_provenance`**: for every case except `identity`, every cell takes a new value 5,
-  meaning `constructed_by_shear_case`, appended to the file's `flag_values` and `flag_meanings`
-  (they are written per file; the schema does not change). The author accepts this as metadata to
-  be revisited in a later audit.
-- **Globals**: `vertical_structure` becomes `shear case <name>`; every other global of the input
-  is carried unchanged (`observation_level_*`, `method`, `epoch`, the season, the rotation).
-  `input_hashes` lists the source wind file and the build control file, so the file traces to the
-  exact case and parameters that made it without separate labels. One `history` line records the
-  case name and its parameters.
-- **`identity`** copies the input dataset and adds only its `history` line and its own
-  `input_hashes`. The closure comparison (`lib.control.CLOSURE_DROPPED_ATTRIBUTES`) drops both,
-  so a closure run's identity-sheared wind still compares content-identical to the anchor's
-  embedded copy.
+**Replace, never add (author, 30 September).** The output carries the input's attributes and
+auxiliary variables as they are. The tool adds no attribute, label, title or flag meaning of its
+own. A run's directory name and its control files say what the run is. The only attribute
+values the tool writes are the few that would otherwise state something false about the new
+wind, and it overwrites them in place:
+
+- **`vertical_structure`** (a global the kind W schema requires): replaced by the case name, for
+  example `decay_above`, since the input's value (`altitude independent` for the Lindal wind)
+  would be false for most cases.
+- **`value_provenance`**: every cell the case built takes the existing value 2 (`parameterized`).
+  No new flag value or meaning is introduced.
+- **`u_total_uncertainty_ms`**: the input's, values and attributes unchanged, never scaled with
+  the wind (author, 29 September: a smaller wind is not a better known one). If the optional
+  control key `uncertainty_ms` (m/s) is given, that value replaces the input's at every node, and
+  only then are the field's descriptive attributes (`long_name`, `uncertainty_method`) replaced by
+  one plain statement that the value was set in the shear control file.
+- **`input_hashes`**: the source wind file and the build control file, the traceability agreed on
+  29 September. Beyond that, the file carries only what `lib.io.write` stamps on every file; the
+  tool writes no `history` line of its own.
+
+**`identity`** returns its input untouched: no attribute or value is replaced. When written, the
+file differs from its input only by what `lib.io.write` stamps and by `input_hashes`, which the
+closure comparison (`lib.control.CLOSURE_DROPPED_ATTRIBUTES`) drops, so a closure run's
+identity-sheared wind still compares content-identical to the anchor's embedded copy.
+
+---
+
+## 1a. Before Step 1: the registered transfer product
+
+The transfer product is registered the way the closure product is (author, 30 September): after
+the rulings on the pre-execution review, and before Step 1, `forward/lindal_transfer/output/
+lindal_transfer_profile.nc` is rebuilt on a clean tree (`git status --porcelain` empty, untracked
+files included), given an exception beside the closure product's in `.gitignore`, and committed.
+The `-dirty` copy on disk is discarded. It is the reference of Step 2 check 5 and Step 3 check 1.
 
 ---
 
@@ -209,15 +223,20 @@ with the wind on the outermost cylinder that still meets the `p_s` surface, and 
 **Deliverables.**
 
 1. `src/casspian/tools/wind/shear.py` as §1.4, §1.5 and §1.7 describe, with parts tested on their
-   own: the ln p interpolation to `p_s`, the two shapes of `x(p)`, and the ramp `F`.
+   own: the ln p interpolation to `p_s`, the two shapes of `x(p)`, and the ramp `F`. The
+   interpolation to `p_s` is a thin call to `lib.windfield.WindField` at the latitude nodes, so
+   `u_s` is exactly what the model would read at `p_s`; `WindField`'s own refusal outside the grid
+   is the `p_s` refusal.
 2. Console entry `casspian-wind-shear` in `pyproject.toml`, taking the control file and
    `--section` (default `shear`), as `casspian-wind-from-curve` does.
-3. The `[shear]` control section's keys: `role`, `prefix`, `source` (path to the input kind W),
-   `output`, `case`, `title` (optional), the case's own parameters of §1.4, and the optional
-   `uncertainty_ms` of §1.7. Paths resolve as in every other build section.
+3. The `[shear]` control section's keys: `source` (path to the input kind W), `output`, `case`,
+   the case's own parameters of §1.4, and the optional `uncertainty_ms` of §1.7. No `role`,
+   `prefix` or `title`: the output carries the source's. Paths resolve as in every other build
+   section.
 
 **Acceptance (`tests/step05_1/accept_step05_1.py`), on the transfer run's own wind file
-`forward/lindal_transfer/inputs/lindal_transfer_wind.nc` as input.**
+`forward/lindal_transfer/inputs/lindal_transfer_wind.nc` as input.** That file is committed; the
+suite reads it and writes only under `reports/step05_1/`, never over it.
 
 1. `identity`: every variable array-equal to the input; the closure comparison's content check
    passes against the input.
@@ -236,14 +255,20 @@ with the wind on the outermost cylinder that still meets the `p_s` surface, and 
 7. `increase_below`, `linear_ln_p`, `p_stop = 1e6`, `f = 1.5`: closed form to 1e-12 relative;
    `u_total = 1.5 u_s` at 1e6.
 8. Every output of checks 2 to 7: sum identity through the schema on read; `u_total` exactly zero
-   at both poles; `value_provenance` 5 everywhere; source data array-equal to the input's.
+   at both poles; `value_provenance` 2 everywhere; source data array-equal to the input's; every
+   attribute equal to the input's except `vertical_structure`, `input_hashes` and the attributes
+   `lib.io.write` stamps on every file (`created_by`, `created_at`, `casspian_git_commit`, its
+   `history` line), which the check names in its output.
 9. `construct` on the in-memory input returns a dataset whose every variable is array-equal to the
    file `build` writes and reads back, for the case of check 5.
 9a. In every output of checks 2 to 7, `u_total_uncertainty_ms` is array-equal to the input's;
     with `uncertainty_ms = 25` on the case of check 5 it is 25 at every node.
-10. The named refusals, and only those: unknown case; missing parameter; a parameter the case
-    does not use; `p_s` outside the wind grid; `p_stop` on the wrong side of `p_s`; `linear_ln_p`
-    with `p_stop = 0`.
+10. The named refusals, and only those: unknown case; unknown shape; missing parameter; a
+    parameter the case does not use (`uncertainty_ms` with `identity` included); `p_s` outside the
+    wind grid; `p_stop` on the wrong side of `p_s`; `linear_ln_p` with `p_stop = 0` (which would
+    otherwise return the input unchanged without a word). Nothing else is checked: a non-finite
+    value reaches the poles and the schema refuses the file there, and any other value, a negative
+    `p_stop` included, is a hypothesis like any other.
 
 **Regression.** A new module that no existing code imports: its own suite only.
 
@@ -258,27 +283,36 @@ the pipeline is always the same; a run that wants the source wind as it is sets 
 **Deliverables.**
 
 1. **`casspian-run-inputs` runs five sections**, in the order gravity, rotation, wind, shear,
-   composition. `[shear]` is required, with the same checks the driver already makes (role
-   `forward`, the run's prefix, output under the run's `inputs/` carrying the prefix).
+   composition. `[shear]` is required. The driver's `role` and `prefix` checks, which it makes of
+   the other four sections, do not apply to `[shear]`, which has neither key; its output is checked
+   like every section's, a file under the run's `inputs/` carrying the prefix.
 2. **File names.** `[wind]` writes the source wind as `inputs/<run>_wind_source.nc`; `[shear]`
    reads it and writes `inputs/<run>_wind.nc`, which is the path every namelist's `[inputs] wind`
    already names. No namelist changes.
 3. **The two existing runs migrated.** `forward/lindal_closure/lindal_closure_build.toml` and
    `forward/lindal_transfer/lindal_transfer_build.toml` gain `[shear]` with `case = "identity"`,
-   and their `[wind] output` becomes `inputs/<run>_wind_source.nc`. Their products must not move:
-   the closure product equal to the registered one by the bit-identity check `step03_4` already
-   makes, and the transfer product's values equal to the accepted Step 5 product's.
+   and their `[wind] output` becomes `inputs/<run>_wind_source.nc`. Their computed values must not
+   move: the closure product equal to the registered one under `step04_5` check 11 (nine computed
+   variables by `array_equal`), and the transfer product's equal to the registered transfer product
+   (§1a). Both registered products are then rebuilt and recommitted in this step, because their
+   embedded copies of the inputs change (the wind is now the shear step's output); the report lists
+   every registered file that changed and shows the computed columns unchanged.
 4. **`casspian-new-run`** (`src/casspian/tools/run/new_run.py`): `casspian-new-run <name> --from
    <run directory>` makes `forward/<name>/` with `<name>_build.toml` and `<name>.toml` copied from
-   the named run, every prefix, output name, `[run] name` and title carrying the new name, and
-   nothing else changed. It refuses if `forward/<name>/` exists. It makes no inputs; the person
+   the named run, every whole-token occurrence of the source run's name in both files, comments
+   included, replaced by the new name, and nothing else changed (`[run] description` is the
+   person's to edit). It refuses if `forward/<name>/` exists. It makes no inputs; the person
    edits `[shear]`, `[target]` or whatever the experiment changes, then runs
    `casspian-run-inputs` and `casspian-forward` as the runbook says. Its control files are
    committed; its `inputs/` and `output/` are ignored like every run's.
-5. **F9's left panel.** The label `u_reference at <p> mbar` becomes `source wind, assigned to <p>
-   mbar`, and a second line, `u_total at <p> mbar`, is always drawn beside it (author, 29
-   September: where the two agree they lie on top of each other).
-6. **Runbook.** `docs/RUNBOOK.md` names the five sections and `casspian-new-run`, v0.4.
+5. **F9's left panel** (transfer mode only; a closure product has no F9). The label `u_reference at
+   <p> mbar` becomes `source wind, assigned to <p> mbar`, and a second line, `u_total at <p> mbar`,
+   is always drawn beside it (author, 29 September: where the two agree they lie on top of each
+   other). `<p>` is the file's `reference_level_pressure_Pa`, the one pressure F9 can know, and
+   `u_total` there is read by the model's rule.
+6. **Runbook.** `docs/RUNBOOK.md` v0.4 names the five sections and `casspian-new-run`, and says
+   that a clone which pulls new console entries runs `pip install -e . --no-deps` again before
+   using them.
 
 **Acceptance (`tests/step05_2/accept_step05_2.py`).**
 
@@ -286,9 +320,9 @@ the pipeline is always the same; a run that wants the source wind as it is sets 
 2. `casspian-run-inputs` on both migrated build files writes both wind files; the `_wind.nc` file
    is array-equal to `_wind_source.nc` in every variable.
 3. The closure run's content comparison against the anchor's embedded copies passes.
-4. The closure product equals the registered product under the existing bit-identity check.
+4. The closure product equals the registered product under `step04_5` check 11.
 5. The transfer product's delivered N, p, T, altitude, `r0` and pressure identity equal the
-   accepted Step 5 product's (`array_equal`).
+   registered transfer product's (`array_equal`).
 6. `casspian-new-run` from `lindal_transfer` makes a directory whose two files differ from the
    source only in the name fields; a second call with the same name is refused; the new run
    builds and runs to the same values as check 5.
@@ -302,7 +336,8 @@ reduction chain is not reached.
 
 **Accepted suites whose expectations change.** Some accepted suites may assert the contents or
 file names of a run's `inputs/` directory, or compare a rebuilt input set against a fixture made
-before this step (`step03_3` does the latter). A suite whose expectation changes only because of
+before this step (`step03_3` does the latter; `step04_0` check 6 compares the closure wind with a
+fixture under a list of allowed differences). A suite whose expectation changes only because of
 this migration is updated in this step, each one named in the report with its old and new
 expectation, and its reference count in the driver table kept unless a check is added or
 removed. No accepted suite is edited silently, and none is left failing.
@@ -312,7 +347,8 @@ removed. No accepted suite is edited silently, and none is left failing.
 ## 4. Step 3: the named experiments
 
 **Runs.** Each is a named run made by `casspian-new-run` from `lindal_transfer`, differing only
-in its `[shear]` section and, for run 3b, its target. Target 10 N. `p_s = 1e5` Pa for every case
+in its `[shear]` section and, for run 3b, its target and, for run 7f, its `[wind]
+pressure_grid_Pa`. Target 10 N. `p_s = 1e5` Pa for every case
 but `identity`. The input to the shear step is the run's own `_wind_source.nc`.
 
 | Run | Directory | Case | Parameters | Purpose |
@@ -336,8 +372,11 @@ full precision, the value the SPEC_04 Step 5 acceptance used. Run 7f differs fro
 `[wind] pressure_grid_Pa` (1 Pa to 1 MPa, twenty per decade); the shear tool writes on its
 input's grid.
 
-**Every run from 2 to 9 is made at geopotential spacings 5e4 and 2.5e4** (the namelist's
-`[grid] geopotential_spacing_m2s2`), and reports the pressure identity at both, the number of
+**Every run from 2 to 9 is made at geopotential spacings 5e4 and 2.5e4.** The run of record is
+the run's own directory at the namelist's 5e4, built and run as the runbook says;
+`run_experiments.py` makes the 2.5e4 run in a copy under `reports/step05_3/spacing_2p5e4/`, with the
+anchor path rewritten for the copy's depth, as `step04_5` check 11 reruns the closure namelist.
+No committed file is edited. Each run reports the pressure identity at both spacings, the number of
 outer-loop passes, and the wall time. Bounds on the identity are set from these measurements;
 nothing is loosened first. For scale: the Step 5 synthetic sheared run gave 3.3e-4 at 5e4 and
 1.5e-4 halved, against 5.8e-7 for the closure run. Decision Q's truncation floor (latitude
@@ -405,8 +444,8 @@ the delivered temperature only at the levels where it changes the wind.
    completed or which named failure stopped it.
 
 **Acceptance checks.** 1: run 2 array-equal to the accepted transfer product. 2: runs 3a and 3b
-equal in N, p, T to the measured round-off. 3: run 3a's `r0(10 N)` equal to 60,092,307.69 m within
-0.1 m. 4: the pressure identity of every
+equal in N, p, T to the measured round-off. 3: run 3a's `r0(10 N)` (the product variable the Step 3 report
+names) equal to 60,092,307.69 m within 0.1 m. 4: the pressure identity of every
 completed run at both spacings, bounded from the measurements. 5: runs 5 and 9 against the
 reviewing agent's independent values (stated before Step 3 is reviewed). Every other outcome is reported, not checked.
 
@@ -445,6 +484,57 @@ unless the optional control key `uncertainty_ms` gives a value, which then repla
   occurs; the null's radius stated (60,092,307.69 m, bound 0.1 m); the anchor column's bottom
   1.294 bar; accepted suites whose expectations change with the Step 2 migration updated in the
   step and named.
+- v0.4, 30 September 2026: rulings on `reports/REPORT_05_preexecution.md` (§7) and the author's
+  directions of 30 September: replace, never add, for the output's metadata (§1.7: no title, no
+  history line, no new provenance value; only values that would be false are overwritten); no
+  role rule for the shear tool and no `role`, `prefix` or `title` in `[shear]`; the registered
+  transfer product (§1a); both registered products recommitted at Step 2; `step04_5` check 11
+  cited; Step 3's second spacing run in a copy.
+
+---
+
+## 7. Rulings on REPORT_05_preexecution (30 September 2026)
+
+Every finding was checked against the repository and is correct. The author's two directions of 30
+September come first because they settle findings 11, 13 and 14.
+
+**Author, on metadata.** Stop adding metadata. A run has its own directory, which can carry a
+descriptive name, and the data and control files in it say what it is. SPEC_05 therefore follows
+replace, never add (§1.7): the shear tool adds no title, no history line and no provenance value;
+it overwrites only the few values that would otherwise be false (`vertical_structure`, the
+provenance of built cells, and the uncertainty's description when `uncertainty_ms` replaces it).
+The general audit of existing labels stays a later task.
+
+**Author, on the role rule.** The rule that shear belongs to forward runs is probably right, but
+it does not need to be enforced. The tool has no role check, and `[shear]` carries no `role`,
+`prefix` or `title` (§1.2 note, Step 1 deliverable 3, Step 2 deliverable 1).
+
+1. Accepted: the closure check is `step04_5` check 11; cited in Step 2.
+2. Accepted: F9 is transfer mode only; stated in Step 2 deliverable 5.
+3. and 12. Accepted: `casspian-new-run` replaces every whole-token occurrence of the source run's
+   name in both files, comments included, and nothing else.
+4. Accepted: `step04_0` check 6 named among the suites the migration may reach; its outcome is a
+   Step 2 measurement.
+5. Accepted: the run of record at 5e4 in its own directory; the 2.5e4 run in a copy under
+   `reports/step05_3/`.
+6. Accepted: run 7f named in the opening sentence of Step 3.
+7. Accepted, with the order in §1a: register the transfer product on a clean tree before Step 1.
+8. Accepted: the Step 3 report names the product variable for `r0`.
+9. Accepted: `u_s` through `lib.windfield.WindField`; Step 1 check 2 shows whether a node value
+   comes back exactly.
+10. In part. `shape` not one of the two names is refused (it is a typo). Nothing else in the list
+    is: a non-finite value reaches the poles and the schema refuses the file; a negative `p_stop`
+    is a hypothesis. Step 1 check 10 is restated.
+11. Settled by the author's direction: no role check.
+13. Settled by the author's direction: no title handling; the source's title is carried.
+14. Settled by the author's direction: the uncertainty's attributes are untouched unless
+    `uncertainty_ms` replaces its values.
+15. Accepted: both F9 lines at the file's `reference_level_pressure_Pa`.
+Runbook: accepted, in Step 2 deliverable 6.
+
+The three rulings given in chat before this report (the registered transfer product, both
+registered products recommitted at Step 2, Step 1 not writing over its input) are now in the text
+(§1a, Step 2 deliverable 3, Step 1's acceptance).
 
 ---
 
@@ -452,10 +542,10 @@ unless the optional control key `uncertainty_ms` gives a value, which then repla
 
 - **Section 2.3 (run build files).** A forward run's build file carries five sections: gravity,
   rotation, wind, shear, composition. `[wind]` writes `inputs/<run>_wind_source.nc`; `[shear]`
-  writes `inputs/<run>_wind.nc`, the file the namelist reads.
+  writes `inputs/<run>_wind.nc`, the file the namelist reads. `[shear]` carries no `role`, `prefix`
+  or `title`.
 - **Section 6.6 (kind W).** `u_reference_ms` and `reference_level_pressure_Pa` are the source's
   wind and the level the source assigned it to, carried unchanged by the shear tool; `u_total` at
   that pressure may differ from `u_reference`, and `u_shear` is their difference. The sum identity
-  is unchanged. A file written by the shear tool may carry `value_provenance` value 5,
-  `constructed_by_shear_case`.
+  is unchanged.
 - **Console tools.** `casspian-wind-shear` and `casspian-new-run` added to the list of tools.
