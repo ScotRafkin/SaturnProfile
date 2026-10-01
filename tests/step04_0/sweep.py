@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 from casspian.lib import io as cio  # noqa: E402
 from casspian.refrac import product as refrac_product  # noqa: E402
 from casspian.forward import production as forward_production  # noqa: E402
+from casspian.forward import transfer as forward_transfer  # noqa: E402
 from casspian.tools.composition import build_composition  # noqa: E402
 from casspian.tools.gravity import build_gravity, build_rotation  # noqa: E402
 from casspian.tools.lindal import build_inputs, build_raw  # noqa: E402
@@ -99,7 +100,7 @@ def sweep() -> int:
     written.extend(run_inputs.build(CLOSURE / "lindal_closure_build.toml"))
     written.append(forward_production.run(CLOSURE / "lindal_closure.toml").product)
     written.extend(run_inputs.build(TRANSFER / "lindal_transfer_build.toml"))
-    written.append(forward_production.run(TRANSFER / "lindal_transfer.toml").product)
+    written.append(forward_transfer.run(TRANSFER / "lindal_transfer.toml").product)
 
     print("\n--- casspian_git_commit read back from every rebuilt file ---")
     dirty = []
