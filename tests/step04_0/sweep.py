@@ -42,6 +42,7 @@ KIND_OF = {
     "lindal_reduction.toml": "manifest",
     "lindal_refractivity.nc": "refractivity",
     "lindal_closure_profile.nc": "profile",
+    "lindal_transfer_profile.nc": "profile",
 }
 
 
@@ -55,6 +56,13 @@ def kind_of(path: Path) -> str:
     raise RuntimeError(f"no kind for {path.name}")
 
 
+def registered() -> list[str]:
+    """The committed netCDF products the sweep rewrites (SPEC_05 decision D1), fixtures excluded."""
+    listed = subprocess.run(["git", "ls-files", "*.nc"], cwd=ROOT, capture_output=True,
+                            text=True, check=True).stdout.split()
+    return [name for name in listed if not name.startswith("tests/")]
+
+
 def main() -> int:
     porcelain = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT,
                                capture_output=True, text=True).stdout.strip()
@@ -63,6 +71,21 @@ def main() -> int:
         print(porcelain)
         return 1
     print(f"clean tree at {cio.git_commit()}")
+    # The registered products are committed (D1), so rewriting the first one would make the tree
+    # dirty and stamp every later file -dirty. They are marked skip-worktree for the sweep only, so
+    # the stamp checks every code and control file and ignores only the outputs being rebuilt.
+    products = registered()
+    subprocess.run(["git", "update-index", "--skip-worktree", *products], cwd=ROOT, check=True)
+    print(f"skip-worktree set on the {len(products)} registered products for the sweep")
+    try:
+        return sweep()
+    finally:
+        subprocess.run(["git", "update-index", "--no-skip-worktree", *products], cwd=ROOT,
+                       check=True)
+        print(f"skip-worktree cleared on the {len(products)} registered products")
+
+
+def sweep() -> int:
 
     written = []
     build = LINDAL / "lindal_build.toml"
@@ -76,6 +99,7 @@ def main() -> int:
     written.extend(run_inputs.build(CLOSURE / "lindal_closure_build.toml"))
     written.append(forward_production.run(CLOSURE / "lindal_closure.toml").product)
     written.extend(run_inputs.build(TRANSFER / "lindal_transfer_build.toml"))
+    written.append(forward_production.run(TRANSFER / "lindal_transfer.toml").product)
 
     print("\n--- casspian_git_commit read back from every rebuilt file ---")
     dirty = []
