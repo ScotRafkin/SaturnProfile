@@ -36,6 +36,7 @@ step04_2/accept_step04_2 13
 step04_3/accept_step04_3 9
 step04_4/accept_step04_4 11
 step04_5/accept_step04_5 11
+step05_1/accept_step05_1 11
 "
 
 # The suites to run: all of them, or those named (a directory name selects every suite in it).
@@ -64,9 +65,10 @@ rm -rf "$B"; mkdir -p "$B" || exit 1
 cp "$D/lindal_refractivity.nc" "$B/" && cp -r "$D/figures" "$B/figures" || exit 1
 mkdir -p "$B/closure" && cp -r "$F/inputs" "$F/output" "$B/closure/" || exit 1
 mkdir -p "$B/transfer" && cp -r "$T/inputs" "$B/transfer/" || exit 1
+cp "$T/output/lindal_transfer_profile.nc" "$B/transfer/" || exit 1
 before=$(python -c "from casspian.lib import io; print(io.sha256('$B/lindal_refractivity.nc'))")
 fbefore=$(cd "$F" && sha256sum inputs/*.nc output/lindal_closure_profile.nc | sha256sum)
-tbefore=$(cd "$T" && sha256sum inputs/*.nc | sha256sum)
+tbefore=$(cd "$T" && sha256sum inputs/*.nc output/lindal_transfer_profile.nc | sha256sum)
 dirty() { git status --porcelain | sed 's/^/        /'; }
 echo "the tree carries $(git status --porcelain | wc -l) paths of its own before the run" >> "$out"
 dirty >> "$out"
@@ -76,6 +78,7 @@ restore() {
   rm -rf "$D/figures" && cp -r "$B/figures" "$D/figures" || exit 1
   rm -rf "$F/inputs" "$F/output" && cp -r "$B/closure/inputs" "$B/closure/output" "$F/" || exit 1
   rm -rf "$T/inputs" && cp -r "$B/transfer/inputs" "$T/" || exit 1
+  cp "$B/transfer/lindal_transfer_profile.nc" "$T/output/lindal_transfer_profile.nc" || exit 1
   git checkout -- reports/figures/
 }
 
@@ -103,10 +106,10 @@ done <<< "$selected"
 
 after=$(python -c "from casspian.lib import io; print(io.sha256('$D/lindal_refractivity.nc'))")
 fafter=$(cd "$F" && sha256sum inputs/*.nc output/lindal_closure_profile.nc | sha256sum)
-tafter=$(cd "$T" && sha256sum inputs/*.nc | sha256sum)
+tafter=$(cd "$T" && sha256sum inputs/*.nc output/lindal_transfer_profile.nc | sha256sum)
 echo "registered kind N restored: sha256 before $before, after $after, equal $([ "$before" = "$after" ] && echo yes || echo NO)" >> "$out"
 echo "closure inputs and product restored: equal $([ "$fbefore" = "$fafter" ] && echo yes || echo NO)" >> "$out"
-echo "transfer inputs restored: equal $([ "$tbefore" = "$tafter" ] && echo yes || echo NO)" >> "$out"
+echo "transfer inputs and product restored: equal $([ "$tbefore" = "$tafter" ] && echo yes || echo NO)" >> "$out"
 echo "porcelain at the end:" >> "$out"
 git status --porcelain >> "$out"
 echo "$k of $n suites at their reference counts" >> "$out"
