@@ -86,6 +86,33 @@ _started = time.time()
 _last = _started
 
 
+def departure(a, b):
+    """The largest relative difference of `a` from `b` where `b` is nonzero, and the largest in
+    units in the last place of `b`. Reported beside the bit-identity, which says only True or
+    False (REPORT_05_step0: on a platform other than the one that registered the product, the
+    closure rerun differs from it in the last bit)."""
+    a, b = np.asarray(a, dtype="float64"), np.asarray(b, dtype="float64")
+    d = np.abs(a - b)
+    nonzero = b != 0
+    rel = float(np.max(d[nonzero] / np.abs(b[nonzero]))) if nonzero.any() else 0.0
+    ulp = float(np.max(d / np.spacing(np.abs(b))))
+    return rel, ulp
+
+
+#: REVIEW_05_step0, the ruling on section 5: one bound on every platform.
+RELATIVE_BOUND = 1e-14
+
+
+def within(a, b, bound=RELATIVE_BOUND):
+    """`a` agrees with `b` to `bound` relative where `b` is nonzero, and exactly where it is zero."""
+    a, b = np.asarray(a, dtype="float64"), np.asarray(b, dtype="float64")
+    if a.shape != b.shape:
+        return False
+    d = np.abs(a - b)
+    nonzero = b != 0
+    return bool(np.all(d[nonzero] <= bound * np.abs(b[nonzero])) and np.all(d[~nonzero] == 0))
+
+
 def record(number, description, passed, detail):
     """One check's result, with the wall clock since the check before it."""
     global _last
@@ -975,15 +1002,24 @@ else:
                                        np.asarray(closure[name].values))) for name in COMPARED}
     equal["geopotential_m2s2"] = bool(np.array_equal(
         np.asarray(rebuilt_root["geopotential_m2s2"].values), Phi_closure_product))
+    departures = {name: departure(rebuilt_root[name].values, closure[name].values)
+                  for name in COMPARED}
+    departures["geopotential_m2s2"] = departure(rebuilt_root["geopotential_m2s2"].values,
+                                                Phi_closure_product)
+    agree = {name: within(rebuilt_root[name].values, closure[name].values) for name in COMPARED}
+    agree["geopotential_m2s2"] = within(rebuilt_root["geopotential_m2s2"].values,
+                                        Phi_closure_product)
 
-    record(11, "beyond the specification's list: the closure production is bit-identical to the "
-               "registered product after the refactor that put both paths through "
-               "produce_on_geopotential",
-           all(equal.values()),
+    record(11, "beyond the specification's list: the closure production agrees with the registered "
+               "product to 1e-14 relative (REVIEW_05_step0), bit-identity reported, after the "
+               "refactor that put both paths through produce_on_geopotential",
+           all(agree.values()),
            f"the closure namelist is copied to {closure_path} and run there, so the registered product "
            f"is read and never rewritten; its inputs are the registered ones\n"
-           f"compared by array_equal against {CLOSURE_PRODUCT.name}, level by level:\n"
-           + "\n".join(f"    {name}: {value}" for name, value in equal.items())
+           f"compared against {CLOSURE_PRODUCT.name}, level by level, bit-identity and the bound "
+           f"{RELATIVE_BOUND:g} relative; within the bound for every variable: {all(agree.values())}\n"
+           + "\n".join(f"    {name}: {value}, largest departure {departures[name][0]:.3e} "
+                       f"relative ({departures[name][1]:g} ulp)" for name, value in equal.items())
            + f"\nthis is the safety property of the step and it should be checked again after any "
            f"change to forward/production.py")
 

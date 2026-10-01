@@ -53,7 +53,8 @@ def recorded_hashes():
     # as one structure; REPORT_04_step0 section 6 records the swept hashes.
     for name in ("reports/REPORT_01_step9.md", "reports/REPORT_01_step8.md",
                  "reports/REPORT_02_step6.md", "reports/REPORT_03_step0.md",
-                 "reports/REPORT_03_step3.md", "reports/REPORT_04_step0.md"):
+                 "reports/REPORT_03_step3.md", "reports/REPORT_04_step0.md",
+                 "reports/REPORT_05_step0.md"):
         if Path(name).exists():
             report = Path(name).read_text(encoding="utf-8")
             recorded.update(re.findall(

@@ -53,6 +53,33 @@ def identical(a, b):
     return a.shape == b.shape and np.array_equal(a.view(np.uint8), b.view(np.uint8))
 
 
+def departure(a, b):
+    """The largest relative difference of `a` from `b` where `b` is nonzero, and the largest in
+    units in the last place of `b`. Reported beside the bit-identity, which says only True or
+    False (REPORT_05_step0: on a platform other than the one that registered the product, the
+    closure rerun differs from it in the last bit)."""
+    a, b = np.asarray(a, dtype="float64"), np.asarray(b, dtype="float64")
+    d = np.abs(a - b)
+    nonzero = b != 0
+    rel = float(np.max(d[nonzero] / np.abs(b[nonzero]))) if nonzero.any() else 0.0
+    ulp = float(np.max(d / np.spacing(np.abs(b))))
+    return rel, ulp
+
+
+#: REVIEW_05_step0, the ruling on section 5: one bound on every platform.
+RELATIVE_BOUND = 1e-14
+
+
+def within(a, b, bound=RELATIVE_BOUND):
+    """`a` agrees with `b` to `bound` relative where `b` is nonzero, and exactly where it is zero."""
+    a, b = np.asarray(a, dtype="float64"), np.asarray(b, dtype="float64")
+    if a.shape != b.shape:
+        return False
+    d = np.abs(a - b)
+    nonzero = b != 0
+    return bool(np.all(d[nonzero] <= bound * np.abs(b[nonzero])) and np.all(d[~nonzero] == 0))
+
+
 # ---------------------------------------------------------------------------
 # The run, the anchor and the geometry every check below shares
 # ---------------------------------------------------------------------------
@@ -266,9 +293,12 @@ on_disk = {"pressure_Pa": with_array.pressure_Pa,
            "mean_molar_mass_kg_mol": with_array.mean_molar_mass_kg_mol,
            "geopotential_m2s2": with_array.geopotential.geopotential_m2s2}
 disk_same = {name: identical(product[name].values, value) for name, value in on_disk.items()}
+disk_departure = {name: departure(value, product[name].values)
+                  for name, value in on_disk.items()}
+disk_within = {name: within(value, product[name].values) for name, value in on_disk.items()}
 record(10, "the SPEC_03 closure rerun through produce with the wind array is bit-identical to the "
-           "closure product",
-       same_as_scalar and same_geopotential and all(disk_same.values()),
+           "scalar path and agrees with the closure product to 1e-14 relative (REVIEW_05_step0)",
+       same_as_scalar and same_geopotential and all(disk_within.values()),
        f"the wind array is the run's own wind along the column, {closure_column[0]:.11f} m/s at "
        f"every level, against the scalar {scalar.u_ms:.11f}\n"
        f"against the scalar path, bit for bit: {sorted(fields)} {same_as_scalar}; the "
@@ -276,6 +306,10 @@ record(10, "the SPEC_03 closure rerun through produce with the wind array is bit
        f"against the registered product on disk (commit "
        f"{product.attrs.get('casspian_git_commit', '')[:12]}), bit for bit: "
        + "; ".join(f"{name} {value}" for name, value in disk_same.items()) + "\n"
+       + f"within {RELATIVE_BOUND:g} relative of the registered product: {all(disk_within.values())}; "
+       + "largest departure: "
+       + "; ".join(f"{name} {rel:.3e} relative ({ulp:g} ulp)"
+                   for name, (rel, ulp) in disk_departure.items()) + "\n"
        f"u_at_phi_c_ms keeps its meaning, the reference-level value {with_array.u_ms:.11f} m/s, and "
        f"u_column_ms holds {with_array.u_column_ms.size} levels")
 

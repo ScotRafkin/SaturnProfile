@@ -74,7 +74,8 @@ recorded = dict(re.findall(r"\| `([\w/]+\.(?:nc|toml))` \| \w+ \| `([0-9a-f]{64}
 # provisionally until its sweep record replaces them (handoff of 17 September section 7).
 for line in [text for name in ("reports/REPORT_01_step8.md", "reports/REPORT_02_step6.md",
                                "reports/REPORT_03_step0.md", "reports/REPORT_03_step3.md",
-                               "reports/REPORT_04_step0.md")
+                               "reports/REPORT_04_step0.md",
+                               "reports/REPORT_05_step0.md")
              if Path(name).exists()
              for text in Path(name).read_text(encoding="utf-8").splitlines()]:
     if line.startswith("| `lindal_") and line.count("`") == 4:
