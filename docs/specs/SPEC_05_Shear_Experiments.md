@@ -2,9 +2,10 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.4, 30 September 2026. Author of record: S. Rafkin. **Status: accepted by the author at
-v0.3 on 29 September 2026. Step 0 closes with the review of `REPORT_05_step0`; the pre-execution review is ruled on
-at v0.4 (§7); Step 1 begins once the transfer product is registered (§1a).** Built from the design
+Version 0.6, 1 October 2026. Author of record: S. Rafkin. **Status: accepted by the author at
+v0.3 on 29 September 2026; v0.6 accepted on 1 October 2026 with Step 2 (decision R). Step 0 closes with the review of `REPORT_05_step0`; the pre-execution review is ruled on
+at v0.4 (§7); Step 1 begins once the transfer product is registered (§1a). v0.5 inserts the performance step
+as Step 2 (§2a); the shear step in every build and the experiments become Steps 3 and 4.** Built from the design
 note `claude/SPEC_05_shear_design_2026-09-29.md` and its review
 `claude/SPEC_05_shear_design_review_2026-09-29.md` (the review is the later word where they
 differ), with the author's rulings of 29 September. Depends on `SPEC_00_Architecture_and_Data_Files.md`
@@ -41,8 +42,12 @@ any shear work as Step 0.
 
 **What this specification covers.** A tool that writes a kind W file under a named shear
 hypothesis (Step 1); its place in every forward run's build, and a tool that makes a new named
-run (Step 2); a first set of named transfer experiments under those hypotheses (Step 3). **The
-model does not change.** What is left for later: the constant-on-cylinders case (§1.6), a
+run (Step 3); a first set of named transfer experiments under those hypotheses (Step 4).
+Before them, Step 2 makes the column march fast without changing a result (decision R, §2a). **The
+model's results do not change.** Step 2 changes how `lib` and the isobar map in
+`forward/transfer.py` compute them, and nothing else; every other step leaves the model's code
+alone. Where the handoff of 29 September says nothing under `lib` or `forward` is edited, Step 2 is
+the exception. What is left for later: the constant-on-cylinders case (§1.6), a
 latitude-confined case, decay above a height or radius, a modify mode, the in-memory call from
 the Monte Carlo driver (§1.5), and the composition tools and experiments.
 
@@ -72,7 +77,8 @@ it; the forward run's reference surface uses `u_total` at the gauge isobar. `val
 is read by nothing in the model. The model interpolates `u_total` linearly in latitude
 (decision L) and linearly in ln p, and refuses outside the file's grid.
 
-Every shear hypothesis is therefore a kind W file written by a tool. No model code changes.
+Every shear hypothesis is therefore a kind W file written by a tool. No model code changes for
+the shear work (Step 2's speed-up changes how results are computed, not what they are).
 
 ### 1.2 The three parts of kind W under a shear case
 
@@ -214,7 +220,7 @@ The transfer product is registered the way the closure product is (author, 30 Se
 the rulings on the pre-execution review, and before Step 1, `forward/lindal_transfer/output/
 lindal_transfer_profile.nc` is rebuilt on a clean tree (`git status --porcelain` empty, untracked
 files included), given an exception beside the closure product's in `.gitignore`, and committed.
-The `-dirty` copy on disk is discarded. It is the reference of Step 2 check 5 and Step 3 check 1.
+The `-dirty` copy on disk is discarded. It is the reference of Step 3 check 5 and Step 4 check 1.
 
 ---
 
@@ -274,7 +280,69 @@ suite reads it and writes only under `reports/step05_1/`, never over it.
 
 ---
 
-## 3. Step 2: the shear step in every forward run, and the new-run tool
+## 2a. Step 2: the column march, faster (decision R, first part)
+
+**Why, and why here (author, 1 October).** A production transfer run takes about 94 s and
+`step04_4` 4.4 hours, so the full regression takes about seven. Profiled on Windows (the coding
+agent's design note of 1 October, `Claude outputs/DESIGN_decision_R_columns_2026-10-01.md`): 78 of
+the 94 s are in `lib.mesh.build_columns`, about 0.27 ms of Python overhead per slope evaluation,
+not arithmetic. This step comes before the shear step in every build (Step 3), whose regression it
+shortens. It starts after Step 0 closes.
+
+**This step changes speed and nothing else.** No numerical setting, scheme, spacing or quadrature
+changes. The other parts of decision R that move numbers (a per-cell quadrature in latitude, the
+reference-surface march step as a control-file key, vectorizing across Monte Carlo draws) are later
+steps of their own.
+
+**Deliverables.**
+
+1. **Fix 1, do once what is done once,** in `lib.gravity` and `lib.mesh`: the degree list validated
+   once where the gravity file is read, not at every call; `P_l(sin phi)` and its derivative
+   computed once per latitude, not twice per slope; `omega_abs` once per slope; the per-call array
+   machinery (reshaping, broadcasting, single-point checks) set up once. The reference-surface march
+   gains through the same gravity functions; it needs no change of its own.
+2. **Fix 2, every column at once,** in `lib.mesh`: every column marches the same geopotential nodes
+   from `Phi = 0`, so the RK4 march carries `r` and `z` as arrays over the latitude nodes, with one
+   gravity and one wind evaluation for all columns per stage. The loop over nodes stays (an initial
+   value problem in `Phi`, SPEC_00 §3.1); the loop over columns goes. The transfer supplies the wind
+   for all columns at a `Phi` in one call (`ln p` at every latitude node from the isobar map, then
+   `WindField.wind_at` on the arrays); the isobar map gains that all-columns form.
+3. **One path.** `lm.column` becomes the one-latitude case of the array march; `lm.column` and
+   `lm.build_columns` keep their signatures, so no accepted suite or helper changes. The
+   cylinder-wind helpers of `step04_2` and `tests/step04_5/fields.py` are left as they are; they run
+   unchanged, without the speed-up.
+4. A refusal inside the array march (a point outside the wind grid, a named numerical failure) still
+   names the latitude and level where it happened.
+
+**Acceptance (`tests/step05_2/accept_step05_2.py` for the comparisons; the driver for the rest).**
+Nothing is committed before review, and the sweep tool refuses a tree that is not clean, so the
+comparisons use candidates: the script builds candidate copies of all 18 registered files from the
+working tree under `reports/step05_2/`, with the `-dirty` refusal relaxed for that script only, as
+the SPEC_03 and SPEC_04 candidates were built. The comparison is by value, so the candidates'
+`-dirty` stamps do not matter.
+
+1. **After fix 1:** the 18 candidates built and every variable of every group (the 518 of
+   REPORT_05_step0 §4) compared with the committed files. Expected
+   bit-identical, since the arithmetic and its order are unchanged.
+2. **After fix 2:** the same comparison. Expected bit-identical; NumPy may evaluate `sin`, `cos`,
+   `exp` or `power` through different routines for arrays than for single values, so a last-bit
+   difference is possible. Where a variable is not bit-identical, the check prints where, the
+   largest relative difference and the largest in units in the last place, and passes within
+   1e-14 relative (the rule of REVIEW_05_step0). Any reduction whose order could change between a
+   single-point and an array call (the sum over harmonic degrees) is named in the report.
+3. **The full regression,** every suite, `step04_4` included, at its reference count.
+4. **Timings:** the profiled production transfer run before and after, and every suite's wall time
+   from the driver, before (REPORT_05_step0 §3) and after, side by side.
+
+The sweep (`tests/step04_0/sweep.py`) runs only after the acceptance commit, and only if a value
+moved: the registered files are then rebuilt on the clean tree and recommitted, with the report
+listing them, as REPORT_05_step0 did. If nothing moved, the registered files stay as committed.
+
+**Regression.** A change to `lib` reaches everything: the full set.
+
+---
+
+## 3. Step 3: the shear step in every forward run, and the new-run tool
 
 **The author's ruling (29 September).** The shear step is part of every forward run's build, so
 the pipeline is always the same; a run that wants the source wind as it is sets `case =
@@ -314,7 +382,7 @@ the pipeline is always the same; a run that wants the source wind as it is sets 
    that a clone which pulls new console entries runs `pip install -e . --no-deps` again before
    using them.
 
-**Acceptance (`tests/step05_2/accept_step05_2.py`).**
+**Acceptance (`tests/step05_3/accept_step05_3.py`).**
 
 1. A build file without `[shear]` is refused, naming the five sections.
 2. `casspian-run-inputs` on both migrated build files writes both wind files; the `_wind.nc` file
@@ -344,7 +412,7 @@ removed. No accepted suite is edited silently, and none is left failing.
 
 ---
 
-## 4. Step 3: the named experiments
+## 4. Step 4: the named experiments
 
 **Runs.** Each is a named run made by `casspian-new-run` from `lindal_transfer`, differing only
 in its `[shear]` section and, for run 3b, its target and, for run 7f, its `[wind]
@@ -365,7 +433,7 @@ but `identity`. The input to the shear step is the run's own `_wind_source.nc`.
 | 8 | `shear_r8_increase25` | `increase_below` | `linear_ln_p`, `p_stop = 1e6`, `f = 1.25` | increase below |
 | 9 | `shear_r9_increase50` | `increase_below` | `linear_ln_p`, `p_stop = 1e6`, `f = 1.5` | Galileo-like increase |
 
-(Run 1, `identity`, is Step 1's check 1 and Step 2's migration; it is not repeated here.) Rates
+(Run 1, `identity`, is Step 1's check 1 and Step 3's migration; it is not repeated here.) Rates
 check: `ln(1e5/20) = 8.52`, `ln(1e5/700) = 4.96`, `ln(1e5/8000) = 2.53` scale heights, so 11.7,
 20.2 and 39.6 percent of `u_s` per scale height. Run 3b's target is the anchor's own `phi_c` to
 full precision, the value the SPEC_04 Step 5 acceptance used. Run 7f differs from run 7 only in
@@ -374,7 +442,7 @@ input's grid.
 
 **Every run from 2 to 9 is made at geopotential spacings 5e4 and 2.5e4.** The run of record is
 the run's own directory at the namelist's 5e4, built and run as the runbook says;
-`run_experiments.py` makes the 2.5e4 run in a copy under `reports/step05_3/spacing_2p5e4/`, with the
+`run_experiments.py` makes the 2.5e4 run in a copy under `reports/step05_4/spacing_2p5e4/`, with the
 anchor path rewritten for the copy's depth, as `step04_5` check 11 reruns the closure namelist.
 No committed file is edited. Each run reports the pressure identity at both spacings, the number of
 outer-loop passes, and the wall time. Bounds on the identity are set from these measurements;
@@ -425,31 +493,31 @@ the delivered temperature only at the levels where it changes the wind.
   now is to show the case works; deeper anchors will give them leverage.
 - **Independent values.** The reviewing agent computes runs 5 and 9 independently (this needs
   the vertical-shear term added to its own transfer code first) and states them in a later version of this
-  specification, before Step 3 is reviewed, at several levels inside and outside each case's
+  specification, before Step 4 is reviewed, at several levels inside and outside each case's
   zone rather than as a single number.
 
 **Deliverables.**
 
 1. The eleven run directories' control files, committed.
-2. `tests/step05_3/run_experiments.py`: builds and runs every experiment at both spacings (7f at
-   5e4 only), writing under `reports/step05_3/`; and `tests/step05_3/accept_step05_3.py`: the
+2. `tests/step05_4/run_experiments.py`: builds and runs every experiment at both spacings (7f at
+   5e4 only), writing under `reports/step05_4/`; and `tests/step05_4/accept_step05_4.py`: the
    checks below.
 3. F7, F8 and F9 for every run, as `casspian-forward` already draws them.
-4. One comparison figure in the report, made by the Step 3 script under `reports/figures/` and
+4. One comparison figure in the report, made by the Step 4 script under `reports/figures/` and
    not added to the package: temperature at 10 N minus run 2's against pressure for runs 3a to 9,
    one line per run, and a table of `r0(10 N)` per run.
-5. `reports/REPORT_05_step3.md` with a results table: per run and spacing, the largest delivered
+5. `reports/REPORT_05_step4.md` with a results table: per run and spacing, the largest delivered
    T change from run 2 and the pressure where it occurs, and the change at 1 bar, at the gauge and
    at the top of the column; altitudes at the same levels; `r0(10 N)`; the pressure identity; passes; wall time; and for run 7 whether it
    completed or which named failure stopped it.
 
 **Acceptance checks.** 1: run 2 array-equal to the accepted transfer product. 2: runs 3a and 3b
-equal in N, p, T to the measured round-off. 3: run 3a's `r0(10 N)` (the product variable the Step 3 report
+equal in N, p, T to the measured round-off. 3: run 3a's `r0(10 N)` (the product variable the Step 4 report
 names) equal to 60,092,307.69 m within 0.1 m. 4: the pressure identity of every
 completed run at both spacings, bounded from the measurements. 5: runs 5 and 9 against the
-reviewing agent's independent values (stated before Step 3 is reviewed). Every other outcome is reported, not checked.
+reviewing agent's independent values (stated before Step 4 is reviewed). Every other outcome is reported, not checked.
 
-**Regression.** Step 3 adds run directories and scripts and changes no code: its own suite only.
+**Regression.** Step 4 adds run directories and scripts and changes no code: its own suite only.
 
 ---
 
@@ -490,6 +558,18 @@ unless the optional control key `uncertainty_ms` gives a value, which then repla
   role rule for the shear tool and no `role`, `prefix` or `title` in `[shear]`; the registered
   transfer product (§1a); both registered products recommitted at Step 2; `step04_5` check 11
   cited; Step 3's second spacing run in a copy.
+- v0.5, 1 October 2026: the author's direction to make the column march fast before the shear step
+  in every build. New Step 2 (§2a), from the coding agent's design note of 1 October: fix 1 (do once
+  what is done once) and fix 2 (every column at once), one array path, speed only, the registered
+  files bit-identical or within 1e-14 relative. The former Steps 2 and 3 are now Steps 3 and 4, and
+  their suites `step05_3` and `step05_4`. **Step numbers in §6 and §7 written before v0.5 use the
+  old numbering:** there, Step 2 means the present Step 3 and Step 3 the present Step 4.
+- v0.6, 1 October 2026: the coding agent's four points on v0.5. Step 2's comparisons use candidates
+  built from the working tree with the `-dirty` refusal relaxed for that script, and the sweep runs
+  only after the acceptance commit and only if a value moved; §0 says the model's results do not
+  change and names Step 2 as the one step that edits `lib` (overriding the handoff of 29 September
+  there); Step 4's report is `REPORT_05_step4.md`; `STATE.md`'s SPEC_05 rows are renumbered by the
+  coding agent (2 decision R, 3 the shear step, 4 the experiments).
 
 ---
 
