@@ -45,6 +45,7 @@ from casspian.forward import estimate as fe
 from casspian.forward import production as fp
 from casspian.forward import propagate as fprop
 from casspian.lib import geoid
+from casspian.lib.gravity import validated_degrees
 from casspian.lib import control as ctl
 from casspian.lib import io as cio
 from casspian.lib import kernel as lk
@@ -79,7 +80,7 @@ def _constants(inputs):
         float(rotation["angular_rate_rad_s"]),
         float(gravity["GM_m3s2"]),
         np.asarray(gravity["J"].values, dtype="float64"),
-        np.asarray(gravity["degree"].values),
+        validated_degrees(gravity["degree"].values),
         float(gravity["normalization_radius_m"]),
     )
 
@@ -177,6 +178,14 @@ class IsobarMap:
         """`ln p` at one latitude node, for any `Phi`, continued outside the knots."""
         return _interpolate_continued(geopotential_m2s2, self.geopotential_m2s2[index],
                                       self.ln_pressure[index])
+
+    def ln_p_table(self, geopotential_m2s2) -> np.ndarray:
+        """`ln p` at every latitude node and every `Phi` given: one row per latitude node.
+
+        SPEC_05 Step 2 fix 2, the all-columns form of `ln_p_at`, element for element the same.
+        """
+        return np.stack([self.ln_p_at(i, geopotential_m2s2)
+                         for i in range(len(self.geopotential_m2s2))])
 
     def on_nodes(self, mesh) -> np.ndarray:
         """`ln p` at every `(phi_i, Phi_j)` node of `mesh`."""
@@ -509,6 +518,36 @@ def _cover_levels(mesh, placements, extensions):
     return mesh
 
 
+def _wind_table(mesh, isobar_map, field):
+    """The wind of every column at every `Phi` the column march evaluates, as a lookup.
+
+    SPEC_05 Step 2 fix 2. One `ln p` table from the isobar map and one `wind_at` call on the whole
+    of it, in place of a wind lookup per column per RK4 stage; each value is the one the
+    per-column callable gives at that `Phi`.
+    """
+    values = lm.stage_geopotentials(mesh.geopotential_m2s2)
+    ln_p = isobar_map.ln_p_table(values)
+    latitude = np.broadcast_to(np.asarray(mesh.latitude_rad, dtype="float64")[:, None], ln_p.shape)
+    pressure = np.exp(ln_p)
+    try:
+        table = np.asarray(field.wind_at(latitude, pressure), dtype="float64")
+    except ValueError as exc:
+        # The table holds every column, so the refusal names the column and the level where the
+        # march would first have met it (SPEC_05 Step 2 deliverable 4).
+        low_p, high_p = field.pressure_bounds_Pa
+        low_phi, high_phi = field.latitude_bounds_rad
+        outside = ((pressure < low_p) | (pressure > high_p)
+                   | (latitude < low_phi) | (latitude > high_phi))
+        i, k = (int(v[0]) for v in np.nonzero(outside))
+        raise ValueError(
+            f"{exc}; first met in the column at planetocentric latitude "
+            f"{np.degrees(latitude[i, k]):.6f} deg, at geopotential {values[k]:.6g} m2/s2, where "
+            f"the isobar map gives {pressure[i, k]:.6g} Pa"
+        ) from exc
+    column_of = {float(v): k for k, v in enumerate(values)}
+    return lambda Phi: table[:, column_of[float(Phi)]]
+
+
 def _geometry(inputs, mesh, isobar_map, placements, field, constants, gauge_isobar_Pa):
     """The reference surface, the columns, the pressure on the nodes and the kernels."""
     first = placements[0]
@@ -520,7 +559,7 @@ def _geometry(inputs, mesh, isobar_map, placements, field, constants, gauge_isob
         mesh, reference,
         (lambda i: (lambda Phi, index=i, latitude=float(mesh.latitude_rad[i]):
                     field.wind_at(latitude, np.exp(isobar_map.ln_p_at(index, Phi))))),
-        *constants)
+        *constants, wind_all=_wind_table(mesh, isobar_map, field))
     radius = _stack(columns, "radius_m")
     g = _stack(columns, "g_radial_ms2")
     u = _stack(columns, "u_ms")

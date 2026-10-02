@@ -31,6 +31,7 @@ import xarray as xr
 from casspian.lib import composition as comp
 from casspian.lib import control as ctl
 from casspian.lib import geopotential as gp
+from casspian.lib.gravity import validated_degrees
 from casspian.lib import hydrostatic as hs
 from casspian.lib import io as cio
 from casspian.lib import reduction as red
@@ -195,7 +196,7 @@ def produce(profile: Profile, inputs, gauge: int, p_b: float, u_column=None,
         float(rotation["angular_rate_rad_s"]),
         float(gravity["GM_m3s2"]),
         np.asarray(gravity["J"].values, dtype="float64"),
-        np.asarray(gravity["degree"].values),
+        validated_degrees(gravity["degree"].values),
         float(gravity["normalization_radius_m"]),
     )
     phi_c = profile.latitude_planetocentric_rad

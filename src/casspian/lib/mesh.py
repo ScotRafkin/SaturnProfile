@@ -26,9 +26,10 @@ from dataclasses import dataclass, replace
 
 import numpy as np
 
-from casspian.lib.gravity import g_eff_vector
+from casspian.lib.gravity import g_eff_from_factors, g_eff_vector, harmonic_factors
 
-__all__ = ["Mesh", "Column", "build_mesh", "column", "build_columns", "SIDES"]
+__all__ = ["Mesh", "Column", "build_mesh", "column", "build_columns", "stage_geopotentials",
+           "SIDES"]
 
 #: The sides `extend` names. The specification says "extended on that side by what the curve
 #: needs"; a curve `Phi_k(phi)` can run off either end of either axis, so all four are named.
@@ -185,6 +186,114 @@ def build_mesh(required_latitude_rad, anchor_geopotential_m2s2, latitude_spacing
     )
 
 
+def _check_nodes(geopotential_m2s2):
+    """The geopotential nodes of a march, checked, and the index of `Phi = 0`."""
+    Phi = np.asarray(geopotential_m2s2, dtype="float64")
+    if Phi.ndim != 1 or Phi.size < 2:
+        raise ValueError(f"the column needs at least two geopotential nodes; got {Phi.shape}")
+    if not np.all(np.diff(Phi) > 0.0):
+        raise ValueError("the geopotential nodes must be strictly increasing")
+    start = np.flatnonzero(Phi == 0.0)
+    if start.size == 0:
+        raise ValueError("the geopotential nodes must contain Phi = 0, where the column starts")
+    return Phi, int(start[0])
+
+
+def _steps(Phi, origin):
+    """The RK4 steps of the march: `(direction, index, here, half, there, h)`, in march order.
+
+    `half` is `here + 0.5 * h`, the geopotential of the second and third stages. The arithmetic is
+    the march's own, so these are the very values at which it asks for the wind.
+    """
+    out = []
+    for direction in (1, -1):
+        index = origin
+        while 0 <= index + direction < Phi.size:
+            here, there = float(Phi[index]), float(Phi[index + direction])
+            h = there - here
+            out.append((direction, index, here, here + 0.5 * h, there, h))
+            index += direction
+    return out
+
+
+def stage_geopotentials(geopotential_m2s2) -> np.ndarray:
+    """Every `Phi` at which the column march asks for the wind: the nodes and the RK4 half steps.
+
+    SPEC_05 Step 2 fix 2. A caller that can give the wind of every column at once tabulates it at
+    these values before the march, so that the march reads the table rather than asking each
+    column in turn. Sorted and unique.
+    """
+    Phi, origin = _check_nodes(geopotential_m2s2)
+    values = {float(v) for v in Phi}
+    for _, _, here, half, there, _ in _steps(Phi, origin):
+        values.update((here, half, there))
+    return np.array(sorted(values), dtype="float64")
+
+
+def _march(latitude_rad, Phi, origin, reference_radius_m, u_all, Omega, GM, J, degrees, R_norm):
+    """Every column at once: RK4 in `Phi` with `r` and `z` carried as arrays over latitude.
+
+    SPEC_05 Step 2 fix 2. `u_all(Phi)` returns the wind of every column at one geopotential. The
+    loop over nodes stays, since each node needs the one before it (SPEC_00 section 3.1); the loop
+    over columns is gone, and gravity is evaluated once per stage for every column. Each element
+    goes through the arithmetic of the one-column march, in its order.
+    """
+    factors = harmonic_factors(latitude_rad, J, degrees)
+
+    def slopes(radius, value):
+        """`(1/g, 1/|g_eff|)` for every column at one geopotential, the two right-hand sides."""
+        u = np.asarray(u_all(value), dtype="float64").reshape(latitude_rad.shape)
+        g, _, magnitude, _ = g_eff_from_factors(u, radius, factors, Omega, GM, R_norm)
+        return 1.0 / g, 1.0 / magnitude
+
+    shape = latitude_rad.shape + Phi.shape
+    radius = np.empty(shape, dtype="float64")
+    height = np.empty(shape, dtype="float64")
+    radius[:, origin], height[:, origin] = reference_radius_m, 0.0
+    r = z = None
+    for direction, index, here, half, there, h in _steps(Phi, origin):
+        if index == origin:
+            r = np.array(reference_radius_m, dtype="float64")
+            z = np.zeros(latitude_rad.shape, dtype="float64")
+        k1r, k1z = slopes(r, here)
+        k2r, k2z = slopes(r + 0.5 * h * k1r, half)
+        k3r, k3z = slopes(r + 0.5 * h * k2r, half)
+        k4r, k4z = slopes(r + h * k3r, there)
+        r = r + (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r)
+        z = z + (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z)
+        radius[:, index + direction], height[:, index + direction] = r, z
+
+    u = np.stack([np.asarray(u_all(float(v)), dtype="float64").reshape(latitude_rad.shape)
+                  for v in Phi], axis=-1)
+    g, G_phi, magnitude, psi = g_eff_vector(
+        u, radius, np.broadcast_to(latitude_rad[:, None], shape), Omega, GM, J, degrees, R_norm)
+    return radius, height, u, g, G_phi, magnitude, psi
+
+
+def _columns(latitude_rad, Phi, origin, reference_radius_m, u_all, Omega, GM, J, degrees, R_norm):
+    """The march for every latitude, returned as one `Column` per latitude, in order."""
+    latitude_rad = np.asarray(latitude_rad, dtype="float64")
+    r0 = np.asarray(reference_radius_m, dtype="float64").reshape(latitude_rad.shape)
+    radius, height, u, g, G_phi, magnitude, psi = _march(
+        latitude_rad, Phi, origin, r0, u_all, Omega, GM, J, degrees, R_norm)
+    return [Column(
+        latitude_rad=float(latitude_rad[i]),
+        geopotential_m2s2=Phi,
+        reference_radius_m=float(r0[i]),
+        radius_m=radius[i],
+        z_local_vertical_m=height[i],
+        g_radial_ms2=g[i],
+        G_phi_ms2=G_phi[i],
+        g_magnitude_ms2=magnitude[i],
+        psi_rad=psi[i],
+        u_ms=u[i],
+    ) for i in range(latitude_rad.size)]
+
+
+def _scalar(value) -> float:
+    return float(np.asarray(value, dtype="float64").reshape(()))
+
+
 def column(phi_c, geopotential_m2s2, reference_radius_m, u_of_geopotential,
            Omega, GM, J, degrees, R_norm) -> Column:
     """One column by RK4 on the geopotential nodes. SPEC_04 Step 2 deliverable 1.
@@ -199,70 +308,29 @@ def column(phi_c, geopotential_m2s2, reference_radius_m, u_of_geopotential,
     forms from the wind field and the isobar map; it is called at the RK4 stages as well as the
     nodes, since the stages are where the scheme needs it. The `u` recorded on the nodes is that
     same callable at the nodes, which is what `wind_on_mesh` gives them.
+
+    Since SPEC_05 Step 2 this is the one-latitude case of the march `build_columns` uses for every
+    latitude at once; the arithmetic is the same.
     """
-    Phi = np.asarray(geopotential_m2s2, dtype="float64")
-    if Phi.ndim != 1 or Phi.size < 2:
-        raise ValueError(f"the column needs at least two geopotential nodes; got {Phi.shape}")
-    if not np.all(np.diff(Phi) > 0.0):
-        raise ValueError("the geopotential nodes must be strictly increasing")
-    start = np.flatnonzero(Phi == 0.0)
-    if start.size == 0:
-        raise ValueError("the geopotential nodes must contain Phi = 0, where the column starts")
-    origin = int(start[0])
-    phi = float(phi_c)
-    constants = (Omega, GM, J, degrees, R_norm)
-
-    def slopes(radius, value):
-        """`(1/g, 1/|g_eff|)` at a radius and a geopotential, the two right-hand sides."""
-        u = float(np.asarray(u_of_geopotential(value), dtype="float64").reshape(()))
-        g, _, magnitude, _ = g_eff_vector(u, radius, phi, *constants)
-        return 1.0 / float(g), 1.0 / float(magnitude)
-
-    radius = np.empty(Phi.shape, dtype="float64")
-    height = np.empty(Phi.shape, dtype="float64")
-    radius[origin], height[origin] = float(reference_radius_m), 0.0
-
-    # An initial value problem in Phi: each node needs the one before it, so this is a loop over
-    # nodes and not whole-array arithmetic (SPEC_00 section 3.1, as `lib.geoid`'s march is).
-    for direction in (1, -1):
-        r, z = float(reference_radius_m), 0.0
-        index = origin
-        while 0 <= index + direction < Phi.size:
-            here, there = float(Phi[index]), float(Phi[index + direction])
-            h = there - here
-            k1r, k1z = slopes(r, here)
-            k2r, k2z = slopes(r + 0.5 * h * k1r, here + 0.5 * h)
-            k3r, k3z = slopes(r + 0.5 * h * k2r, here + 0.5 * h)
-            k4r, k4z = slopes(r + h * k3r, there)
-            r = r + (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r)
-            z = z + (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z)
-            index += direction
-            radius[index], height[index] = r, z
-
-    u = np.asarray([float(np.asarray(u_of_geopotential(v), dtype="float64").reshape(()))
-                    for v in Phi], dtype="float64")
-    g, G_phi, magnitude, psi = g_eff_vector(u, radius, np.full(Phi.shape, phi), *constants)
-    return Column(
-        latitude_rad=phi,
-        geopotential_m2s2=Phi,
-        reference_radius_m=float(reference_radius_m),
-        radius_m=radius,
-        z_local_vertical_m=height,
-        g_radial_ms2=g,
-        G_phi_ms2=G_phi,
-        g_magnitude_ms2=magnitude,
-        psi_rad=psi,
-        u_ms=u,
-    )
+    Phi, origin = _check_nodes(geopotential_m2s2)
+    return _columns(np.array([float(phi_c)]), Phi, origin, [float(reference_radius_m)],
+                    lambda value: [_scalar(u_of_geopotential(value))],
+                    Omega, GM, J, degrees, R_norm)[0]
 
 
-def build_columns(mesh: Mesh, reference_radius_m, wind_of, Omega, GM, J, degrees, R_norm):
-    """The column at every latitude node of a mesh, in node order.
+def build_columns(mesh: Mesh, reference_radius_m, wind_of, Omega, GM, J, degrees, R_norm,
+                  wind_all=None):
+    """The column at every latitude node of a mesh, in node order, all marched at once.
 
     `reference_radius_m` is `r0` on the mesh's latitude nodes, the Step 1 surface through the
     first anchor. `wind_of(index)` returns that column's `u_of_geopotential` callable, which the
     caller builds from the wind field and the isobar map; the columns are rebuilt on every pass of
     the outer loop because that map changes.
+
+    `wind_all(Phi)`, when given, returns the wind of every column at one geopotential, and is used
+    in place of asking each column's callable in turn (SPEC_05 Step 2 fix 2); a caller that can
+    tabulate the wind at `stage_geopotentials(mesh.geopotential_m2s2)` gives it. The columns are
+    the same either way.
     """
     r0 = np.asarray(reference_radius_m, dtype="float64")
     if r0.shape != mesh.latitude_rad.shape:
@@ -270,6 +338,11 @@ def build_columns(mesh: Mesh, reference_radius_m, wind_of, Omega, GM, J, degrees
             f"the reference radius has shape {r0.shape} and the mesh has "
             f"{mesh.latitude_rad.shape} latitude nodes"
         )
-    return [column(float(mesh.latitude_rad[i]), mesh.geopotential_m2s2, float(r0[i]),
-                   wind_of(i), Omega, GM, J, degrees, R_norm)
-            for i in range(mesh.latitude_rad.size)]
+    Phi, origin = _check_nodes(mesh.geopotential_m2s2)
+    if wind_all is None:
+        callables = [wind_of(i) for i in range(mesh.latitude_rad.size)]
+
+        def wind_all(value):
+            return [_scalar(callable_(value)) for callable_ in callables]
+
+    return _columns(mesh.latitude_rad, Phi, origin, r0, wind_all, Omega, GM, J, degrees, R_norm)

@@ -36,6 +36,10 @@ from __future__ import annotations
 import numpy as np
 
 __all__ = [
+    "validated_degrees",
+    "HarmonicFactors",
+    "harmonic_factors",
+    "g_eff_from_factors",
     "legendre_even",
     "legendre_even_derivative",
     "potential_V",
@@ -80,7 +84,23 @@ def _legendre_all(max_degree: int, x):
     return values, derivatives
 
 
+class _ValidatedDegrees(np.ndarray):
+    """A degree list already checked by `_as_degrees`, so a hot loop does not check it again."""
+
+
+def validated_degrees(degrees) -> np.ndarray:
+    """The degree list, checked once, marked so that every later call skips the check.
+
+    SPEC_05 Step 2 fix 1: the list is constant for a run, and checking it at every evaluation
+    cost a quarter of a production transfer run. Read it once where the gravity file is read and
+    pass this on; it is an ordinary integer array in every other respect.
+    """
+    return _as_degrees(degrees).view(_ValidatedDegrees)
+
+
 def _as_degrees(degrees) -> np.ndarray:
+    if type(degrees) is _ValidatedDegrees:
+        return degrees.view(np.ndarray)
     degrees = np.asarray(degrees, dtype="int64").ravel()
     if degrees.size == 0:
         raise ValueError("at least one harmonic degree is required")
@@ -109,6 +129,12 @@ def legendre_even_derivative(degrees, x) -> np.ndarray:
     return derivatives[degrees]
 
 
+def _legendre_even_both(degrees, x):
+    """`P_l(x)` and `dP_l/dx` for the even degrees supplied, from one pass of the recurrence."""
+    values, derivatives = _legendre_all(int(degrees.max()), x)
+    return values[degrees], derivatives[degrees]
+
+
 def _harmonic_terms(r, phi_c, J, degrees, R_norm):
     """Common factors: the ratio `(R/r)^l`, `P_l(sin phi_c)`, and its derivative, broadcast."""
     degrees = _as_degrees(degrees)
@@ -127,8 +153,7 @@ def _harmonic_terms(r, phi_c, J, degrees, R_norm):
     degrees_b = degrees.reshape(shape)
     J_b = J.reshape(shape)
     ratio = (np.asarray(R_norm, dtype="float64") / r) ** degrees_b
-    P = legendre_even(degrees, sin_phi)
-    dP = legendre_even_derivative(degrees, sin_phi)
+    P, dP = _legendre_even_both(degrees, sin_phi)
     return r, phi_c, sin_phi, degrees_b, J_b, ratio, P, dP
 
 
@@ -230,8 +255,66 @@ def g_eff_vector(u, r, phi_c, Omega, GM, J, degrees, R_norm):
     `G_phi` is positive and `psi` comes out negative, which is what `phi_c = phi_g - psi`
     requires. Convention ruled at the Step 4 review; SPEC_01 v0.6 Step 4 states it.
     """
-    g = g_eff_radial(u, r, phi_c, Omega, GM, J, degrees, R_norm)
-    G_phi = G_phi_eff(u, r, phi_c, Omega, GM, J, degrees, R_norm)
+    r_b, phi_b = np.broadcast_arrays(np.asarray(r, dtype="float64"),
+                                     np.asarray(phi_c, dtype="float64"))
+    return g_eff_from_factors(u, r_b, harmonic_factors(phi_b, J, degrees), Omega, GM, R_norm)
+
+
+class HarmonicFactors:
+    """The factors of the gravity series that depend on latitude only, computed once.
+
+    SPEC_05 Step 2 fix 1. Along a column of the mesh the latitude is fixed, so `sin`, `cos`,
+    `P_l(sin phi_c)`, `dP_l/dx` and the coefficients `(l + 1) J_l` are the same at every node and
+    every RK4 stage. `g_eff_from_factors` takes them from here and repeats the arithmetic of
+    `g_newton`, `G_phi_newton`, `omega_abs`, `g_eff_radial` and `G_phi_eff` term for term and in
+    the same order, so the values are the same bits.
+    """
+
+    __slots__ = ("phi_c", "sin_phi", "cos_phi", "cos_phi_squared", "degrees_b", "J_b",
+                 "coefficient_g", "P", "dP")
+
+    def __init__(self, phi_c, J, degrees):
+        degrees = _as_degrees(degrees)
+        J = np.asarray(J, dtype="float64").ravel()
+        if J.shape != degrees.shape:
+            raise ValueError(
+                f"J has {J.size} values but {degrees.size} degrees were supplied; they must "
+                "correspond one to one."
+            )
+        self.phi_c = np.asarray(phi_c, dtype="float64")
+        self.sin_phi = np.sin(self.phi_c)
+        self.cos_phi = np.cos(self.phi_c)
+        self.cos_phi_squared = self.cos_phi ** 2
+        shape = (degrees.size,) + (1,) * self.phi_c.ndim
+        self.degrees_b = degrees.reshape(shape)
+        self.J_b = J.reshape(shape)
+        self.coefficient_g = (self.degrees_b + 1) * self.J_b
+        self.P, self.dP = _legendre_even_both(degrees, self.sin_phi)
+
+
+def harmonic_factors(phi_c, J, degrees) -> HarmonicFactors:
+    """The latitude-only factors of the gravity series at `phi_c`, for `g_eff_from_factors`."""
+    return HarmonicFactors(phi_c, J, degrees)
+
+
+def g_eff_from_factors(u, r, factors: HarmonicFactors, Omega, GM, R_norm):
+    """`g_eff_vector` at radius `r` and the latitude `factors` were made for.
+
+    `r` has the shape of the factors' latitude. The arithmetic is `g_eff_vector`'s, in its order:
+    the Newtonian series once for both components, `Omega_abs` once, then the centrifugal terms.
+    """
+    r = np.asarray(r, dtype="float64")
+    cos_phi = factors.cos_phi
+    ratio = (np.asarray(R_norm, dtype="float64") / r) ** factors.degrees_b
+    GM = np.asarray(GM, dtype="float64")
+    g_N = (GM / r**2) * (1.0 - np.sum(factors.coefficient_g * ratio * factors.P, axis=0))
+    G_phi_N = -(GM / r**2) * np.sum(factors.J_b * ratio * cos_phi * factors.dP, axis=0)
+    u = np.asarray(u, dtype="float64")
+    with np.errstate(divide="ignore", invalid="ignore"):
+        contribution = np.where(cos_phi != 0.0, u / (r * cos_phi), 0.0)
+    w = np.asarray(Omega, dtype="float64") + contribution
+    g = g_N - w**2 * r * factors.cos_phi_squared
+    G_phi = G_phi_N - w**2 * r * cos_phi * factors.sin_phi
     magnitude = np.hypot(g, G_phi)
     psi = np.arctan2(-G_phi, g)
     return g, G_phi, magnitude, psi

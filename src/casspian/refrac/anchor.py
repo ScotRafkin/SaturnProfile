@@ -28,7 +28,7 @@ import numpy as np
 from casspian.lib import geoid as gd
 from casspian.lib import latitude as lat
 from casspian.lib.control import ReductionInputs, ReductionManifest
-from casspian.lib.gravity import g_eff_vector
+from casspian.lib.gravity import g_eff_vector, validated_degrees
 
 __all__ = [
     "AnchorConvergenceError",
@@ -130,7 +130,7 @@ def geoid_setup(inputs: ReductionInputs, manifest: ReductionManifest) -> GeoidSe
         float(inputs.rotation["angular_rate_rad_s"]),
         float(gravity["GM_m3s2"]),
         np.asarray(gravity["J"].values, dtype="float64"),
-        np.asarray(gravity["degree"].values),
+        validated_degrees(gravity["degree"].values),
         float(gravity["normalization_radius_m"]),
     )
     surfaces = np.asarray(geodesy["surface_pressure_Pa"].values, dtype="float64")
