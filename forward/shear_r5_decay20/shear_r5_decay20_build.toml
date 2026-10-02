@@ -1,0 +1,94 @@
+# CASSPIAN build control file for the forward run shear_r5_decay20 (SPEC_00 section 2.2.2
+# and 2.3, SPEC_03 Step 3 deliverable 1, SPEC_04 Step 0 deliverable 3). Pointers and
+# declared choices only.
+#
+# The same five sections as forward/lindal_closure/lindal_closure_build.toml, pointing at
+# the same sources with this run's prefix, so that the transfer runs under the one state in
+# hand. Two things differ from the closure, and both are SPEC_04 Step 0: the wind is written
+# in the three parts of deliverable 1, and the composition is written on the latitude grid
+# of deliverable 2, the Lindal column carried to every latitude as a hypothesis. A transfer
+# run makes no closure comparison, so its inputs are not checked against the anchor's.
+# Built by: casspian-run-inputs forward/shear_r5_decay20/shear_r5_decay20_build.toml
+
+[gravity]
+source = "../../data_static/harmonics/null1981.toml"
+output = "inputs/shear_r5_decay20_gravity.nc"
+prefix = "shear_r5_decay20"
+role   = "forward"
+epoch  = "1981-08-26"   # SPEC_01 v0.28: the date of the occultation the run transfers from
+title  = "Null et al. (1981) harmonic set, as assumed by the shear_r5_decay20 run"
+
+[rotation]
+source = "../../data_static/rotation/system_iii.toml"
+entry  = "system_iii"
+output = "inputs/shear_r5_decay20_rotation.nc"
+prefix = "shear_r5_decay20"
+role   = "forward"
+epoch  = "1981-08-26"
+title  = "System III rotation, as assumed by the shear_r5_decay20 run"
+
+[wind]
+# The run's own gravity and rotation files; the raw bundle for the reference geoid polar radius
+# (SPEC_03 v0.10 section 8 ruling 4). A build file may point outside the run directory.
+wind_source_kind = "curve"
+curve_source     = "../../data_static/winds/ingersoll_pollard1982_fig5_curve.csv"
+points_source    = "../../data_static/winds/smith1982_fig4_points.csv"
+data_properties  = "../../data_static/winds/smith1982_fig4.toml"
+gravity_file     = "inputs/shear_r5_decay20_gravity.nc"
+rotation_file    = "inputs/shear_r5_decay20_rotation.nc"
+raw_bundle       = "../../occul_data/lindal/raw/lindal_raw.nc"
+output           = "inputs/shear_r5_decay20_wind_source.nc"
+prefix           = "shear_r5_decay20"
+role             = "forward"
+title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as assumed by the shear_r5_decay20 run"
+
+bin_width_deg     = 2.0
+min_count_per_bin = 3
+
+gap_rule        = "reflect_north"
+polar_rule      = "pchip_to_zero"
+join_window_deg = [-10.9, -15.0]
+
+latitude_grid_step_deg = 0.5
+vertical_structure     = "altitude independent"
+
+pressure_grid_Pa = [
+  1, 1.25893, 1.58489, 1.99526, 2.51189, 3.16228, 3.98107, 5.01187, 6.30957, 7.94328,
+  10, 12.5893, 15.8489, 19.9526, 25.1189, 31.6228, 39.8107, 50.1187, 63.0957, 79.4328,
+  100, 125.893, 158.489, 199.526, 251.189, 316.228, 398.107, 501.187, 630.957, 794.328,
+  1000, 1258.93, 1584.89, 1995.26, 2511.89, 3162.28, 3981.07, 5011.87, 6309.57, 7943.28,
+  10000, 12589.3, 15848.9, 19952.6, 25118.9, 31622.8, 39810.7, 50118.7, 63095.7, 79432.8,
+  100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
+  1e+06
+]
+
+[shear]
+# SPEC_05 Step 3: the shear step is part of every forward run's build. [wind] writes the source
+# wind; this section writes the wind the namelist reads. identity returns the source as it is.
+source = "inputs/shear_r5_decay20_wind_source.nc"
+output = "inputs/shear_r5_decay20_wind.nc"
+case   = "decay_above"
+shear_reference_pressure_Pa = 1.0e5
+shape  = "linear_ln_p"
+stop_pressure_Pa = 700.0
+stop_fraction    = 0.0
+
+[composition]
+# casspian-composition-lindal with its output redirected: the generic composition tool does not
+# exist yet (the forward-inputs specification). latitude_grid_deg writes the same column at
+# every node of the grid (SPEC_04 Step 0 deliverable 2); whether the field is uniform in
+# latitude is then a property of its values and not a tag.
+raw_bundle     = "../../occul_data/lindal/raw/lindal_raw.nc"
+species_master = "../../data_static/species_master.toml"
+species_set    = "lindal1985"
+output         = "inputs/shear_r5_decay20_composition.nc"
+prefix         = "shear_r5_decay20"
+role           = "forward"
+title          = "Lindal et al. (1985) composition, 94 percent H2 with He and NH3, as assumed by the shear_r5_decay20 run"
+
+h2_fraction_of_remainder = 0.94
+he_fraction_of_remainder = 0.06
+
+nh3_fill_rule = "linear in pressure through the tabulated Table I values, extrapolated beyond them by scipy.interpolate.interp1d(fill_value='extrapolate'), then clamped at zero; ammonia is assigned first and the remainder is split by the two shares above"
+vertical_coordinate = "pressure_Pa"
+latitude_grid_deg   = [-90.0, 90.0, 1.0]

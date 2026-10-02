@@ -483,6 +483,8 @@ def outer_loop(inputs, anchors, *, gauge_latitude_rad, target_latitude_rad, gaug
         passes.append({"pass": iteration, "residual_ln_p": residual,
                        "latitudes": int(mesh.latitude_rad.size),
                        "geopotential_nodes": int(mesh.geopotential_m2s2.size)})
+        print(f"outer loop pass {iteration}: largest |d ln p| {residual:.6e}, mesh "
+              f"{passes[-1]['latitudes']} x {passes[-1]['geopotential_nodes']}", flush=True)
         if residual < float(relative_tolerance_ln_p):
             # The state returned is the one the curves were traced on, and `isobar_map` is the
             # map that built it; the map the curves give differs from it by less than the
@@ -503,7 +505,8 @@ def outer_loop(inputs, anchors, *, gauge_latitude_rad, target_latitude_rad, gaug
     raise ValueError(
         f"the outer loop did not converge in {max_iterations} passes: the largest |d ln p| on "
         f"the mesh is {passes[-1]['residual_ln_p']:.3e} against a tolerance of "
-        f"{float(relative_tolerance_ln_p):.3e} (SPEC_04 Step 4 deliverable 1)"
+        f"{float(relative_tolerance_ln_p):.3e} (SPEC_04 Step 4 deliverable 1); the largest "
+        f"|d ln p| pass by pass: " + ", ".join(f"{h['residual_ln_p']:.6e}" for h in passes)
     )
 
 

@@ -481,6 +481,15 @@ def figure_8(pr: _Profile):
     return fig, data
 
 
+def _bracketing(nodes, low, high):
+    """The nodes from the last at or below `low` to the first at or above `high`, as a mask."""
+    nodes = np.asarray(nodes, dtype="float64")
+    below, above = nodes[nodes <= low], nodes[nodes >= high]
+    start = below.max() if below.size else nodes.min()
+    stop = above.min() if above.size else nodes.max()
+    return (nodes >= start) & (nodes <= stop)
+
+
 def figure_9(pr: _Profile):
     """F9, transfer mode only: the wind the run assumed, from the product's own inputs.
 
@@ -535,8 +544,11 @@ def figure_9(pr: _Profile):
     axes[0].set_title("the wind at the reference level")
     axes[0].legend(loc="best", fontsize=6.5)
 
-    inside = ((latitude >= mesh_latitude.min()) & (latitude <= mesh_latitude.max()))
-    within = ((pressure >= labels.min()) & (pressure <= labels.max()))
+    # The wind grid's nodes that bracket the transfer's range, so that a range narrower than one
+    # cell of the wind grid (a target at the anchor's own latitude) still has a cell to draw
+    # (SPEC_05 Step 4, run 3b).
+    inside = _bracketing(latitude, mesh_latitude.min(), mesh_latitude.max())
+    within = _bracketing(pressure, labels.min(), labels.max())
     field = u_total[np.ix_(inside, within)]
     low, high = float(np.nanmin(field)), float(np.nanmax(field))
     if low == high:
