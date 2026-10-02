@@ -2,7 +2,7 @@
 # and 2.3, SPEC_03 Step 3 deliverable 1, SPEC_04 Step 0 deliverable 3). Pointers and
 # declared choices only.
 #
-# The same four sections as forward/lindal_closure/lindal_closure_build.toml, pointing at
+# The same five sections as forward/lindal_closure/lindal_closure_build.toml, pointing at
 # the same sources with this run's prefix, so that the transfer runs under the one state in
 # hand. Two things differ from the closure, and both are SPEC_04 Step 0: the wind is written
 # in the three parts of deliverable 1, and the composition is written on the latitude grid
@@ -37,7 +37,7 @@ data_properties  = "../../data_static/winds/smith1982_fig4.toml"
 gravity_file     = "inputs/lindal_transfer_gravity.nc"
 rotation_file    = "inputs/lindal_transfer_rotation.nc"
 raw_bundle       = "../../occul_data/lindal/raw/lindal_raw.nc"
-output           = "inputs/lindal_transfer_wind.nc"
+output           = "inputs/lindal_transfer_wind_source.nc"
 prefix           = "lindal_transfer"
 role             = "forward"
 title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as assumed by the lindal_transfer run"
@@ -61,6 +61,13 @@ pressure_grid_Pa = [
   100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
   1e+06
 ]
+
+[shear]
+# SPEC_05 Step 3: the shear step is part of every forward run's build. [wind] writes the source
+# wind; this section writes the wind the namelist reads. identity returns the source as it is.
+source = "inputs/lindal_transfer_wind_source.nc"
+output = "inputs/lindal_transfer_wind.nc"
+case   = "identity"
 
 [composition]
 # casspian-composition-lindal with its output redirected: the generic composition tool does not

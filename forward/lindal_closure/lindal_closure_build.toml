@@ -35,7 +35,7 @@ data_properties  = "../../data_static/winds/smith1982_fig4.toml"
 gravity_file     = "inputs/lindal_closure_gravity.nc"
 rotation_file    = "inputs/lindal_closure_rotation.nc"
 raw_bundle       = "../../occul_data/lindal/raw/lindal_raw.nc"
-output           = "inputs/lindal_closure_wind.nc"
+output           = "inputs/lindal_closure_wind_source.nc"
 prefix           = "lindal_closure"
 role             = "forward"
 title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as assumed by the lindal_closure run"
@@ -59,6 +59,13 @@ pressure_grid_Pa = [
   100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
   1e+06
 ]
+
+[shear]
+# SPEC_05 Step 3: the shear step is part of every forward run's build. [wind] writes the source
+# wind; this section writes the wind the namelist reads. identity returns the source as it is.
+source = "inputs/lindal_closure_wind_source.nc"
+output = "inputs/lindal_closure_wind.nc"
+case   = "identity"
 
 [composition]
 # casspian-composition-lindal with its output redirected: the generic composition tool does not

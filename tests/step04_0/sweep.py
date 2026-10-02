@@ -9,7 +9,9 @@ rather than `-dirty`. The script rebuilds the chain with the SPEC_01 tools and
 every file and refuses if any ends in `-dirty`; then prints the SHA-256 of each in the row
 format the `step02_1` suite reads.
 
-Run from the repository root on a tree whose porcelain output is empty.
+Run from the repository root on a tree whose porcelain output is empty. With `--runs`, only the
+two forward runs' inputs and products are rebuilt, for a change that does not reach the reduction
+chain (SPEC_05 Step 3), so the chain keeps its bytes and its recorded hashes.
 """
 
 from __future__ import annotations
@@ -51,7 +53,8 @@ def kind_of(path: Path) -> str:
     if path.name in KIND_OF:
         return KIND_OF[path.name]
     for suffix, kind in (("_gravity.nc", "gravity"), ("_rotation.nc", "rotation"),
-                         ("_wind.nc", "wind"), ("_composition.nc", "composition")):
+                         ("_wind.nc", "wind"), ("_wind_source.nc", "wind"),
+                         ("_composition.nc", "composition")):
         if path.name.endswith(suffix):
             return kind
     raise RuntimeError(f"no kind for {path.name}")
@@ -89,14 +92,17 @@ def main() -> int:
 def sweep() -> int:
 
     written = []
-    build = LINDAL / "lindal_build.toml"
-    written.append(build_raw.build(LINDAL / "raw", LINDAL / "raw" / "lindal_raw.nc"))
-    written.append(build_gravity.build(build))
-    written.append(build_rotation.build(build))
-    written.append(build_wind.build(build))
-    written.append(build_composition.build(build))
-    written.extend(build_inputs.build(build))
-    written.append(refrac_product.build_product(LINDAL / "lindal_reduction.toml"))
+    if "--runs" in sys.argv:
+        print("--runs: the reduction chain is not rebuilt")
+    else:
+        build = LINDAL / "lindal_build.toml"
+        written.append(build_raw.build(LINDAL / "raw", LINDAL / "raw" / "lindal_raw.nc"))
+        written.append(build_gravity.build(build))
+        written.append(build_rotation.build(build))
+        written.append(build_wind.build(build))
+        written.append(build_composition.build(build))
+        written.extend(build_inputs.build(build))
+        written.append(refrac_product.build_product(LINDAL / "lindal_reduction.toml"))
     written.extend(run_inputs.build(CLOSURE / "lindal_closure_build.toml"))
     written.append(forward_production.run(CLOSURE / "lindal_closure.toml").product)
     written.extend(run_inputs.build(TRANSFER / "lindal_transfer_build.toml"))

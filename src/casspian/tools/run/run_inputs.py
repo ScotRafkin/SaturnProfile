@@ -1,15 +1,17 @@
 """`casspian-run-inputs`: a forward run's inputs, made by one command. SPEC_03 Step 3 deliverable 1.
 
 A thin driver over the existing tools. It reads `<run>_build.toml` beside the namelist and runs its
-four sections in order, gravity, rotation, wind and composition, each with the tool that writes
-that kind. It contains no physics and no value; every choice is in the build file, and each tool
-refuses what it refuses on its own.
+five sections in order, gravity, rotation, wind, shear and composition, each with the tool that
+writes that kind (SPEC_05 Step 3: `[wind]` writes the source wind, `[shear]` the wind the run
+reads, `case = "identity"` when the run wants the source as it is). It contains no physics and no
+value; every choice is in the build file, and each tool refuses what it refuses on its own.
 
 What the driver itself checks, because only it knows the file is a run's build file: the file is
-named `<run>_build.toml`; it carries exactly the four sections (no `[stage_two]`, which has no
-forward counterpart); every section declares `role = "forward"` and the run's prefix; and every
-output is a file under the run's `inputs/` directory (SPEC_00 section 2.3: the tools write
-`inputs/`, `forward` writes `output/`).
+named `<run>_build.toml`; it carries exactly the five sections (no `[stage_two]`, which has no
+forward counterpart); every section but `[shear]`, which carries neither key, declares
+`role = "forward"` and the run's prefix; and every output is a file under the run's `inputs/`
+directory carrying the prefix (SPEC_00 section 2.3: the tools write `inputs/`, `forward` writes
+`output/`).
 """
 
 from __future__ import annotations
@@ -21,22 +23,26 @@ from pathlib import Path
 from casspian.lib.control import ControlFileError
 from casspian.tools.composition import build_composition
 from casspian.tools.gravity import build_gravity, build_rotation
-from casspian.tools.wind import build_wind
+from casspian.tools.wind import build_wind, shear
 
 TOOL = "casspian-run-inputs"
 
 #: The sections in the order they run: wind reads the gravity and rotation files the first two
-#: write.
+#: write, and shear reads the source wind that wind writes.
 SECTIONS = (
     ("gravity", build_gravity.build),
     ("rotation", build_rotation.build),
     ("wind", build_wind.build),
+    ("shear", shear.build),
     ("composition", build_composition.build),
 )
 
+#: Sections that carry no `role` or `prefix` of their own (SPEC_05 Step 3 deliverable 1).
+WITHOUT_ROLE = ("shear",)
+
 
 def build(control_path) -> list[Path]:
-    """Run the four sections of a run's build file. Returns the paths written, in order."""
+    """Run the five sections of a run's build file. Returns the paths written, in order."""
     path = Path(control_path).resolve()
     if not path.exists():
         raise ControlFileError(f"{path}: build control file does not exist")
@@ -65,12 +71,12 @@ def build(control_path) -> list[Path]:
     inputs_directory = path.parent / "inputs"
     for name in names:
         table = document[name]
-        if table.get("role") != "forward":
+        if name not in WITHOUT_ROLE and table.get("role") != "forward":
             raise ControlFileError(
                 f"{path}: [{name}] role = {table.get('role')!r}; a run's inputs are role 'forward' "
                 "(SPEC_03 Step 3 deliverable 1)."
             )
-        if table.get("prefix") != run:
+        if name not in WITHOUT_ROLE and table.get("prefix") != run:
             raise ControlFileError(
                 f"{path}: [{name}] prefix = {table.get('prefix')!r}; a run's inputs carry the run "
                 f"prefix {run!r} (SPEC_00 section 8)."
@@ -88,7 +94,7 @@ def build(control_path) -> list[Path]:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        prog=TOOL, description="Build a forward run's four inputs from its build control file.")
+        prog=TOOL, description="Build a forward run's inputs from its build control file.")
     parser.add_argument("control", help="path to <run>_build.toml")
     args = parser.parse_args(argv)
     for written in build(args.control):

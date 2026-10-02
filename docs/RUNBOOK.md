@@ -1,14 +1,18 @@
 # CASSPIAN runbook: from a clean clone to the transfer product
 
-Version 0.3, 29 September 2026. Author of record: S. Rafkin. Status: sections 2 to 5 run by the
+Version 0.4, 2 October 2026. Author of record: S. Rafkin. Status: sections 2 to 5 run by the
 author on a clean clone of `e71d59e` on a CentOS 7 machine (glibc 2.17, bash 4.2, no C++
 compiler, system Python 3.7.4, Anaconda on the path), every value reproduced; section 6, the
 regression, waits on the acceptance scripts being committed under `tests/` (SPEC_00 v0.22). This is the document
 a person follows to install the package and reproduce the test case without an agent.
 
-The repository holds source, control files, static data, specifications and reports, and no
-netCDF. Every product, from the raw bundle to the transfer profile and its figures, is rebuilt from
-the control files by the console tools in the order below. That is the design (SPEC_00 §2), and it
+The repository holds source, control files, static data, specifications and reports, and, since
+`4d32efe`, the registered netCDF products (the Lindal reduction chain, the two runs' inputs and both
+products), because another platform rebuilds them equal only to the last few bits (SPEC_00 v0.22,
+REPORT_05_step0). Every product, from the raw bundle to the transfer profile and its figures, can be
+rebuilt from the control files by the console tools in the order below; a rebuild writes over the
+committed files, is compared with them by value, and `git checkout -- occul_data forward` puts the
+committed ones back. That is the design (SPEC_00 §2), and it
 is what makes a clone a test: if the rebuild reproduces the registered values, the clone is the same
 code on the same data.
 
@@ -53,6 +57,10 @@ machine were numpy 2.2.6 and scipy 1.16.3 under Python 3.12.14. `--no-deps` on t
 keeps pip from re-resolving numpy from source. A newer machine (glibc 2.28 or later, or a C++
 compiler present) can use `pip install -e .` alone.
 
+After a `git pull` that adds a console entry to `pyproject.toml` (SPEC_05 added
+`casspian-wind-shear` and `casspian-new-run`), run `pip install -e . --no-deps` again: an editable
+install picks up changed code by itself, but a new command exists only after the reinstall.
+
 Every command below is run from the repository root with the environment active; a new shell
 needs `source .venv/bin/activate` again.
 
@@ -82,24 +90,21 @@ Measured on the author's Linux clone: `66 0.023318454671386792 0.023318454671386
 What says it worked: `occul_data/lindal/lindal_refractivity.nc` validates as kind N with 66 levels;
 `refractivity_uncertainty / refractivity` is 2.331845e-2 at every level; the anchor isobar is
 1.0e4 Pa at planetocentric latitude 30.8056°; `anchor_isobar_radius_m` is 58,516,188 m; the
-figures F1 to F4 are written under `occul_data/lindal/figures/`. The registered SHA-256 at
-`e71d59e` is `920304440ee4554648c3aa6321b713741ee26eb0eb1ff223f5a81a8f9b20fd37`; a rebuild on
-another machine is expected to differ in its bytes (the files record `created_at`, and the last
-digits of floating point can differ between platforms), so the hash is recorded for the report and
-the values above are the check.
+figures F1 to F4 are written under `occul_data/lindal/figures/`. A rebuild is compared with the
+committed file by value, not by hash: every file records `created_at`, and the last digits of
+floating point can differ between platforms, so the values above are the check.
 
 ## 4. Rebuild the closure run and compare with the registered values
 
 ```
-casspian-run-inputs forward/lindal_closure/lindal_closure_build.toml   # inputs/: composition, gravity, rotation, wind
+casspian-run-inputs forward/lindal_closure/lindal_closure_build.toml   # inputs/: gravity, rotation, wind_source, wind, composition
 casspian-forward    forward/lindal_closure/lindal_closure.toml         # output/lindal_closure_profile.nc, F5 and F6
 ```
 
 What says it worked: the closure product's produced pressure at the gauge level (index 29) is
 9998.46545058 Pa, its temperature there 83.38720186 K, and the pressure at the top level
 19.95262315 Pa; the closure residual is 9.74e-4 above 2 mbar and −3.28e-3 at the bottom row, as
-SPEC_03 records. Registered SHA-256 at `e71d59e`:
-`fcc2e2c4ae71554537d8aa53f07b247724b718a371abab73de31939bae9ae6af`, with the same caveat.
+SPEC_03 records. As in section 3, the rebuild is compared with the committed product by value.
 
 A one-line check of the three values:
 
@@ -137,6 +142,24 @@ Measured on the author's Linux clone: `411134.8829284598 98186.67066940351 -1529
 60128612.966417134 5.776665666923364e-07`, the Windows product's values to the last digit of the
 double; wall time `real 1m31.1s`.
 
+**A run's build file has five sections**, run in this order by `casspian-run-inputs`: gravity,
+rotation, wind (the source wind, `inputs/<run>_wind_source.nc`), shear (the wind the namelist
+reads, `inputs/<run>_wind.nc`; `case = "identity"` gives the source as it is) and composition
+(SPEC_05 Step 3).
+
+**A new run** is made from an existing one, then edited and built:
+
+```
+casspian-new-run shear_r5_decay20 --from forward/lindal_transfer       # forward/shear_r5_decay20/ with its two control files
+# edit [shear] (and [target], if the experiment moves it) in forward/shear_r5_decay20/shear_r5_decay20_build.toml
+casspian-run-inputs forward/shear_r5_decay20/shear_r5_decay20_build.toml
+casspian-forward    forward/shear_r5_decay20/shear_r5_decay20.toml
+```
+
+`casspian-new-run` copies the two control files with the source run's name replaced by the new
+one, and nothing else; it refuses if the directory exists. The new run's control files are
+committed; its `inputs/` and `output/` are ignored.
+
 ## 6. The regression
 
 Once the acceptance scripts are in the repository under `tests/` (SPEC_00 v0.22; the incoming
@@ -146,14 +169,14 @@ agent's first commit), the regression is the proof that the clone is the same co
 git pull                                     # on the clone, after that commit is pushed
 mkdir -p reports/regression
 nohup bash tests/run_regression.sh > reports/regression/console.txt 2>&1 &
-                                             # about seven hours on Windows, four and a half of them step04_4;
+                                             # about 100 minutes on Windows (SPEC_05 Step 2), step04_4 about 15 of them;
                                              # nohup so that closing the terminal does not stop it
 ```
 
 Each suite's passing count is checked against the reference count in the driver's own table,
 which is where those counts live (a suite whose count legitimately changes at an acceptance has
 its row changed in the same commit). Rows and per-suite logs are written to
-`reports/regression/`, and the last line reads `26 of 26 suites at their reference counts`; the
+`reports/regression/`, and the last line reads `29 of 29 suites at their reference counts`; the
 script exits nonzero on any mismatch. `bash tests/run_regression.sh step04_5 step03_4` runs only
 the suites named, which is how a change that reaches only some suites is rerun (SPEC_04 §0). The script sets the
 registered products aside and restores them after each suite, so it is run on the products of
@@ -173,6 +196,7 @@ Windows ones.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.4 | 2026-10-02 | SPEC_05 Step 3: the five sections of a run's build file, `casspian-new-run`, and the reinstall after a pull that adds a console entry; under REVIEW_05_step3, the registered netCDF products are committed and a rebuild is compared by value, not by hash, and the regression takes about 100 minutes and reads 29 of 29 |
 | 0.3 | 2026-09-29 | Section 6: reference counts live in the driver's table, the 26-suite summary line and exit code, running named suites; the console log written under the ignored `reports/regression/` |
 | 0.2 | 2026-09-29 | Sections 2 to 5 run by the author on a CentOS 7 clone: the `uv` route with `--seed`, `--only-binary=:all:` and `--no-deps` for glibc 2.17 without a compiler, the measured versions, values and wall time; section 6 with `nohup` and the regression driver at `tests/run_regression.sh` |
 | 0.1 | 2026-09-28 | Written from the repository at `e71d59e` |

@@ -30,6 +30,7 @@ import numpy as np
 from matplotlib.figure import Figure
 
 from casspian.lib.constants import MOLAR_GAS_CONSTANT
+from casspian.lib.windfield import WindField
 from casspian.tools.plots import style
 
 
@@ -500,6 +501,12 @@ def figure_9(pr: _Profile):
     pressure = np.asarray(wind["pressure_Pa"].values, dtype="float64")
     u_reference = np.asarray(wind["u_reference_ms"].values, dtype="float64")
     u_total = np.asarray(wind["u_total_ms"].values, dtype="float64")
+    reference_Pa = float(wind["reference_level_pressure_Pa"])
+    # SPEC_05 Step 3 deliverable 5: u_total at the source's reference pressure, read by the model's
+    # own rule, beside the source wind; where they agree the two lines lie on top of each other.
+    u_total_at_reference = np.asarray(
+        WindField(wind).wind_at(np.radians(latitude), np.full(latitude.shape, reference_Pa)),
+        dtype="float64")
     mesh_latitude = np.asarray(isobars["latitude_planetocentric_deg"].values, dtype="float64")
     labels = np.asarray(pr.root["pressure_label_Pa"].values, dtype="float64")
     target_deg = float(pr.root["latitude_planetocentric_deg"].values)
@@ -509,7 +516,9 @@ def figure_9(pr: _Profile):
     axes = fig.subplots(1, 2)
     style.layout(fig, rows=1)
     axes[0].plot(latitude, u_reference, color=style.COLOR["wind"], linewidth=1.0,
-                 label=f"u_reference at {float(wind['reference_level_pressure_Pa']) / 100:g} mbar")
+                 label=f"source wind, assigned to {reference_Pa / 100:g} mbar")
+    axes[0].plot(latitude, u_total_at_reference, color=style.COLOR["gravity_effective"],
+                 linewidth=1.0, linestyle="--", label=f"u_total at {reference_Pa / 100:g} mbar")
     axes[0].axvspan(mesh_latitude.min(), mesh_latitude.max(), color=style.COLOR["band"],
                     alpha=0.35, linewidth=0,
                     label=f"the mesh, {mesh_latitude.min():g} to {mesh_latitude.max():g} degrees")
@@ -529,8 +538,19 @@ def figure_9(pr: _Profile):
     inside = ((latitude >= mesh_latitude.min()) & (latitude <= mesh_latitude.max()))
     within = ((pressure >= labels.min()) & (pressure <= labels.max()))
     field = u_total[np.ix_(inside, within)]
-    filled = axes[1].contourf(latitude[inside], pressure[within] / 100.0, field.T, levels=18)
-    fig.colorbar(filled, ax=axes[1], label="u_total (m/s)")
+    low, high = float(np.nanmin(field)), float(np.nanmax(field))
+    if low == high:
+        # A constant field has no range to contour, and the automatic levels would invent one at
+        # round-off, a scale that looks like structure (SPEC_05 Step 3, the author's request).
+        filled = axes[1].contourf(latitude[inside], pressure[within] / 100.0, field.T,
+                                  levels=[low - 1.0, low + 1.0])
+        bar = fig.colorbar(filled, ax=axes[1], label="u_total (m/s)")
+        bar.set_ticks([low])
+        axes[1].text(0.5, 0.5, f"u_total = {low:g} m/s everywhere", transform=axes[1].transAxes,
+                     ha="center", va="center", fontsize=9, color="white")
+    else:
+        filled = axes[1].contourf(latitude[inside], pressure[within] / 100.0, field.T, levels=18)
+        fig.colorbar(filled, ax=axes[1], label="u_total (m/s)")
     axes[1].set_yscale("log")
     axes[1].invert_yaxis()
     axes[1].axvline(target_deg, color=style.COLOR["height"], linestyle="--", linewidth=1.0)
@@ -543,6 +563,8 @@ def figure_9(pr: _Profile):
         source = source[:78].rsplit(" ", 1)[0] + " ..."
     fig.suptitle(f"F9. The wind assumed, {pr.slug}. {source}", fontsize=9)
     return fig, {"latitude_planetocentric_deg": latitude, "u_reference_ms": u_reference,
+                 "u_total_at_reference_ms": u_total_at_reference,
+                 "reference_level_pressure_Pa": reference_Pa,
                  "pressure_Pa": pressure[within], "u_total_ms": field,
                  "vertical_structure": str(wind.attrs.get("vertical_structure", "")),
                  "source": str(wind.attrs.get("source", ""))}
