@@ -2,8 +2,8 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.6, 1 October 2026. Author of record: S. Rafkin. **Status: accepted by the author at
-v0.3 on 29 September 2026; v0.6 accepted on 1 October 2026 with Step 2 (decision R). Step 0 closes with the review of `REPORT_05_step0`; the pre-execution review is ruled on
+Version 0.7, 2 October 2026. Author of record: S. Rafkin. **Status: accepted by the author at
+v0.3 on 29 September 2026; v0.6 accepted on 1 October 2026 with Step 2 (decision R). v0.7 accepted on 2 October 2026 (no independent values; Step 4 read against the expected outcomes). Step 0 closes with the review of `REPORT_05_step0`; the pre-execution review is ruled on
 at v0.4 (§7); Step 1 begins once the transfer product is registered (§1a). v0.5 inserts the performance step
 as Step 2 (§2a); the shear step in every build and the experiments become Steps 3 and 4.** Built from the design
 note `claude/SPEC_05_shear_design_2026-09-29.md` and its review
@@ -491,10 +491,11 @@ the delivered temperature only at the levels where it changes the wind.
   change there is of the same order as run 5's and colder toward the equator. What is small is the
   number of levels: in the Lindal column only the six levels below 1 bar are touched. Their role
   now is to show the case works; deeper anchors will give them leverage.
-- **Independent values.** The reviewing agent computes runs 5 and 9 independently (this needs
-  the vertical-shear term added to its own transfer code first) and states them in a later version of this
-  specification, before Step 4 is reviewed, at several levels inside and outside each case's
-  zone rather than as a single number.
+- **No independent values** (author, 2 October). The transfer code's vertical-shear path was
+  exercised at SPEC_04 Steps 4 and 5, and the expected outcomes above are the sanity checks the
+  review reads the runs against: the change confined between `p_s` and `p_stop`, the delivered
+  temperature equal to the anchor's above `p_stop`, colder toward the equator for a decaying jet,
+  the size growing with the decay rate, and run 3c a little under half of run 2.
 
 **Deliverables.**
 
@@ -514,8 +515,8 @@ the delivered temperature only at the levels where it changes the wind.
 **Acceptance checks.** 1: run 2 array-equal to the accepted transfer product. 2: runs 3a and 3b
 equal in N, p, T to the measured round-off. 3: run 3a's `r0(10 N)` (the product variable the Step 4 report
 names) equal to 60,092,307.69 m within 0.1 m. 4: the pressure identity of every
-completed run at both spacings, bounded from the measurements. 5: runs 5 and 9 against the
-reviewing agent's independent values (stated before Step 4 is reviewed). Every other outcome is reported, not checked.
+completed run at both spacings, bounded from the measurements. Every other outcome is reported,
+not checked, and read by the review against the expected outcomes above.
 
 **Regression.** Step 4 adds run directories and scripts and changes no code: its own suite only.
 
@@ -570,6 +571,9 @@ unless the optional control key `uncertainty_ms` gives a value, which then repla
   change and names Step 2 as the one step that edits `lib` (overriding the handoff of 29 September
   there); Step 4's report is `REPORT_05_step4.md`; `STATE.md`'s SPEC_05 rows are renumbered by the
   coding agent (2 decision R, 3 the shear step, 4 the experiments).
+- v0.7, 2 October 2026: the author's direction that the reviewing agent's independent values for
+  runs 5 and 9 are not needed; Step 4's check 5 removed, and the runs read against the expected
+  outcomes, which serve as the sanity checks.
 
 ---
 
