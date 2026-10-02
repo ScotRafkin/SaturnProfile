@@ -85,3 +85,48 @@ next step is a case built to be realistic, before any comparison with observatio
 2. The author's go; the acceptance commit as section 6 lists plus `forward/transfer.py`, with check 4
    bounded as above. No AI attribution.
 3. `STATE.md`: Step 4 accepted; SPEC_05's shear part complete.
+
+## Addendum, 2 October 2026: the two additions, reviewed
+
+Read in REPORT_05_step4 §7. Both are done as asked; **Step 4 accepted.**
+
+1. **The outer loop.** Both failed runs converge normally for five to eight passes and then hold a
+   constant residual, to seven digits, for forty passes, with the mesh unchanged. A constant
+   non-zero step between successive maps is a cycle, almost certainly between two states: a
+   discrete choice in the tracing (a curve or a level landing on one side of a mesh boundary or the
+   other) flipping back and forth. It is a property of extreme cases (40 and 100 percent per scale
+   height), and each converges at the other spacing. If it matters for realistic cases, the remedy
+   is to damp the update (average successive maps) or to detect the cycle and stop on it; either
+   changes numbers and belongs in a later step. Recorded, nothing to do now.
+2. **The kink at `p_s`.** Confirmed: with `p_s` at 1.3e5 Pa the 998.7 mbar level and the three
+   below it change by zero to round-off, and the change reaches up from the kink by about one mesh
+   cell. My suggested 1.05e5 Pa was too close: it moved the kink only half a cell, which the run
+   showed; the agent's second run settled it.
+
+The print-only change to `forward/transfer.py` moved no number (`step04_5` 11 of 11, check 11
+against the registered closure product). SPEC_05's shear work is complete.
+
+## Addendum 2, 2 October 2026: the outer loop's tolerance (author), option A
+
+Good enough is the standard: a change of a fraction of a kelvin or a fraction of a pascal between
+passes is noise, and a run should stop there, not integrate back and forth over it. The two runs
+that stopped were parked at 1.5e-4 in `ln p`, about 0.02 K. The kink at `p_s` is not involved:
+every kink case converged in five or six passes.
+
+1. **`[numerics.outer_loop] relative_tolerance_ln_p = 1.0e-3`** (0.1 percent in pressure, about
+   0.1 K) in the eleven experiment namelists only. A control-file value; no code changes.
+   `max_iterations` stays 50.
+2. **`forward/lindal_transfer/lindal_transfer.toml` is not changed,** nor the registered transfer
+   product. The SPEC_04 suites `step04_4` and `step04_5` take their outer-loop tolerance from that
+   namelist (the coding agent found this; my first version of this addendum assumed they did not),
+   and the registered product records the namelist, so changing it would reach the long suites.
+3. **Rerun `step05_4` only** (about 20 minutes): it gives the new pass counts and should show
+   runs 2 and 3a to 3c unchanged, runs 4 to 9 stopping two to six passes earlier, and runs 6 at 5e4
+   and 7 at 2.5e4 completing.
+
+**Note for later.** `lindal_transfer.toml` is the template `casspian-new-run` copies, so a new run
+starts at 1e-8 until a person edits it. The clean fix is for `step04_4` and `step04_5` to pin their
+own outer-loop tolerance instead of reading the production namelist, as accepted suites already pin
+their mesh spacings; the template can then move to 1e-3 without touching an accepted check. A
+test-side change for whenever the long suites next run anyway (the control-file audit, for
+example), not now.

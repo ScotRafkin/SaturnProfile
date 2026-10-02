@@ -52,7 +52,7 @@ scheme = "trapezoid"
 [numerics.altitude]
 scheme = "trapezoid"
 [numerics.outer_loop]
-relative_tolerance_ln_p = 1.0e-8
+relative_tolerance_ln_p = 1.0e-3
 max_iterations          = 50
 
 [estimation]

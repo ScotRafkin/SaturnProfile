@@ -222,3 +222,50 @@ driver as the evidence:
 product, passes. The registered kind N, the closure inputs and product, and the transfer inputs and
 product restored exactly; afterwards `git diff --name-only -- '*.nc'` is empty and no file carries a
 `skip-worktree` mark.
+
+## 8. The outer loop's tolerance at 1e-3 (REVIEW_05_step4, Addendum 2, option A)
+
+`[numerics.outer_loop] relative_tolerance_ln_p = 1.0e-3` in the eleven experiment namelists only;
+`max_iterations` stays 50. `forward/lindal_transfer/lindal_transfer.toml` and the registered
+transfer product are not changed. No code changed. `step05_4` was rerun through the driver: 4 of 4,
+990 s; the registered kind N, the closure inputs and product, and the transfer inputs and product
+restored exactly; afterwards `git diff --name-only -- '*.nc'` is empty and no file carries a
+`skip-worktree` mark.
+
+**All 21 runs complete.** Runs 6 at 5e4 and 7 at 2.5e4, which stopped at 1e-8, complete in 5 and 6
+passes. Runs 2 and 3a to 3c are unchanged (their residual reaches zero at pass 1 or 2), run 2 still
+array-equal to the registered product (check 1). Runs 4 to 9 stop two to six passes earlier, now 3
+to 6. Against section 3's table at 1e-8, the columns of the runs that completed at both tolerances
+move by at most 0.012 K in temperature (run 7 at 5e4, largest dT -70.306 to -70.318 K), and `r0`
+not at all. The pressure identity is unchanged to three digits in every run that completed at both.
+The two new runs: run 6 at 5e4, -33.73 K at largest, within 0.07 K of run 6 at 2.5e4, identity
+2.23e-3; run 7 at 2.5e4, -74.55 K at largest and -42.64 K at 1 bar, against -70.32 K and -40.56 K
+at 5e4, identity 2.82e-3 against 8.67e-3 at 5e4. Check 4's bound of 1e-2 holds for every run.
+
+| Run | Spacing | Largest dT from run 2 (K) | at p (Pa) | dT at 1 bar | dT at gauge | dT at top | dz at 1 bar (m) | dz at gauge (m) | dz at top (m) | r0 (m) | identity | passes | wall (s) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| shear_r2_uniform | 5e4 | +0.000 | 19.95 | +0.000 | +0.000 | +0.000 | +0.0 | +0.0 | +0.0 | 60,128,612.97 | 5.78e-07 | 2 | 35.3 |
+| shear_r2_uniform | 2.5e4 | +0.000 | 2882 | +0.000 | +0.000 | +0.000 | -0.0 | -0.0 | +0.0 | 60,128,612.97 | 5.77e-07 | 2 | 20.7 |
+| shear_r3a_nowind | 5e4 | +1.626 | 31.65 | +1.467 | +0.912 | +1.529 | -3.4 | -227.1 | -949.8 | 60,092,307.69 | 5.41e-07 | 1 | 33.5 |
+| shear_r3a_nowind | 2.5e4 | +1.626 | 31.65 | +1.467 | +0.912 | +1.529 | -3.4 | -227.1 | -949.8 | 60,092,307.69 | 5.41e-07 | 1 | 19.8 |
+| shear_r3b_nowind_anchor | 5e4 | +1.626 | 31.65 | +1.467 | +0.912 | +1.529 | -9.2 | -8122.3 | -34355.3 | 58,516,188.29 | 5.41e-07 | 1 | 33.9 |
+| shear_r3b_nowind_anchor | 2.5e4 | +1.626 | 31.65 | +1.467 | +0.912 | +1.529 | -9.2 | -8122.3 | -34355.3 | 58,516,188.29 | 5.41e-07 | 1 | 19.9 |
+| shear_r3c_half | 5e4 | +0.821 | 31.65 | +0.741 | +0.460 | +0.772 | -1.7 | -114.5 | -478.7 | 60,110,315.85 | 5.61e-07 | 2 | 36.5 |
+| shear_r3c_half | 2.5e4 | +0.821 | 31.65 | +0.741 | +0.460 | +0.772 | -1.7 | -114.5 | -478.7 | 60,110,315.85 | 5.59e-07 | 2 | 21.6 |
+| shear_r4_decay12 | 5e4 | -10.032 | 8.314e+04 | -5.022 | -9.765 | -3.437 | -29.8 | -9834.3 | -36814.9 | 60,118,683.65 | 2.07e-03 | 3 | 38.5 |
+| shear_r4_decay12 | 2.5e4 | -10.043 | 8.708e+04 | -5.283 | -9.772 | -3.471 | -4.5 | -9866.4 | -36897.7 | 60,118,683.65 | 2.82e-03 | 3 | 23.0 |
+| shear_r5_decay20 | 5e4 | -17.200 | 7.576e+04 | -8.746 | -16.698 | +1.529 | -49.8 | -16823.7 | -36817.3 | 60,111,621.40 | 2.60e-03 | 4 | 39.4 |
+| shear_r5_decay20 | 2.5e4 | -17.234 | 8.708e+04 | -9.058 | -16.713 | +1.529 | -9.7 | -16882.5 | -36891.9 | 60,111,621.40 | 3.79e-03 | 4 | 24.6 |
+| shear_r6_decay40 | 5e4 | -33.730 | 7.578e+04 | -17.911 | -30.942 | +1.529 | -114.4 | -32743.6 | -37251.0 | 60,095,468.90 | 2.23e-03 | 5 | 40.7 |
+| shear_r6_decay40 | 2.5e4 | -33.796 | 8.71e+04 | -18.272 | -31.376 | +1.529 | -39.9 | -32914.5 | -36778.4 | 60,095,468.90 | 3.14e-03 | 5 | 26.1 |
+| shear_r7_decay_linp | 5e4 | -70.318 | 8.72e+04 | -40.563 | -6.732 | +1.512 | -328.8 | -31662.2 | -35939.5 | 60,095,886.48 | 8.67e-03 | 5 | 40.5 |
+| shear_r7_decay_linp | 2.5e4 | -74.549 | 8.711e+04 | -42.639 | -6.729 | +1.512 | -123.6 | -32163.0 | -36427.7 | 60,095,886.48 | 2.82e-03 | 6 | 26.9 |
+| shear_r7f_decay_linp_fine | 5e4 | -70.016 | 8.715e+04 | -42.806 | -7.138 | +1.512 | -336.8 | -31676.1 | -35962.4 | 60,095,886.48 | 9.10e-03 | 6 | 40.1 |
+| shear_r8_increase25 | 5e4 | -9.443 | 1.294e+05 | -5.871 | +0.000 | +0.000 | +3.6 | -119.2 | -119.2 | 60,128,612.97 | 5.46e-04 | 3 | 36.0 |
+| shear_r8_increase25 | 2.5e4 | -9.408 | 1.294e+05 | -5.383 | +0.000 | +0.000 | -1.7 | -58.0 | -58.0 | 60,128,612.97 | 4.34e-05 | 3 | 21.9 |
+| shear_r9_increase50 | 5e4 | -18.903 | 1.294e+05 | -11.661 | +0.000 | +0.000 | +8.8 | -240.6 | -240.6 | 60,128,612.97 | 1.12e-03 | 3 | 35.8 |
+| shear_r9_increase50 | 2.5e4 | -18.829 | 1.294e+05 | -10.717 | +0.000 | +0.000 | -2.8 | -117.2 | -117.2 | 60,128,612.97 | 1.04e-04 | 3 | 22.0 |
+
+Section 3's table is the record at 1e-8. The comparison figure is redrawn from these runs by
+`accept_step05_4.py --no-run` (the driver restores `reports/figures/` after each suite) and now
+includes run 6 at 5e4; the four checks pass there too.
