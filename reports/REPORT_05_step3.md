@@ -63,6 +63,19 @@ bytes and so the hashes `step02_1` and `step02_6` read, for no change of content
 files are then compared with the committed ones by value and committed, and the comparison is
 added to this report.
 
+**The sweep, after the acceptance commit `d94063d`.** The runs-only sweep first stopped: the two
+`_wind_source.nc` files were new and untracked, so `skip-worktree` could not hide them, and once
+the closure's was written every later file was stamped `-dirty` and refused. Each run's source wind
+was then written alone on the clean tree (the other moved aside), so both carry `d94063d` clean,
+and committed (`3788018`), which made them registered; `python tests/step04_0/sweep.py --runs`
+then rebuilt the 12 run files on the clean tree at `3788018`, every one stamped
+`378801826fa0...` and none `-dirty`, the reduction chain untouched. Against the run files set aside
+before the sweep, all 409 variables of every group are array-equal: each run's gravity, rotation,
+wind and composition, each new `_wind_source.nc` against the run's previous wind file, and both
+products, the closure's 136 and the transfer's 177 variables. All 68 recorded hashes in the run
+files match the files on disk. A future sweep that adds a new registered file has to register it
+the same way first.
+
 ## 5. The regression
 
 `tools/run`, the build files and F9 reach every suite that builds forward inputs, reads a forward
