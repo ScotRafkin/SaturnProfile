@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.5, 3 October 2026. Author of record: S. Rafkin. **Status: closed, not adopted (§9).**
+Version 0.6, 3 October 2026. Author of record: S. Rafkin. **Status: closed, not adopted (§9).**
 The decisions of §5 were confirmed by the author at v0.2; v0.3 ruled on the coding agent's reading
 (§7); v0.4 on the interim report of Step 1 (§8); v0.5 closes the specification without adopting
 decision L2, the work kept on a branch and the findings carried to the redesign of the vertical. Depends on `SPEC_00_Architecture_and_Data_Files.md` v0.22, the closed
@@ -290,6 +290,7 @@ reading named are handled as §7 ruling 4 says: the hash table recorded in this 
   corner at a node stated as the mathematics requires; a dense-node reference measurement added
   before the author decides between L2 and L; check 7 restated in part.
 - v0.5, 3 October 2026: closed, not adopted (§9), at the author's direction.
+- v0.6, 3 October 2026: §9 addendum, the redesign of the vertical tabled (author).
 
 ---
 
@@ -461,3 +462,14 @@ bounds set per run.
 
 **Not carried forward:** check 7's bounds, which were set per run. No tolerance is set for one
 case.
+
+**Addendum (author, 3 October 2026).** The redesign of the vertical is tabled. A realistic shear
+case and the first comparison with CIRS come first, as originally planned, with the current
+numerics.
+- **Why it is good enough for that.** The trouble measured here grows with how sharply the shear
+  changes against the anchor's layers. A hypothesis written smoothly, on wind nodes dense enough
+  where it curves, stays in the regime where it is small.
+- **How it is watched.** The pressure identity every product carries, level by level, tells
+  whether the numerics limit a given run.
+- **What reopens the redesign.** The comparison, or the Monte Carlo, which will draw hypotheses
+  nobody inspects. The design note and its handoff are kept for then.

@@ -75,7 +75,7 @@ SPEC_06 accepted by the author at v0.2 on 2 October 2026, with the rulings of it
 
 ## SPEC_07, a wind interpolant with a continuous slope
 
-SPEC_07 accepted by the author at v0.2 on 3 October 2026; **closed, not adopted** at v0.5 (§9) on 3 October 2026. Decision L stands in the code. The work of Step 1 is kept, not merged, on branch `spec07-l2-parked` (`89e3e6d`); the specification, the reading and the report are kept on `main` as the record. The vertical is to be redesigned on a staggered arrangement (SPEC_00 §7.3 rule (ii)) by a new agent, and the interpolant judged again inside it.
+SPEC_07 accepted by the author at v0.2 on 3 October 2026; **closed, not adopted** at v0.5 (§9) on 3 October 2026. Decision L stands in the code. The work of Step 1 is kept, not merged, on branch `spec07-l2-parked` (`89e3e6d`); the specification, the reading and the report are kept on `main` as the record. A redesign of the vertical on a staggered arrangement (SPEC_00 §7.3 rule (ii)) is tabled (author, 3 October 2026, SPEC_07 v0.6): the realistic shear case and the first comparison with CIRS come first, on the current numerics.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
