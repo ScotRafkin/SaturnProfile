@@ -287,3 +287,31 @@ is not a property of either reading.
 
 The L worktree is kept until the decision; `git worktree remove` clears it. Nothing is committed and
 nothing is swept. The dense products under `reports/step07_1/dense/` are ignored files.
+
+## 8. Closing (SPEC_07 v0.5, §9)
+
+SPEC_07 is closed, not adopted. The cleanup the author gave the go for:
+
+| Item | Result |
+|---|---|
+| 1. Park L2 | branch `spec07-l2-parked` at `89e3e6d`, pushed to `origin`: `lib/windfield.py`, `refrac/anchor.py`, the figure and docstring edits (`kernel.py`, `figures_inputs.py`, `figures_product.py`, `figures_profile.py`, `wind/shear.py`), the `step02_5` and `step04_1` restatements, and `tests/step07_1/` |
+| 2. Restore `main` | `src/` and `tests/` as at `a238306` (no diff); the decision L worktree removed with `git worktree remove`; the ignored products under `reports/step07_1/` left in place |
+| 3. The record | `5f2e05c`: SPEC_07 v0.5, `REPORT_07_preexecution.md`, this report, and a SPEC_07 section in `docs/specs/STATE.md` |
+| 4. Outer loop pinned | `7652852`: `step04_4` and `step04_5` set 1e-8 themselves; the namelist is unchanged |
+| 5. `reports/New folder` | removed (empty, untracked) |
+| 6. Regression of record | on the clean tree at `7652852`: **30 of 30 suites at their reference counts**, no path dirty after any suite, the registered kind N file, the closure and the transfer inputs and products restored equal; 6923 s |
+
+Not as expected, listed rather than worked around:
+
+1. **`step04_5` run 1 cannot take a pinned tolerance.** It is the namelist's own run through the
+   driver (`tr.run`), so a test cannot hand it a value without changing the namelist. There the pin
+   is an assertion that the namelist carries 1e-8, as the suite already does for its spacings. Runs
+   2 to 5, and every outer loop in `step04_4`, take 1e-8 from the suite. Both suites still read the
+   iteration cap (50) from the namelist.
+2. **The coarse L2 products are gone from disk.** The regression's `step05_4` reran the
+   experiments under decision L, overwriting the ignored products under `forward/` and
+   `reports/step05_4/` that §7 read as coarse L2. The comparison itself is kept in
+   `reports/step07_1/dense/comparison.json`, and the branch rebuilds them.
+3. **The reports on `main` name `tests/step07_1/` scripts that are now only on the branch.**
+4. **`main` is not pushed.** It is ahead of `origin/main` by the SPEC_06 commits and these; the go
+   covered pushing the branch only.
