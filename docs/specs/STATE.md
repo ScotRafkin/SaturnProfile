@@ -72,3 +72,11 @@ SPEC_06 accepted by the author at v0.2 on 2 October 2026, with the rulings of it
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | the shear read at the wind file's resolution: the transfer on the isobar at the curve's label, the tracing integrated per column with the wind file's pressure nodes as breakpoints | accepted (`7dbea17`; 7 of 7 under REVIEW_06_step1 and SPEC_06 v0.4, after two interim reports; the sawtooth along the isobar 131 times smaller, run 8's leak above `p_s` 0.0000 K from -5.87, the identity and the 1 bar temperature mesh-independent, the two runs that cycled converge at 1e-8; the remaining identity at a break explained (check 7) as the production's log-linear density across an anchor layer holding a wind node's temperature break, its size the layer mass times the jump in ln T, its sign set by the node's place in the layer; `step05_4` check 4 restated as mesh independence; the registered run files swept at `f63bf24`, 347 of 361 variables array-equal, the transfer product moved by 2.3e-6 K at most; all 30 suites at their reference counts. SPEC_06 closed) | `reports/REPORT_06_step1.md`, `reports/REVIEW_06_step1.md` | 2026-10-03 |
+
+## SPEC_07, a wind interpolant with a continuous slope
+
+SPEC_07 accepted by the author at v0.2 on 3 October 2026; **closed, not adopted** at v0.5 (§9) on 3 October 2026. Decision L stands in the code. The work of Step 1 is kept, not merged, on branch `spec07-l2-parked` (`89e3e6d`); the specification, the reading and the report are kept on `main` as the record. The vertical is to be redesigned on a staggered arrangement (SPEC_00 §7.3 rule (ii)) by a new agent, and the interpolant judged again inside it.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | decision L2: PCHIP in latitude on each pressure row, then PCHIP in `ln p`, with the figures reading the wind through `WindField` | not adopted (interim report under v0.3, rulings of v0.4 §8, the dense reference of ruling 5 in the report's §7: L2 the closer reading wherever the hypothesis is resolved, neither reading converged at a change in shear sharper than the anchor's layers; closed by v0.5 §9; parked on `spec07-l2-parked`, not swept) | `reports/REPORT_07_preexecution.md`, `reports/REPORT_07_step1.md` | 2026-10-03 |
