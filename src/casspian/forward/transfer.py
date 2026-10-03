@@ -179,6 +179,12 @@ class IsobarMap:
         return _interpolate_continued(geopotential_m2s2, self.geopotential_m2s2[index],
                                       self.ln_pressure[index])
 
+    def geopotential_at(self, index: int, ln_pressure):
+        """`Phi` where `ln p` takes the values given, at one latitude node: the inverse of
+        `ln_p_at`, the same knots and the same continuation (SPEC_06 v0.3, the breakpoints)."""
+        return _interpolate_continued(ln_pressure, self.ln_pressure[index][::-1],
+                                      self.geopotential_m2s2[index][::-1])
+
     def ln_p_table(self, geopotential_m2s2) -> np.ndarray:
         """`ln p` at every latitude node and every `Phi` given: one row per latitude node.
 
@@ -281,9 +287,11 @@ def _refuse_if_crossing(Phi, order, latitude_rad):
 def trace(mesh, shear_integral, geopotential_m2s2, phi_from, phi_to) -> Curves:
     """The isobars through `geopotential_m2s2` at `phi_from`, carried to `phi_to`.
 
-    RK4 of `dPhi/dphi = -I(phi, Phi)` (Eq. A24, B6.2) on the mesh's own latitude nodes, with `I`
-    bilinear between them. Both latitudes are nodes of the mesh. The levels may be given in any
-    order and come back in it.
+    RK4 of `dPhi/dphi = -I(phi, Phi)` (Eq. A24, B6.2) on the mesh's own latitude nodes. A run's
+    `shear_integral` is a `lib.kernel.ColumnIntegral`, `I` from the shear at the wind file's
+    resolution (SPEC_06 v0.3); a node array, which the synthetic tests give, is read bilinearly
+    between the nodes. Both latitudes are nodes of the mesh. The levels may be given in any order
+    and come back in it.
 
     A curve that leaves the mesh's geopotential range stops the trace, which returns what it has
     with the side and the excess in `reached`; the caller extends the mesh and repeats. A pair of
@@ -299,6 +307,12 @@ def trace(mesh, shear_integral, geopotential_m2s2, phi_from, phi_to) -> Curves:
     order = np.argsort(Phi)
     _refuse_if_crossing(Phi, order, nodes[start])
 
+    if isinstance(shear_integral, lk.ColumnIntegral):
+        I = shear_integral.at
+    else:
+        def I(phi, Phi):
+            return lk.transfer_kernel(mesh, shear_integral, phi, Phi)
+
     step = 1 if stop >= start else -1
     low, high = float(mesh.geopotential_m2s2[0]), float(mesh.geopotential_m2s2[-1])
     kept = [Phi.copy()]
@@ -308,12 +322,10 @@ def trace(mesh, shear_integral, geopotential_m2s2, phi_from, phi_to) -> Curves:
     while index != stop:
         here, there = float(nodes[index]), float(nodes[index + step])
         h = there - here
-        # `transfer_kernel` with no composition is the bilinear value of a mesh field, which is
-        # what the stages of the scheme need between the nodes.
-        k1 = -lk.transfer_kernel(mesh, shear_integral, here, Phi)
-        k2 = -lk.transfer_kernel(mesh, shear_integral, here + 0.5 * h, Phi + 0.5 * h * k1)
-        k3 = -lk.transfer_kernel(mesh, shear_integral, here + 0.5 * h, Phi + 0.5 * h * k2)
-        k4 = -lk.transfer_kernel(mesh, shear_integral, there, Phi + h * k3)
+        k1 = -I(here, Phi)
+        k2 = -I(here + 0.5 * h, Phi + 0.5 * h * k1)
+        k3 = -I(here + 0.5 * h, Phi + 0.5 * h * k2)
+        k4 = -I(there, Phi + h * k3)
         Phi = Phi + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
         index += step
         # The excess is the largest overshoot over the levels, on each side.
@@ -346,26 +358,30 @@ def _joined(south: Curves, north: Curves) -> Curves:
 # ---------------------------------------------------------------------------------------------
 # The transfer
 # ---------------------------------------------------------------------------------------------
-def transfer(mesh, s_over_g, curves: Curves, ln_N, composition_latitude_rad=None,
+def transfer(kernel, curves: Curves, ln_N, label_pressure_Pa, composition_latitude_rad=None,
              composition_slope=None) -> np.ndarray:
-    """`ln N` along each curve, Eq. A28. SPEC_04 Step 4 deliverable 1.
+    """`ln N` along each curve, Eq. A28. SPEC_04 Step 4 deliverable 1, SPEC_06 Step 1.
 
     `ln_N` is the value at the curve's own latitude, one per level, and the result is
     `(level, latitude)` on the curve's nodes. `K = S/g + (d ln(R_bar/m_bar)/dphi)_p` is formed
-    at each node of each curve by `lib.kernel.transfer_kernel` and integrated by the trapezoid in
-    latitude from the start node outward, so the value there is `ln N` unchanged and the integral
-    carries its own sign whichever way the curve runs.
+    at each node of each curve and integrated by the trapezoid in latitude from the start node
+    outward, so the value there is `ln N` unchanged and the integral carries its own sign
+    whichever way the curve runs. The shear term is `lib.kernel.shear_on_isobar` on the state's
+    `kernel` (an `IsobarKernel`), with the wind read at each curve's label `label_pressure_Pa`,
+    one per level (SPEC_06).
 
     `composition_slope` is `(level, latitude)` on `composition_latitude_rad`, one row per level,
     as `lib.kernel.composition_term` returns it for that level's label. Omitted, `K` is the shear
     term alone, which is what a composition uniform in latitude gives.
     """
     ln_N = np.asarray(ln_N, dtype="float64")
+    labels = np.asarray(label_pressure_Pa, dtype="float64")
     phi = curves.latitude_rad
     Phi = curves.geopotential_m2s2
-    if ln_N.shape != (Phi.shape[0],):
-        raise ValueError(f"{Phi.shape[0]} curves and {ln_N.shape} starting values")
-    K = lk.transfer_kernel(mesh, s_over_g, phi[None, :], Phi)
+    if ln_N.shape != (Phi.shape[0],) or labels.shape != (Phi.shape[0],):
+        raise ValueError(f"{Phi.shape[0]} curves, {ln_N.shape} starting values and "
+                         f"{labels.shape} labels")
+    K = lk.shear_on_isobar(kernel, phi[None, :], Phi, labels[:, None])
     if composition_slope is not None:
         slope = np.atleast_2d(np.asarray(composition_slope, dtype="float64"))
         grid = np.asarray(composition_latitude_rad, dtype="float64")
@@ -397,7 +413,8 @@ class TransferState:
     g_radial_ms2: np.ndarray
     u_ms: np.ndarray
     s_over_g: np.ndarray
-    shear_integral: np.ndarray
+    shear_integral: object
+    isobar_kernel: object
     isobar_map: IsobarMap
     placements: tuple
     curves: tuple
@@ -569,6 +586,7 @@ def _geometry(inputs, mesh, isobar_map, placements, field, constants, gauge_isob
     pressure = np.exp(isobar_map.on_nodes(mesh))
     S, _ = lk.shear_kernel(mesh, radius, pressure, g, u, field, constants[0])
     s_over_g = S / g
+    kernel = lk.isobar_kernel(mesh, radius, pressure, g, field, constants[0])
     return {
         "reference_radius_m": reference,
         "columns": tuple(columns),
@@ -577,7 +595,8 @@ def _geometry(inputs, mesh, isobar_map, placements, field, constants, gauge_isob
         "g_radial_ms2": g,
         "u_ms": u,
         "s_over_g": s_over_g,
-        "shear_integral": lk.shear_integral(mesh, s_over_g),
+        "shear_integral": lk.column_integral(kernel, isobar_map),
+        "isobar_kernel": kernel,
     }
 
 
@@ -637,7 +656,7 @@ def carry_to(state: TransferState, inputs, phi_from, phi_to, geopotential_m2s2, 
             "grown inside the outer loop and this trace is after it (SPEC_04 Step 5)"
         )
     latitude_rad, slope = lk.composition_term(inputs.composition, label_pressure_Pa)
-    along = transfer(state.mesh, state.s_over_g, curves, ln_N, latitude_rad, slope)
+    along = transfer(state.isobar_kernel, curves, ln_N, label_pressure_Pa, latitude_rad, slope)
     return curves, int(np.flatnonzero(curves.latitude_rad == float(phi_to))[0]), along
 
 
@@ -998,16 +1017,20 @@ def _transfer_groups(namelist, inputs, anchors, state, estimate, arrived, target
             (vertical, "latitude_planetocentric"), arrived[index].ln_N_along,
             fp._attrs("1", f"ln N_k(phi) for {anchor.slug} along its isobars (Eq. A28)", "modeled"))
         # The shear term of the kernel at the nodes of this anchor's own curves, as `transfer`
-        # samples it there (Eq. A27, bilinearly on the mesh). It is carried so that F8 draws the
+        # samples it there (Eq. A27, on the isobar: the wind at the curve's label, the geometry
+        # bilinearly on the mesh, SPEC_06). It is carried so that F8 draws the
         # transfer along the isobars from the product rather than recomputing it (SPEC_04 v0.18
         # deliverable 4); the composition term is not added, because F8 draws `S/g`.
         isobars[f"shear_kernel_{anchor.slug}_per_rad"] = (
             (vertical, "latitude_planetocentric"),
-            lk.transfer_kernel(state.mesh, state.s_over_g,
+            lk.shear_on_isobar(state.isobar_kernel,
                                arrived[index].curves.latitude_rad[None, :],
-                               arrived[index].curves.geopotential_m2s2),
+                               arrived[index].curves.geopotential_m2s2,
+                               np.asarray(arrived[index].arrival.label_pressure_Pa,
+                                          dtype="float64")[:, None]),
             fp._attrs("rad-1", f"S/g at the nodes of {anchor.slug}'s isobars, the shear term of "
-                      "the kernel (Eq. A27)", "modeled"))
+                      "the kernel (Eq. A27), the wind read at each isobar's label and the "
+                      "geometry bilinearly on the mesh", "modeled"))
     isobars["geopotential_gauge_to_target_m2s2"] = (
         ("union_level", "latitude_gauge_to_target"), curves_to_target.geopotential_m2s2,
         fp._attrs("m2 s-2", "the curves carrying C from the gauge latitude to the target",
@@ -1163,7 +1186,8 @@ def chain(inputs, anchors, *, gauge_latitude_rad, target_latitude_rad, gauge_iso
             label_pressure_Pa=placement.label_pressure_Pa))
         arrived.append(Arrived(anchor=anchor, curves=state.curves[index],
                                ln_N_along=transfer(
-                                   state.mesh, state.s_over_g, state.curves[index], anchor.ln_N,
+                                   state.isobar_kernel, state.curves[index], anchor.ln_N,
+                                   placement.label_pressure_Pa,
                                    *lk.composition_term(inputs.composition,
                                                         placement.label_pressure_Pa)),
                                arrival=arrivals[-1]))

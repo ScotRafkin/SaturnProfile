@@ -9,6 +9,15 @@ Three quantities live here, all on the `(phi_i, Phi_j)` nodes of `lib.mesh`:
 * the transfer kernel `K = S / g + (d ln(R_bar / m_bar) / dphi)_p` of Eq. A27, the second term
   from the run's composition on the isobar.
 
+**The wind is never resampled by the mesh (SPEC_06).** `IsobarKernel` holds the smooth geometry
+of the mesh, formed once per state; `shear_at` evaluates Eq. A15 at any point with the wind read
+there from the wind file's interpolant and the geometry bilinear on the mesh. The transfer reads it
+on the isobar, at the curve's label (`shear_on_isobar`); the tracing integrates it in each column
+with the wind file's pressure nodes as breakpoints of a two-point Gauss rule (`ColumnIntegral`).
+Every change of slope the wind file can hold sits at those nodes, so the shear is used at the wind
+file's resolution whatever the mesh spacing. The node kernel `shear_kernel` and its trapezoid
+`shear_integral` remain, for the record and for the synthetic tests.
+
 **Where the derivatives come from.** `u` is never differentiated on the mesh. The wind file is
 the only thing that knows how `u` varies, and `lib.windfield` returns its interpolant's own
 partials in the file's coordinates, `(phi, ln p)`, linear between nodes (decision L). Those are
@@ -27,13 +36,16 @@ Pure functions, NumPy in and out, no file access. Every angle is in radians.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from casspian.lib.gravity import omega_abs
 from casspian.lib.reduction import mean_over_species
 
 __all__ = ["isobar_slopes", "shear_kernel", "shear_integral", "composition_term",
-           "transfer_kernel"]
+           "transfer_kernel", "IsobarKernel", "isobar_kernel", "shear_at", "shear_on_isobar",
+           "ColumnIntegral", "column_integral"]
 
 
 def isobar_slopes(mesh, radius_m, pressure_Pa, g_radial_ms2):
@@ -203,3 +215,158 @@ def transfer_kernel(mesh, s_over_g, phi_rad, geopotential_m2s2,
         return shear
     return shear + np.interp(phi, np.asarray(composition_latitude_rad, dtype="float64"),
                              np.asarray(composition_slope, dtype="float64"))
+
+
+@dataclass(frozen=True)
+class IsobarKernel:
+    """What the shear term on an isobar needs, formed once per state. SPEC_06 Step 1.
+
+    The mesh and, on its nodes, the radius, the radial gravity and the two isobar slopes of
+    `isobar_slopes`, which are smooth fields of the pressure map; the run's `WindField`, which is
+    read at the curve's point and label; and `Omega`, the rotation rate of the wind's frame.
+    """
+
+    mesh: object
+    radius_m: np.ndarray
+    g_radial_ms2: np.ndarray
+    d_ln_p_d_phi_r: np.ndarray
+    d_ln_p_d_r: np.ndarray
+    field: object
+    Omega: float
+
+
+def isobar_kernel(mesh, radius_m, pressure_Pa, g_radial_ms2, field, Omega) -> IsobarKernel:
+    """The `IsobarKernel` of a state: the slopes formed once on the nodes, as `shear_kernel` forms
+    them."""
+    radius = np.asarray(radius_m, dtype="float64")
+    g = np.asarray(g_radial_ms2, dtype="float64")
+    d_ln_p_d_phi_r, d_ln_p_d_r = isobar_slopes(mesh, radius, pressure_Pa, g)
+    return IsobarKernel(mesh=mesh, radius_m=radius, g_radial_ms2=g,
+                        d_ln_p_d_phi_r=d_ln_p_d_phi_r, d_ln_p_d_r=d_ln_p_d_r, field=field,
+                        Omega=float(Omega))
+
+
+def shear_on_isobar(kernel: IsobarKernel, phi_rad, geopotential_m2s2, label_pressure_Pa):
+    """`S / g` at curve points `(phi, Phi)` on the isobar `p_label`, Eq. A15. SPEC_06 Step 1.
+
+    `shear_at` with the wind read at the curve's label rather than at the pressure the map gives
+    there (deliverable 5). A `(level,)` label against `(level, latitude)` points is given as
+    `label[:, None]`.
+    """
+    return shear_at(kernel, phi_rad, geopotential_m2s2, label_pressure_Pa)
+
+
+def shear_at(kernel: IsobarKernel, phi_rad, geopotential_m2s2, pressure_Pa):
+    """`S / g` at points `(phi, Phi)` with the wind read at pressure `p`, Eq. A15. SPEC_06.
+
+    The wind's part is read exactly at `(phi, p)` from the wind file's interpolant: `u`,
+    `(du/dphi)_p` and `(du/dln p)_phi` (decision L; at a wind file node the cell toward higher
+    pressure and toward the north, `WindField.wind_derivatives`' convention). The geometry, `r`,
+    `g` and the two isobar slopes, is read bilinearly on the mesh at `(phi, Phi)`. The rest is
+    `shear_kernel`'s arithmetic. The three arguments broadcast.
+    """
+    phi, Phi, p_label = np.broadcast_arrays(np.asarray(phi_rad, dtype="float64"),
+                                            np.asarray(geopotential_m2s2, dtype="float64"),
+                                            np.asarray(pressure_Pa, dtype="float64"))
+    mesh = kernel.mesh
+    radius = transfer_kernel(mesh, kernel.radius_m, phi, Phi)
+    g = transfer_kernel(mesh, kernel.g_radial_ms2, phi, Phi)
+    d_ln_p_d_phi_r = transfer_kernel(mesh, kernel.d_ln_p_d_phi_r, phi, Phi)
+    d_ln_p_d_r = transfer_kernel(mesh, kernel.d_ln_p_d_r, phi, Phi)
+
+    u = kernel.field.wind_at(phi, p_label)
+    d_u_d_phi_p, d_u_d_ln_p = kernel.field.wind_derivatives(phi, p_label)
+    d_u_d_phi_r = d_u_d_phi_p + d_u_d_ln_p * d_ln_p_d_phi_r
+    d_u_d_r_phi = d_u_d_ln_p * d_ln_p_d_r
+
+    d_u_d_Z = np.sin(phi) * d_u_d_r_phi + (np.cos(phi) / radius) * d_u_d_phi_r
+    return 2.0 * omega_abs(u, radius, phi, kernel.Omega) * radius * d_u_d_Z / g
+
+
+# The two-point Gauss rule on a piece `[a, b]`: the points `mid -/+ half / sqrt(3)`, each weighted
+# `half`. Exact for cubics, so it stays adequate if the wind's interpolant becomes cubic.
+_GAUSS_OFFSET = 1.0 / np.sqrt(3.0)
+
+
+def _piecewise(kernel, isobar_map, index, start, stop):
+    """`int S/g dPhi` in column `index` from `start` to `stop` (arrays), piece by piece.
+
+    The breakpoints are the geopotentials where the column crosses a wind file pressure node
+    strictly between the two ends, found by inverting the column's pressure map; on each piece a
+    two-point Gauss rule, with `S/g` from `shear_at` at the pressure the map gives at the point.
+    """
+    start, stop = np.broadcast_arrays(np.asarray(start, dtype="float64"),
+                                      np.asarray(stop, dtype="float64"))
+    phi = float(kernel.mesh.latitude_rad[index])
+    nodes = kernel.field.ln_pressure
+    ln_a, ln_b = isobar_map.ln_p_at(index, start), isobar_map.ln_p_at(index, stop)
+    low, high = np.minimum(ln_a, ln_b), np.maximum(ln_a, ln_b)
+    first = np.searchsorted(nodes, low, side="right")
+    count = np.searchsorted(nodes, high, side="left") - first
+    most = int(count.max()) if count.size else 0
+    inner = np.empty((most,) + start.shape)
+    for m in range(most):
+        at = np.clip(first + m, 0, nodes.size - 1)
+        inner[m] = np.where(m < count, isobar_map.geopotential_at(index, nodes[at]), stop)
+    # Padded with `stop`, sorted, and reversed where the integral runs downward, so the edges
+    # run from `start` to `stop` in order and the padding gives pieces of zero length.
+    inner = np.sort(inner, axis=0)
+    inner = np.where(start > stop, inner[::-1], inner)
+    edges = np.concatenate([start[None], inner, stop[None]])
+    mid, half = 0.5 * (edges[1:] + edges[:-1]), 0.5 * (edges[1:] - edges[:-1])
+    points = np.concatenate([mid - half * _GAUSS_OFFSET, mid + half * _GAUSS_OFFSET])
+    values = shear_at(kernel, phi, points, np.exp(isobar_map.ln_p_at(index, points)))
+    pieces = half * (values[:mid.shape[0]] + values[mid.shape[0]:])
+    return pieces.sum(axis=0)
+
+
+@dataclass(frozen=True)
+class ColumnIntegral:
+    """`I(phi, Phi)`, Eq. A16, from the shear read at the wind file's resolution. SPEC_06 v0.3.
+
+    `at_nodes` is `I` on the mesh's nodes, zero on the `Phi = 0` node of every column as
+    `shear_integral` makes it, each cell integrated by `_piecewise`. Between nodes in a column,
+    `I` is the node below plus the partial cell up to the point, integrated the same way; between
+    mesh latitudes, linear in latitude between the two columns. `isobar_map` is the state's map:
+    `ln_p_at(index, Phi)` and its inverse `geopotential_at(index, ln_p)`.
+    """
+
+    kernel: IsobarKernel
+    isobar_map: object
+    at_nodes: np.ndarray
+
+    def in_column(self, index, geopotential_m2s2):
+        """`I` in column `index` at any geopotentials."""
+        Phi = np.asarray(geopotential_m2s2, dtype="float64")
+        nodes = self.kernel.mesh.geopotential_m2s2
+        j = np.clip(np.searchsorted(nodes, Phi, side="right") - 1, 0, nodes.size - 2)
+        return self.at_nodes[index, j] + _piecewise(self.kernel, self.isobar_map, index,
+                                                    nodes[j], Phi)
+
+    def at(self, phi_rad, geopotential_m2s2):
+        """`I` at one latitude and any geopotentials; linear in latitude between columns."""
+        latitude = self.kernel.mesh.latitude_rad
+        phi = float(phi_rad)
+        i = int(np.clip(np.searchsorted(latitude, phi, side="right") - 1, 0, latitude.size - 2))
+        a = (phi - latitude[i]) / (latitude[i + 1] - latitude[i])
+        if a == 0.0:
+            return self.in_column(i, geopotential_m2s2)
+        if a == 1.0:
+            return self.in_column(i + 1, geopotential_m2s2)
+        return ((1.0 - a) * self.in_column(i, geopotential_m2s2)
+                + a * self.in_column(i + 1, geopotential_m2s2))
+
+
+def column_integral(kernel: IsobarKernel, isobar_map) -> ColumnIntegral:
+    """The state's `ColumnIntegral`: every column's cells integrated piece by piece, then summed
+    outward from the `Phi = 0` node in both directions, as `shear_integral` sums them."""
+    mesh = kernel.mesh
+    Phi = mesh.geopotential_m2s2
+    cells = np.stack([_piecewise(kernel, isobar_map, i, Phi[:-1], Phi[1:])
+                      for i in range(mesh.latitude_rad.size)])
+    origin = mesh.gauge_geopotential_index
+    out = np.empty(mesh.shape)
+    out[:, origin] = 0.0
+    out[:, origin + 1:] = np.cumsum(cells[:, origin:], axis=1)
+    out[:, :origin] = -np.cumsum(cells[:, :origin][:, ::-1], axis=1)[:, ::-1]
+    return ColumnIntegral(kernel=kernel, isobar_map=isobar_map, at_nodes=out)

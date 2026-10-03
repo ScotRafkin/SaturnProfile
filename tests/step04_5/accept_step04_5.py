@@ -252,8 +252,8 @@ def along(state, index=0, anchor=None):
     """One anchor's `ln N` along its curves, with the run's composition term."""
     labels = state.placements[index].label_pressure_Pa
     latitude_c, slope = lk.composition_term(inputs.composition, labels)
-    return tr.transfer(state.mesh, state.s_over_g, state.curves[index],
-                       (anchors[index] if anchor is None else anchor).ln_N, latitude_c, slope)
+    return tr.transfer(state.isobar_kernel, state.curves[index],
+                       (anchors[index] if anchor is None else anchor).ln_N, labels, latitude_c, slope)
 
 
 def named(produced):

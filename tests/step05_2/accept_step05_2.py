@@ -146,7 +146,7 @@ def compare(registered: Path, candidate: Path):
             if np.array_equal(xa, ya, equal_nan=True):
                 identical += 1
                 continue
-            xa, ya = xa.astype("float64"), ya.astype("float64")
+            xa, ya = np.atleast_1d(xa.astype("float64")), np.atleast_1d(ya.astype("float64"))
             d = np.abs(ya - xa)
             d[np.isnan(xa) & np.isnan(ya)] = 0.0
             nonzero = xa != 0

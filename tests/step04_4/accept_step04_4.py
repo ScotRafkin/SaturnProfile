@@ -224,8 +224,8 @@ def along(state, index=0, anchor=None):
     curves = state.curves[index]
     labels = state.placements[index].label_pressure_Pa
     latitude_c, slope = lk.composition_term(inputs.composition, labels)
-    ln_N = tr.transfer(state.mesh, state.s_over_g, curves,
-                       (anchors[index] if anchor is None else anchor).ln_N, latitude_c, slope)
+    ln_N = tr.transfer(state.isobar_kernel, curves,
+                       (anchors[index] if anchor is None else anchor).ln_N, labels, latitude_c, slope)
     return curves, ln_N
 
 
@@ -888,7 +888,7 @@ def estimate_from(state, run_anchors, phi_r):
     to_target = tr.trace(state.mesh, state.shear_integral, E.geopotential_m2s2, phi_r,
                          target10)
     latitude_c, slope = lk.composition_term(inputs.composition, E.label_pressure_Pa)
-    carried = tr.transfer(state.mesh, state.s_over_g, to_target, E.C, latitude_c, slope)
+    carried = tr.transfer(state.isobar_kernel, to_target, E.C, E.label_pressure_Pa, latitude_c, slope)
     column = int(np.flatnonzero(to_target.latitude_rad == target10)[0])
     return E, arrivals, to_target.geopotential_m2s2[:, column], carried[:, column]
 
@@ -935,7 +935,7 @@ def estimate_with(arrival_second):
                          target10)
     latitude_c, slope = lk.composition_term(inputs.composition, E.label_pressure_Pa)
     at_target = int(np.flatnonzero(to_target.latitude_rad == target10)[0])
-    carried = tr.transfer(state_m2.mesh, state_m2.s_over_g, to_target, E.C, latitude_c,
+    carried = tr.transfer(state_m2.isobar_kernel, to_target, E.C, E.label_pressure_Pa, latitude_c,
                           slope)[:, at_target]
     Phi_here = to_target.geopotential_m2s2[:, at_target]
     order_here = np.argsort(Phi_here)[::-1]
@@ -953,8 +953,9 @@ lattice_curves = tr.trace(state_m2.mesh, state_m2.shear_integral,
 lattice_at_gauge = int(np.flatnonzero(lattice_curves.latitude_rad == phi_r2)[0])
 lattice_latitude_c, lattice_slope = lk.composition_term(inputs.composition,
                                                         lattice_placed.label_pressure_Pa)
-lattice_lnN_at_gauge = tr.transfer(state_m2.mesh, state_m2.s_over_g, lattice_curves,
+lattice_lnN_at_gauge = tr.transfer(state_m2.isobar_kernel, lattice_curves,
                                    np.asarray(lattice_anchors[1].ln_N, dtype='float64'),
+                                   lattice_placed.label_pressure_Pa,
                                    lattice_latitude_c, lattice_slope)
 worst_D_lattice, d_lnN_lattice = estimate_with(fe.Arrival(
     slug='synthetic60lattice', latitude_rad=target60, weight=1.0,
@@ -976,7 +977,8 @@ traced_back = tr.trace(state_m2.mesh, state_m2.shear_integral, traced_Phi_60, ta
 traced_back_at_gauge = int(np.flatnonzero(traced_back.latitude_rad == phi_r2)[0])
 traced_latitude_c, traced_slope = lk.composition_term(
     inputs.composition, state_m2.placements[0].label_pressure_Pa)
-traced_lnN_back = tr.transfer(state_m2.mesh, state_m2.s_over_g, traced_back, traced_lnN_60,
+traced_lnN_back = tr.transfer(state_m2.isobar_kernel, traced_back, traced_lnN_60,
+                              state_m2.placements[0].label_pressure_Pa,
                               traced_latitude_c, traced_slope)
 tracing_identity = float(np.max(np.abs(
     traced_lnN_back[:, traced_back_at_gauge]
@@ -1196,7 +1198,8 @@ else:
         back = tr.trace(state.mesh, state.shear_integral, Phi_out, target10, phi_a)
         latitude_c, slope = lk.composition_term(inputs.composition,
                                                 state.placements[0].label_pressure_Pa)
-        lnN_back = tr.transfer(state.mesh, state.s_over_g, back, lnN_out, latitude_c, slope)
+        lnN_back = tr.transfer(state.isobar_kernel, back, lnN_out,
+                               state.placements[0].label_pressure_Pa, latitude_c, slope)
         home = int(np.flatnonzero(back.latitude_rad == phi_a)[0])
         start_Phi = state.placements[0].geopotential_m2s2
         d_Phi = float(np.max(np.abs(back.geopotential_m2s2[:, home] - start_Phi)))
@@ -1209,6 +1212,13 @@ else:
     # of the pair is the run's own spacing either way. Check 3, which does have absolute bounds at
     # both, runs at the namelist's spacings and at half of them.
     SHEARED_COARSE = 2.0
+
+    def ratio(coarse, fine):
+        """`coarse / fine` for the report line; a fine value of exactly zero is named, not divided by."""
+        if fine != 0.0:
+            return f"{coarse / fine:.2f}"
+        return "none (both zero)" if coarse == 0.0 else "inf (the finer is zero)"
+
     state_shc, dPhi_shc, dlnN_shc, ordered_shc = out_and_back(SHEARED_COARSE)
     state_sh, dPhi_sh, dlnN_sh, ordered_sh = out_and_back(1.0)
     loop_report.append(pass_line("sheared wind to 10 N, doubled", state_shc))
@@ -1234,7 +1244,7 @@ else:
            f"|Phi_k - Phi_k(out and back)| {dPhi_shc:.3e} m2/s2, largest |ln N_k - ln N_k(out and "
            f"back)| {dlnN_shc:.3e}\n"
            f"with both spacings halved, at {spacings()}, the namelist's own: {dPhi_sh:.3e} m2/s2 and "
-           f"{dlnN_sh:.3e}, ratios {dPhi_shc / dPhi_sh:.2f} and {dlnN_shc / dlnN_sh:.2f}; no order "
+           f"{dlnN_sh:.3e}, ratios {ratio(dPhi_shc, dPhi_sh)} and {ratio(dlnN_shc, dlnN_sh)}; no order "
            f"is claimed, since u' is piecewise constant and both the trapezoid and the scheme are "
            f"first order across the file's nodes\n"
            f"the pair is the namelist's spacings and twice them rather than the namelist's and half: "

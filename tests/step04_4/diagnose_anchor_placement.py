@@ -49,7 +49,8 @@ state = tr.outer_loop(inputs, [lindal], gauge_latitude_rad=phi_r,
 curves = state.curves[0]
 latitude_c, slope = lk.composition_term(inputs.composition,
                                         state.placements[0].label_pressure_Pa)
-ln_N = tr.transfer(mesh, state.s_over_g, curves, lindal.ln_N, latitude_c, slope)
+ln_N = tr.transfer(state.isobar_kernel, curves, lindal.ln_N,
+                   state.placements[0].label_pressure_Pa, latitude_c, slope)
 index60 = mesh.latitude_index(target60)
 Phi_traced = curves.geopotential_m2s2[:, index60]
 N60 = np.exp(ln_N[:, index60])
@@ -116,7 +117,8 @@ for name, radius, z_lv in (("A, interpolated from the mesh's nodes", radius_A, z
     back_curves = tr.trace(mesh, state.shear_integral, placed.geopotential_m2s2, target60, phi_r)
     at_gauge = int(np.flatnonzero(back_curves.latitude_rad == phi_r)[0])
     lc, sl = lk.composition_term(inputs.composition, placed.label_pressure_Pa)
-    back_lnN = tr.transfer(mesh, state.s_over_g, back_curves, np.log(N60), lc, sl)
+    back_lnN = tr.transfer(state.isobar_kernel, back_curves, np.log(N60),
+                           placed.label_pressure_Pa, lc, sl)
     E = fe.estimate([own_at_gauge, fe.Arrival(
         slug="probe", latitude_rad=target60, weight=1.0,
         geopotential_m2s2=back_curves.geopotential_m2s2[:, at_gauge],

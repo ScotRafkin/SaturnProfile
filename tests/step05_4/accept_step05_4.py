@@ -4,7 +4,8 @@ Runs `tests/step05_4/run_experiments.py` first (all eleven runs, both spacings) 
 is given, then reads `reports/step05_4/results.json` and the products. The four checks of v0.7:
 run 2 reproduces the registered transfer product; runs 3a and 3b, the exact null, agree in N, p
 and T to round-off; run 3a's reference surface at 10 N is the reviewing agent's no-wind value; the
-pressure identity of every completed run at both spacings is within 1e-2 relative (REVIEW_05_step4).
+largest pressure identity of every run agrees between the two spacings within 10 percent, its size
+reported (REVIEW_05_step4 bounded it at 1e-2; restated by SPEC_06 v0.4).
 Every other outcome is reported, not checked (v0.7): the table of the report and one comparison
 figure, `reports/figures/step05_4_temperature_minus_run2.png`.
 
@@ -26,7 +27,10 @@ FIGURE = Path("reports/figures/step05_4_temperature_minus_run2.png")
 REGISTERED = Path("forward/lindal_transfer/output/lindal_transfer_profile.nc")
 NULL_TARGET_RELATIVE = 1e-12
 R0_NO_WIND_M, R0_BOUND_M = 60_092_307.69, 0.1
-IDENTITY_BOUND = 1e-2  # REVIEW_05_step4: about 1 K at Saturn's temperatures
+# SPEC_06 v0.4: the identity at a break in the wind's shear is the production's integration over
+# the anchor's own levels, which no mesh setting reaches; REVIEW_05_step4's bound of 1e-2 is
+# restated as mesh independence, the size reported.
+MESH_AGREEMENT = 0.10
 results = []
 
 if "--no-run" not in sys.argv:
@@ -114,24 +118,30 @@ record(3, f"run 3a's r0(10 N), reference_surface_radius_m, is {R0_NO_WIND_M:,.2f
 # ---------------------------------------------------------------------------
 lines, ok = [], True
 for run, entry in RUNS.items():
-    cells = []
+    cells, largest = [], {}
     for spacing in ("5e4", "2.5e4"):
         if spacing not in entry:
             continue
         e = entry[spacing]
         if e["status"] == "completed":
-            ok = ok and e["pressure_identity_largest_abs"] <= IDENTITY_BOUND
+            largest[spacing] = e["pressure_identity_largest_abs"]
             cells.append(f"{spacing}: largest {e['pressure_identity_largest_abs']:.3e} at level "
                          f"{e['pressure_identity_largest_level']}, rms {e['pressure_identity_rms']:.3e}, "
                          f"{e['outer_loop_passes']} passes, {e['wall_s']} s")
         else:
+            ok = False
             cells.append(f"{spacing}: {e['status']}, {e['failure_type']}")
     expected = ("5e4",) if run == "shear_r7f_decay_linp_fine" else ("5e4", "2.5e4")
     present = all(s in entry for s in expected)
     ok = ok and present
+    if len(largest) == 2:
+        apart = abs(largest["5e4"] / largest["2.5e4"] - 1.0)
+        ok = ok and apart <= MESH_AGREEMENT
+        cells.append(f"apart {100 * apart:.1f} percent")
     lines.append(f"{run}: " + "; ".join(cells))
-record(4, f"the pressure identity of every completed run, at both spacings (7f at 5e4 only), is within "
-          f"{IDENTITY_BOUND:g} relative",
+record(4, f"every run completes, and the largest pressure identity agrees between 5e4 and 2.5e4 within "
+          f"{100 * MESH_AGREEMENT:g} percent (7f at 5e4 only); its size is reported, not bounded "
+          f"(SPEC_06 v0.4)",
        ok, "\n".join(lines))
 
 # ---------------------------------------------------------------------------
