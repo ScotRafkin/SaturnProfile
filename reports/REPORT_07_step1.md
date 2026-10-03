@@ -315,3 +315,5 @@ Not as expected, listed rather than worked around:
 3. **The reports on `main` name `tests/step07_1/` scripts that are now only on the branch.**
 4. **`main` is not pushed.** It is ahead of `origin/main` by the SPEC_06 commits and these; the go
    covered pushing the branch only.
+   Since pushed at the author's go: `main` at `84c870a` (SPEC_07 v0.6, the redesign tabled) is on
+   `origin/main`.
