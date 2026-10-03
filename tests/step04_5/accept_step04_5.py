@@ -202,6 +202,15 @@ for key, accepted in (("latitude_spacing_deg", ACCEPTED_LATITUDE_SPACING_DEG),
 LATITUDE_SPACING = math.radians(ACCEPTED_LATITUDE_SPACING_DEG) * QUICK
 GEOPOTENTIAL_SPACING = ACCEPTED_GEOPOTENTIAL_SPACING * QUICK
 LOOP = namelist.numerics["outer_loop"]
+# The outer loop's tolerance this suite's bounds were set at, pinned like the spacings (SPEC_07
+# v0.5 closure): runs 2 to 5 take it from here; run 1 is the namelist's own run, so for it the pin
+# is an assertion. The iteration cap is the namelist's.
+ACCEPTED_RELATIVE_TOLERANCE_LN_P = 1.0e-8
+if float(LOOP["relative_tolerance_ln_p"]) != ACCEPTED_RELATIVE_TOLERANCE_LN_P:
+    raise AssertionError(
+        f"the production namelist's outer-loop tolerance is {LOOP['relative_tolerance_ln_p']} and "
+        f"this suite's bounds are set at {ACCEPTED_RELATIVE_TOLERANCE_LN_P}. Run 1 is the "
+        "namelist's own run, so the two cannot differ")
 SIGMA_K = float(namelist.estimation["kernel_uncertainty_per_rad"])
 DATUM = float(namelist.datum_isobar_Pa)
 
@@ -242,7 +251,7 @@ def chain_to(target_rad, *, field=None, run_anchors=None, scale=1.0, mesh=None,
         gauge_isobar_Pa=namelist.gauge_isobar_Pa, p_b=tr.boundary_pressure(run_anchors),
         latitude_spacing_rad=LATITUDE_SPACING * scale,
         geopotential_spacing_m2s2=GEOPOTENTIAL_SPACING * scale,
-        relative_tolerance_ln_p=LOOP["relative_tolerance_ln_p"],
+        relative_tolerance_ln_p=ACCEPTED_RELATIVE_TOLERANCE_LN_P,
         max_iterations=LOOP["max_iterations"], kernel_uncertainty_per_rad=SIGMA_K,
         datum_isobar_Pa=DATUM if datum_isobar_Pa is None else float(datum_isobar_Pa),
         field=closure_field if field is None else field, mesh=mesh)
@@ -686,7 +695,7 @@ pre = tr.outer_loop(
     inputs, [lindal], gauge_latitude_rad=phi_r2, target_latitude_rad=target60,
     gauge_isobar_Pa=namelist.gauge_isobar_Pa, p_b=p_b, latitude_spacing_rad=LATITUDE_SPACING,
     geopotential_spacing_m2s2=GEOPOTENTIAL_SPACING,
-    relative_tolerance_ln_p=LOOP["relative_tolerance_ln_p"],
+    relative_tolerance_ln_p=ACCEPTED_RELATIVE_TOLERANCE_LN_P,
     max_iterations=LOOP["max_iterations"], field=closure_field, mesh=mesh_m2)
 lnN_pre = along(pre)
 
@@ -743,7 +752,7 @@ run5 = tr.chain(
     m2_inputs, m2_anchors, gauge_latitude_rad=phi_r2, target_latitude_rad=target10,
     gauge_isobar_Pa=m2_namelist.gauge_isobar_Pa, p_b=tr.boundary_pressure(m2_anchors),
     latitude_spacing_rad=LATITUDE_SPACING, geopotential_spacing_m2s2=GEOPOTENTIAL_SPACING,
-    relative_tolerance_ln_p=LOOP["relative_tolerance_ln_p"],
+    relative_tolerance_ln_p=ACCEPTED_RELATIVE_TOLERANCE_LN_P,
     max_iterations=LOOP["max_iterations"], kernel_uncertainty_per_rad=SIGMA_K,
     datum_isobar_Pa=float(m2_namelist.datum_isobar_Pa), mesh=mesh_m2,
     field=wf.WindField(m2_inputs.wind))

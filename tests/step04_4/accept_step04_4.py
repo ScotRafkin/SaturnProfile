@@ -175,6 +175,9 @@ if float(namelist.grid["latitude_spacing_deg"]) != ACCEPTED_LATITUDE_SPACING_DEG
 LATITUDE_SPACING = math.radians(ACCEPTED_LATITUDE_SPACING_DEG) * QUICK
 GEOPOTENTIAL_SPACING = ACCEPTED_GEOPOTENTIAL_SPACING * QUICK
 LOOP = namelist.numerics["outer_loop"]
+# The outer loop's tolerance this suite's bounds were set at, pinned here like the spacings rather
+# than read from the namelist (SPEC_07 v0.5 closure). The iteration cap is the namelist's.
+ACCEPTED_RELATIVE_TOLERANCE_LN_P = 1.0e-8
 SIGMA_K = float(namelist.estimation["kernel_uncertainty_per_rad"])
 
 phi_a = math.radians(lindal.latitude_planetocentric_deg)
@@ -214,7 +217,7 @@ def loop_to(target_rad, *, run_anchors=None, field=None, scale=1.0, geopotential
         gauge_isobar_Pa=namelist.gauge_isobar_Pa, p_b=tr.boundary_pressure(run_anchors),
         latitude_spacing_rad=LATITUDE_SPACING * scale,
         geopotential_spacing_m2s2=GEOPOTENTIAL_SPACING * geopotential_scale,
-        relative_tolerance_ln_p=LOOP["relative_tolerance_ln_p"],
+        relative_tolerance_ln_p=ACCEPTED_RELATIVE_TOLERANCE_LN_P,
         max_iterations=LOOP["max_iterations"],
         field=closure_field if field is None else field, mesh=mesh)
 
