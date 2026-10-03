@@ -208,3 +208,19 @@ sign, at the stop pressure. Ruled (§6): check 6 restated as mesh independence; 
 explained before acceptance (check 7); F8's vertical stepping to SPEC_07; the standing rule that
 the code must work on any profile and an unexplained behavior in an extreme case is explained, not
 deferred.
+
+## 10. After acceptance: the registered run files
+
+The acceptance commit is `7dbea17`. With the working tree clean (the untracked SPEC_07 draft moved
+out for the sweep, so that no file is stamped `-dirty`), `python tests/step04_0/sweep.py --runs`
+rebuilt the 12 registered run files, every one stamped `7dbea17` and none `-dirty`; committed as
+`f63bf24`. Against the files set aside before the sweep, 347 of 361 variables of every group are
+array-equal: each run's gravity, rotation, both wind files and composition, and the closure
+product's 121 computed variables. The 14 that move are the transfer product's computed ones, by
+the sizes of check 1: temperature 2.3e-6 K, pressure 1.4e-3 Pa, altitude 1.1e-3 m, the traced
+geopotential 1.5e-2 m2/s2, refractivity 1.4e-10 relative.
+
+Through the driver afterwards: `step05_2` 3 of 3 (198 s), `step05_3` 7 of 7 (200 s), `step05_4` 4
+of 4 (1105 s); 3 of 3 at their reference counts, the registered files restored exactly, no
+registered file differing from the commit and no `skip-worktree` mark. With section 7, all 30 suites
+are at their reference counts.
