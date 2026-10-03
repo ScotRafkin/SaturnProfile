@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from scipy.interpolate import PchipInterpolator
 from matplotlib.image import imread
 
 from casspian.lib import control as ctl
@@ -168,7 +169,11 @@ gravity, rotation, wind = inputs.gravity, inputs.rotation, inputs.wind
 lat = wind["latitude_planetocentric_deg"].values
 column = int(np.flatnonzero(wind["pressure_Pa"].values == 1.0e5)[0])
 phi_c = float(root["latitude_planetocentric_deg"].values)
-u_direct = float(np.interp(phi_c, lat, wind["u_total_ms"].values[:, column]))
+# SPEC_07 v0.3: the wind is read by decision L2; the direct value is scipy's PCHIP of the 1 bar
+# column in latitude, formed here, independent of lib.windfield.
+_order = np.argsort(lat)
+u_direct = float(PchipInterpolator(np.radians(lat[_order]),
+                                   wind["u_total_ms"].values[_order, column])(math.radians(phi_c)))
 g_direct = float(g_eff_radial(u_direct, float(root["radius_m"].values[k]), math.radians(phi_c),
                               float(rotation["angular_rate_rad_s"]), float(gravity["GM_m3s2"]),
                               gravity["J"].values, gravity["degree"].values,

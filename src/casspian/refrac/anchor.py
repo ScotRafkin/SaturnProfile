@@ -29,6 +29,7 @@ from casspian.lib import geoid as gd
 from casspian.lib import latitude as lat
 from casspian.lib.control import ReductionInputs, ReductionManifest
 from casspian.lib.gravity import g_eff_vector, validated_degrees
+from casspian.lib.windfield import WindField
 
 __all__ = [
     "AnchorConvergenceError",
@@ -103,24 +104,14 @@ class GeoidSetup:
 def wind_of_latitude(wind):
     """`u(phi_c)` on the reference level of a kind W dataset, as a callable in radians.
 
-    Linear in planetocentric latitude on the file's own grid. Kind W carries both poles as nodes
-    with exactly zero wind (SPEC_00 section 6.6, checked by `read`), so the callable is zero at
-    the poles by the file's own values and needs no rule of its own. Returns an array shaped like
-    its argument, as `lib.geoid.wind_geoid` requires.
+    The model's own reading, `lib.windfield.WindField(wind).reference_wind`: decision L2, PCHIP
+    in planetocentric latitude on the file's grid (SPEC_07), so that the reduction and the model
+    read one interpolant and the at-anchor identity holds by construction. Kind W carries both
+    poles as nodes with exactly zero wind (SPEC_00 section 6.6, checked by `read`), so the
+    callable is zero at the poles by the file's own values. Returns an array shaped like its
+    argument, as `lib.geoid.wind_geoid` requires.
     """
-    latitude = np.radians(np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64"))
-    pressure = np.asarray(wind["pressure_Pa"].values, dtype="float64")
-    reference = float(wind["reference_level_pressure_Pa"])
-    column = int(np.flatnonzero(pressure == reference)[0])
-    u = np.asarray(wind["u_total_ms"].values, dtype="float64")[:, column]
-    order = np.argsort(latitude)
-    latitude, u = latitude[order], u[order]
-
-    def u_of_phi(phi):
-        phi = np.asarray(phi, dtype="float64")
-        return np.reshape(np.interp(phi, latitude, u), phi.shape)
-
-    return u_of_phi
+    return WindField(wind).reference_wind
 
 
 def geoid_setup(inputs: ReductionInputs, manifest: ReductionManifest) -> GeoidSetup:

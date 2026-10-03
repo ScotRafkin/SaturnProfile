@@ -20,7 +20,7 @@ file's resolution whatever the mesh spacing. The node kernel `shear_kernel` and 
 
 **Where the derivatives come from.** `u` is never differentiated on the mesh. The wind file is
 the only thing that knows how `u` varies, and `lib.windfield` returns its interpolant's own
-partials in the file's coordinates, `(phi, ln p)`, linear between nodes (decision L). Those are
+partials in the file's coordinates, `(phi, ln p)`, continuous across nodes (decision L2). Those are
 in the file's coordinates, at fixed pressure, and A15 needs them at fixed radius, so they are
 converted with the isobar map's slopes:
 
@@ -260,8 +260,8 @@ def shear_at(kernel: IsobarKernel, phi_rad, geopotential_m2s2, pressure_Pa):
     """`S / g` at points `(phi, Phi)` with the wind read at pressure `p`, Eq. A15. SPEC_06.
 
     The wind's part is read exactly at `(phi, p)` from the wind file's interpolant: `u`,
-    `(du/dphi)_p` and `(du/dln p)_phi` (decision L; at a wind file node the cell toward higher
-    pressure and toward the north, `WindField.wind_derivatives`' convention). The geometry, `r`,
+    `(du/dphi)_p` and `(du/dln p)_phi` (decision L2, SPEC_07: continuous across the file's
+    nodes, so no side of a node is preferred). The geometry, `r`,
     `g` and the two isobar slopes, is read bilinearly on the mesh at `(phi, Phi)`. The rest is
     `shear_kernel`'s arithmetic. The three arguments broadcast.
     """

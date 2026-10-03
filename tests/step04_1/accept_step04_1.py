@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from scipy.interpolate import PchipInterpolator
 
 from casspian.forward import production as fp
 from casspian.lib import control as ctl
@@ -336,25 +337,27 @@ mid_phi = 0.5 * (wind_file_latitude[j] + wind_file_latitude[j + 1])
 d_phi, d_ln_p = closure_field.wind_derivatives(mid_phi, 1.0e4)
 secant = float((closure_field.wind_at(mid_phi + step, 1.0e4)
                 - closure_field.wind_at(mid_phi - step, 1.0e4)) / (2.0 * step))
-node_north, _ = closure_field.wind_derivatives(wind_file_latitude[j], 1.0e4)
+# SPEC_07 v0.3 (decision L2): the slope in latitude is continuous across a node, so the two one
+# sided values agree, and both are scipy's PCHIP derivative of the reference row there.
+node_north, _ = closure_field.wind_derivatives(wind_file_latitude[j] + 1.0e-12, 1.0e4)
 node_south, _ = closure_field.wind_derivatives(wind_file_latitude[j] - 1.0e-12, 1.0e4)
-interval_north = float((u_reference_file[j + 1] - u_reference_file[j])
-                       / (wind_file_latitude[j + 1] - wind_file_latitude[j]))
-interval_south = float((u_reference_file[j] - u_reference_file[j - 1])
-                       / (wind_file_latitude[j] - wind_file_latitude[j - 1]))
+scipy_slope = float(PchipInterpolator(wind_file_latitude, u_reference_file).derivative()(
+    wind_file_latitude[j]))
+interval_north = interval_south = scipy_slope
 record(12, "beyond the specification: wind_derivatives returns the interpolant's own slopes, and at "
-           "a node takes the interval to the north",
+           "a node the one sided slopes agree with each other and with scipy's PCHIP derivative "
+           "(decision L2, SPEC_07)",
        abs(float(d_phi) - secant) <= 1.0e-6 * abs(secant)
-       and float(node_north) == interval_north and float(node_south) == interval_south
+       and abs(float(node_north) - scipy_slope) <= 1.0e-9 * abs(scipy_slope)
+       and abs(float(node_south) - scipy_slope) <= 1.0e-9 * abs(scipy_slope)
        and float(d_ln_p) == 0.0,
        f"(du/dphi)_p inside the cell bracketing the anchor: {float(d_phi):.6f} m/s per radian, "
        f"central difference of wind_at {secant:.6f}\n"
        f"in m/s per degree that is {math.radians(float(d_phi)):.5f}, the "
        f"{math.degrees(wind_file_latitude[j]):.1f} to {math.degrees(wind_file_latitude[j + 1]):.1f} deg "
        f"interval where the anchor sits\n"
-       f"at the {math.degrees(wind_file_latitude[j]):.1f} deg node: {float(node_north):.6f} per radian, "
-       f"the interval to the north {interval_north:.6f}; just south of it {float(node_south):.6f}, "
-       f"the interval to the south {interval_south:.6f}\n"
+       f"at the {math.degrees(wind_file_latitude[j]):.1f} deg node: just north {float(node_north):.6f} "
+       f"per radian, just south {float(node_south):.6f}, scipy's PCHIP derivative {interval_north:.6f}\n"
        f"(du/dln p)_phi is {float(d_ln_p):.1e} per unit ln p: the closure wind has no shear, "
        f"max |u_shear| {float(np.max(np.abs(inputs.wind['u_shear_ms'].values))):.1e} m/s")
 
@@ -387,8 +390,12 @@ ln_step = 1.0e-6
 secant_ln_p = float((sheared_field.wind_at(mid_phi, math.exp(math.log(1.0e4) + ln_step))
                      - sheared_field.wind_at(mid_phi, math.exp(math.log(1.0e4) - ln_step)))
                     / (2.0 * ln_step))
-analytic = SHEAR_PER_LN_P * float(np.interp(mid_phi, wind_file_latitude,
-                                            np.cos(wind_file_latitude)))
+# SPEC_07 v0.3 (decision L2): the interpolant's own du/dln p, formed independently by scipy:
+# each pressure row by PCHIP in latitude at mid_phi, then PCHIP in ln p. (PCHIP is not linear in
+# the data, so the shear term's PCHIP alone is not the answer.)
+_rows_mid = PchipInterpolator(wind_file_latitude, sheared_grid, axis=0)(mid_phi)
+analytic = float(PchipInterpolator(np.log(wind_file_pressure), _rows_mid).derivative()(
+    math.log(1.0e4)))
 record(13, "beyond the specification: wind_on_mesh gives every node what wind_at gives it, and the "
            "pressure derivative is the interpolant's on a sheared field",
        on_mesh.shape == pressure_map.shape and identical(on_mesh, one_by_one)

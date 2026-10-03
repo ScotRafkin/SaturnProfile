@@ -19,6 +19,7 @@ from matplotlib.figure import Figure
 from casspian.lib import geoid as gd
 from casspian.lib import reduction as red
 from casspian.lib.gravity import G_phi_eff, g_eff_radial, g_eff_vector, g_newton
+from casspian.lib.windfield import WindField
 from casspian.tools.plots import figures_inputs as fi
 from casspian.tools.plots import style
 
@@ -50,19 +51,14 @@ class _Product:
         self.radius = np.asarray(self.root["radius_m"].values, dtype="float64")
 
     def u_at_levels(self):
-        """`u` at `phi_c` on the product's levels, linear in log pressure between wind levels."""
-        p_w, u_w = fi.wind_profile_at(self.wind, self.phi_c_deg)
-        return np.interp(np.log(self.p), np.log(p_w), u_w)
+        """`u` at `phi_c` on the product's levels, read through the model's `WindField`
+        (decision L2, SPEC_07 deliverable 5)."""
+        return WindField(self.wind).wind_at(np.full(self.p.shape, self.phi_c), self.p)
 
     def reference_wind(self):
-        lat, u, _, _ = fi.wind_reference_column(self.wind)
-        lat_rad = np.radians(lat)
-
-        def u_of_phi(phi):
-            phi = np.asarray(phi, dtype="float64")
-            return np.reshape(np.interp(phi, lat_rad, u), phi.shape)
-
-        return lat, u_of_phi
+        """The reference level's latitudes (deg) and the model's reading of it as a callable."""
+        lat, _, _, _ = fi.wind_reference_column(self.wind)
+        return lat, WindField(self.wind).reference_wind
 
 
 def _title(fig, text):

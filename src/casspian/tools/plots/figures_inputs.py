@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 
 from casspian.lib import composition as comp
 from casspian.lib import reduction as red
+from casspian.lib.windfield import WindField
 from casspian.tools.plots import style
 
 
@@ -151,15 +152,12 @@ def wind_reference_column(wind):
 
 
 def wind_profile_at(wind, latitude_deg):
-    """`u(p)` at one planetocentric latitude, linear in latitude on the file's grid."""
-    lat = np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64")
-    p = np.asarray(wind["pressure_Pa"].values, dtype="float64")
-    u = np.asarray(wind["u_total_ms"].values, dtype="float64")
-    order = np.argsort(lat)
-    profile = np.array([np.interp(float(latitude_deg), lat[order], u[order, j])
-                        for j in range(p.size)])
-    p_order = np.argsort(p)
-    return p[p_order], profile[p_order]
+    """`u(p)` at one planetocentric latitude on the file's pressure nodes, read through the
+    model's `WindField` (decision L2, SPEC_07 deliverable 5), so the figure draws what the model
+    uses."""
+    p = np.sort(np.asarray(wind["pressure_Pa"].values, dtype="float64"))
+    phi = np.full(p.shape, np.radians(float(latitude_deg)))
+    return p, WindField(wind).wind_at(phi, p)
 
 
 def panel_wind_latitude(ax, wind, latitude_deg=None):

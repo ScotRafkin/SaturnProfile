@@ -71,8 +71,9 @@ UNCERTAINTY_STATEMENT = "set in the shear control file (uncertainty_ms)"
 def u_at_pressure(source, p_s: float) -> np.ndarray:
     """`u_s(phi)`: the source's `u_total` at `p_s` at every latitude node, in the file's order.
 
-    Read through `WindField`, linear in `ln p` between the bracketing nodes, so the value is the
-    one the model would read. `WindField`'s refusal outside the grid is the `p_s` refusal.
+    Read through `WindField` (decision L2, SPEC_07), so the value is the one the model would read;
+    at a pressure node it is the node's own. `WindField`'s refusal outside the grid is the `p_s`
+    refusal.
     """
     field = WindField(source)
     latitude = np.radians(np.asarray(source["latitude_planetocentric_deg"].values, dtype="float64"))

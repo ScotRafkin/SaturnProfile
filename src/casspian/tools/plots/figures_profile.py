@@ -362,10 +362,10 @@ def figure_8(pr: _Profile):
     offset between them is the reference surface between the two latitudes, which is the point of
     that panel.
 
-    **The staircase in the first panel is the wind file, not the mesh** (SPEC_04 section 18
-    ruling 5). Under decision L the wind is linear between the file's half-degree nodes, so
-    `S = 2 Omega cos(phi) du/dphi` is constant on each interval and steps at every node; a mesh at
-    0.05 degrees resolves those steps exactly and a finer one draws the same staircase. The
+    **The first panel follows the wind file, not the mesh** (SPEC_04 section 18 ruling 5). Under
+    decision L the wind was linear between the file's half-degree nodes and `S = 2 Omega cos(phi)
+    du/dphi` stepped at every node; under decision L2 (SPEC_07) `du/dphi` is continuous and the
+    steps are gone, the curve keeping the file's node-to-node shape. The
     alternation over a few degrees of the flank is the source curve's own node-to-node roughness,
     and the kinks in the second panel are its integral, which is why the accumulated offset is
     smooth: the alternation cancels. Smoothing belongs to the wind tool, not to the model, which
