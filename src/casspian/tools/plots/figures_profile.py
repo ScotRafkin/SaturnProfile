@@ -508,7 +508,9 @@ def figure_9(pr: _Profile):
     isobars = pr.tree["isobars"].to_dataset(inherit=False)
     latitude = np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64")
     pressure = np.asarray(wind["pressure_Pa"].values, dtype="float64")
-    u_reference = np.asarray(wind["u_reference_ms"].values, dtype="float64")
+    # SPEC_08 section 6 ruling 10: the source line is drawn only where the file carries it.
+    u_reference = (np.asarray(wind["u_reference_ms"].values, dtype="float64")
+                   if "u_reference_ms" in wind.variables else None)
     u_total = np.asarray(wind["u_total_ms"].values, dtype="float64")
     reference_Pa = float(wind["reference_level_pressure_Pa"])
     # SPEC_05 Step 3 deliverable 5: u_total at the source's reference pressure, read by the model's
@@ -524,8 +526,9 @@ def figure_9(pr: _Profile):
     fig = Figure(figsize=style.FIGSIZE_WIDE)
     axes = fig.subplots(1, 2)
     style.layout(fig, rows=1)
-    axes[0].plot(latitude, u_reference, color=style.COLOR["wind"], linewidth=1.0,
-                 label=f"source wind, assigned to {reference_Pa / 100:g} mbar")
+    if u_reference is not None:
+        axes[0].plot(latitude, u_reference, color=style.COLOR["wind"], linewidth=1.0,
+                     label=f"source wind, assigned to {reference_Pa / 100:g} mbar")
     axes[0].plot(latitude, u_total_at_reference, color=style.COLOR["gravity_effective"],
                  linewidth=1.0, linestyle="--", label=f"u_total at {reference_Pa / 100:g} mbar")
     axes[0].axvspan(mesh_latitude.min(), mesh_latitude.max(), color=style.COLOR["band"],
@@ -574,12 +577,15 @@ def figure_9(pr: _Profile):
     if len(source) > 78:
         source = source[:78].rsplit(" ", 1)[0] + " ..."
     fig.suptitle(f"F9. The wind assumed, {pr.slug}. {source}", fontsize=9)
-    return fig, {"latitude_planetocentric_deg": latitude, "u_reference_ms": u_reference,
-                 "u_total_at_reference_ms": u_total_at_reference,
-                 "reference_level_pressure_Pa": reference_Pa,
-                 "pressure_Pa": pressure[within], "u_total_ms": field,
-                 "vertical_structure": str(wind.attrs.get("vertical_structure", "")),
-                 "source": str(wind.attrs.get("source", ""))}
+    data = {"latitude_planetocentric_deg": latitude,
+            "u_total_at_reference_ms": u_total_at_reference,
+            "reference_level_pressure_Pa": reference_Pa,
+            "pressure_Pa": pressure[within], "u_total_ms": field,
+            "vertical_structure": str(wind.attrs.get("vertical_structure", "")),
+            "source": str(wind.attrs.get("source", ""))}
+    if u_reference is not None:
+        data["u_reference_ms"] = u_reference
+    return fig, data
 
 
 FIGURES_TRANSFER = (

@@ -30,7 +30,7 @@ step03_1/accept_step03_1 9
 step03_2/accept_step03_2 8
 step03_3/accept_step03_3 16
 step03_4/accept_step03_4 13
-step04_0/accept_step04_0 15
+step04_0/accept_step04_0 14
 step04_1/accept_step04_1 13
 step04_2/accept_step04_2 13
 step04_3/accept_step04_3 9
@@ -40,6 +40,7 @@ step05_1/accept_step05_1 11
 step05_2/accept_step05_2 3
 step05_3/accept_step05_3 7
 step05_4/accept_step05_4 4
+step08_1/accept_step08_1 6
 "
 
 # The suites to run: all of them, or those named (a directory name selects every suite in it).

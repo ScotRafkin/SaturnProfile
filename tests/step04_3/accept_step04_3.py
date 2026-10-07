@@ -11,8 +11,8 @@ nothing inside the repository outside `reports/step04_3/`, which git ignores.
 identities are kinematic: they hold for `u` as a function of position, so the map that defines `u`
 and the geometry the kernel differentiates on have to be the same map. The synthetic files are
 therefore built on the mesh's own columns, on a grid that covers the mesh and nothing more, and are
-held in memory rather than written: a field that is nonzero at the poles is not a kind W file and
-has no business on disk.
+held in memory rather than written: a field that is nonzero at the poles is not a wind the model
+runs on, and has no business on disk.
 
 **The map.** Both directions of the anchor's flat-isobar map are continued at the slope of their
 last interval outside the anchor's levels, as Step 2 decision 8 states. The first filing continued
@@ -228,7 +228,7 @@ def synthetic_field(mesh, radius, u_of_radius_latitude):
     The grid is the mesh's own latitudes and the anchor's own levels, so `r` at a file node is the
     mesh's `r` interpolated to that level and the identity the check rests on is posed on the
     geometry the kernel differentiates on. Held in memory: the field is nonzero at the poles and
-    does not span them, so it is not a kind W file and has no business on disk.
+    does not span them, so it is not a wind the model runs on and has no business on disk.
 
     The grid is the mesh's own geopotential nodes mapped through `p_of_Phi`, which is strictly
     monotonic now that the map is continued rather than clamped (SPEC_04 section 14 ruling 2), so

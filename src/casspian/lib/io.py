@@ -342,8 +342,7 @@ def read(path, kind: str):
     the rest (T, D, G, R, W), per the return-type rule of SPEC_00 section 3.1. The type follows
     the kind, not the file. Refuses per SPEC_00 section 8: a declared kind that is not asked for, a
     schema version newer than this reader, a missing required item, a non monotonic
-    coordinate, mole fractions that do not sum to one, an unknown harmonic convention, or
-    wind components that do not sum to their total.
+    coordinate, mole fractions that do not sum to one, or an unknown harmonic convention.
     """
     path = Path(path)
     spec = kind_spec(kind)

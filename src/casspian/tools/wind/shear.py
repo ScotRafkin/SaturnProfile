@@ -10,8 +10,9 @@ Three layers. The parts know nothing about any case: `u_at_pressure` reads `u_s`
 `p_s`; `position_ln_p` and `position_p` give the position `x(p)` between `p_s` and the stop
 pressure; `ramp` gives `F(x)`. The case functions build `u_total(phi, p)` from those parts, and
 `CASES` maps each case name to its function and its parameters. `assemble` is the one function
-every case passes through: it forms `u_shear = u_total - u_reference`, so the sum identity holds by
-construction.
+every case passes through: where the input carries a shear part it replaces its values with
+`u_total - u_reference`, and where the input carries none it writes none (SPEC_08 section 6
+ruling 2).
 
 `construct` touches no file (SPEC_05 section 1.5): the Monte Carlo driver will call it later
 without writing. `build` reads the control section and the source file, calls `construct`, and
@@ -25,9 +26,10 @@ attributes. `build` adds `input_hashes`; `lib.io.write` stamps what it stamps on
 `identity` returns its input untouched.
 
 What is refused, and only this (SPEC_05 Step 1 check 10, decision N): an unknown case, an unknown
-shape, a missing parameter, a parameter the case does not use, `p_s` outside the wind grid, the
-stop pressure on the wrong side of `p_s`, and `linear_ln_p` with a stop pressure of zero. A
-non-finite value reaches the poles, where the schema refuses the file.
+shape, a missing parameter, a parameter the case does not use, an input without `u_total_ms`
+(SPEC_08), `p_s` outside the wind grid, the stop pressure on the wrong side of `p_s`, and
+`linear_ln_p` with a stop pressure of zero. A non-finite value reaches the poles, where the run's
+loader refuses the file.
 """
 
 from __future__ import annotations
@@ -181,15 +183,17 @@ def check_parameters(case: str, parameters: dict) -> Case:
 # ---------------------------------------------------------------------------
 
 def assemble(source, u_total, case: str, uncertainty_ms=None):
-    """The output dataset: the source with its total replaced and the shear formed from it.
+    """The output dataset: the source with its total replaced, and its shear where it has one.
 
-    Every case passes through here. `u_shear = u_total - u_reference`, so the sum identity holds
-    by construction. Only the values that would be false are overwritten (SPEC_05 section 1.7).
+    Every case passes through here. Where the source carries `u_shear_ms` its values become
+    `u_total - u_reference`; where it carries none, none is written (SPEC_08 section 6 ruling 2).
+    Only the values that would be false are overwritten (SPEC_05 section 1.7).
     """
     out = source.copy(deep=True)
-    reference = np.asarray(source["u_reference_ms"].values, dtype="float64")
     out["u_total_ms"].values[...] = u_total
-    out["u_shear_ms"].values[...] = u_total - reference[:, None]
+    if "u_shear_ms" in out.variables:
+        reference = np.asarray(source["u_reference_ms"].values, dtype="float64")
+        out["u_shear_ms"].values[...] = u_total - reference[:, None]
     out["value_provenance"].values[...] = PARAMETERIZED
     out.attrs["vertical_structure"] = case
     if uncertainty_ms is not None:
@@ -204,6 +208,10 @@ def construct(source, case: str, parameters: dict):
     or written (SPEC_05 section 1.5)."""
     parameters = dict(parameters)
     spec = check_parameters(case, parameters)
+    if "u_total_ms" not in source.variables:
+        raise ControlFileError(
+            "the source carries no u_total_ms; every case reads u_s from the total, so a source "
+            "without it is refused (SPEC_08 section 2 deliverable 5).")
     if spec.function is None:
         return source.copy(deep=True)
     u_s = u_at_pressure(source, float(parameters["shear_reference_pressure_Pa"]))

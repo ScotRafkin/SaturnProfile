@@ -920,8 +920,8 @@ else:
             and run_shc.state.record["passes"] < 10 and sheared["sum_identity_ms"] < 1e-12),
            f"the file: u_total(phi, p) = u_reference(phi) [1 + {sheared['beta']} ln(p_ref / p)] above "
            f"p_ref = {sheared['reference_pressure_Pa']:g} Pa and u_reference below, written to "
-           f"{sheared['path'].name} in the three parts and read back through the kind W reader, which "
-           f"checks the sum identity ({sheared['sum_identity_ms']:.1e} m/s) and the poles\n"
+           f"{sheared['path'].name} in the three parts and read back through the kind W reader; the "
+           f"sum identity, computed from the file read back, {sheared['sum_identity_ms']:.1e} m/s\n"
            f"on the anchor's column it runs {u_top_sheared:.3f} m/s at the top level against "
            f"{u_top_closure:.3f} under the closure wind\n"
            f"at the pinned {spacings(SHEARED_COARSE)}: largest |p/p_label - 1| {identity_shc:.3e}, "

@@ -327,9 +327,9 @@ _WIND = KindSpec(
     variables=(
         VarSpec("latitude_planetocentric_deg", dims=("latitude_planetocentric",), units="degrees_north"),
         VarSpec("pressure_Pa", dims=("pressure",), units="Pa"),
-        VarSpec("u_total_ms", units="m s-1", needs_uncertainty=True),
+        VarSpec("u_total_ms", required=False, units="m s-1", needs_uncertainty=True),
         VarSpec("u_reference_ms", dims=("latitude_planetocentric",), units="m s-1"),
-        VarSpec("u_shear_ms", units="m s-1"),
+        VarSpec("u_shear_ms", required=False, units="m s-1"),
         VarSpec("value_provenance", units="1", is_flag=True),
         VarSpec("reference_level_pressure_Pa", dims=(), units="Pa"),
     ),
@@ -346,11 +346,14 @@ _WIND = KindSpec(
         "coverage_latitude_planetocentric_deg",
     ),
     notes=(
-        "SPEC_00 section 6.6 as SPEC_04 amends it. The file is data along the local vertical "
-        "in three human readable parts: the reference level wind u_reference_ms(latitude) at "
-        "reference_level_pressure_Pa, the total u_total_ms(latitude, pressure), and the shear "
-        "u_shear_ms = u_total - u_reference along the local vertical. The sum identity is "
-        "checked on read. `decomposition`, `u_cylindrical_ms`, `decomposition_geometry` and "
+        "SPEC_00 section 6.6 as SPEC_08 amends it. The file is a wind at a stated level, on "
+        "the source's own latitude and pressure grid: the reference level wind "
+        "u_reference_ms(latitude) at reference_level_pressure_Pa, both required, and, where the "
+        "source gives them, the total u_total_ms(latitude, pressure) and the shear u_shear_ms, "
+        "the change of the wind from the reference level along the local vertical. Nothing ties "
+        "the optional parts to each other, and neither the poles nor a range of pressure is "
+        "required on read; the model's loaders require u_total_ms and apply the polar rule "
+        "(check_wind_poles). `decomposition`, `u_cylindrical_ms`, `decomposition_geometry` and "
         "the Omega_abs cylinder check are retired (SPEC_04 decision A): the decomposition on "
         "a given geometry is a later diagnostic tool, and the model reads the total only."
     ),
@@ -895,43 +898,11 @@ def check_mole_fractions(dataset, where: str, tolerance: float = 1.0e-9) -> None
         )
 
 
-def check_wind_components(dataset, where: str) -> None:
-    """Refuse a kind W dataset whose parts do not sum to its total.
-
-    SPEC_00 section 6.6 as SPEC_04 amends it: `u_total = u_reference + u_shear` at every point
-    to round-off, the reference level wind broadcast along the pressure axis, or the file is
-    refused. The tolerance scales with the magnitude of the field.
-    """
-    import numpy as np
-
-    needed = ("u_total_ms", "u_reference_ms", "u_shear_ms")
-    if not all(n in dataset.variables for n in needed):
-        return
-    dims = ("latitude_planetocentric", "pressure")
-    for name in ("u_total_ms", "u_shear_ms"):
-        if tuple(dataset[name].dims) != dims:
-            raise CasspianSchemaError(
-                f"{where}: {name} has dimensions {tuple(dataset[name].dims)}; kind W stores it "
-                f"on {dims} (SPEC_00 section 6.6)."
-            )
-    total = np.asarray(dataset["u_total_ms"].values, dtype=float)
-    reference = np.asarray(dataset["u_reference_ms"].values, dtype=float)
-    shear = np.asarray(dataset["u_shear_ms"].values, dtype=float)
-    rebuilt = reference[:, None] + shear
-    scale = max(float(np.nanmax(np.abs(total))), 1.0)
-    worst = float(np.nanmax(np.abs(total - rebuilt)))
-    if worst > 1.0e-12 * scale:
-        raise CasspianSchemaError(
-            f"{where}: u_total does not equal u_reference + u_shear; worst departure "
-            f"{worst:.3e} m/s against a field scale of {scale:.3e} m/s "
-            "(SPEC_00 section 6.6 as SPEC_04 amends it)."
-        )
-
-
 def check_wind_poles(dataset, where: str) -> None:
     """Refuse a kind W dataset whose wind is not exactly zero at both poles.
 
-    SPEC_00 section 6.6 (v0.8). A zonal wind is zero at a pole by definition, and a nonzero
+    SPEC_00 section 6.6 (v0.8), applied where the model takes a wind (the loaders of
+    `lib.control`), not on read (SPEC_08). A zonal wind is zero at a pole by definition, and a nonzero
     value there makes `Omega_abs` and the meridional gravity singular: the centrifugal part of
     `G_phi` carries `u^2 tan(phi) / r`, which diverges (REPORT_01_step7, finding 5). Both poles
     must be nodes of the latitude coordinate, and the tool that writes the file, not the model,
@@ -975,6 +946,3 @@ def validate(dataset, kind: str, where: str = "dataset", writer_filled: bool = T
     _check_coordinates(dataset, spec, where)
     if kind == "composition":
         check_mole_fractions(dataset, where)
-    if kind == "wind":
-        check_wind_components(dataset, where)
-        check_wind_poles(dataset, where)

@@ -140,8 +140,8 @@ def sheared(inputs, path, beta=0.1):
     """The sheared synthetic wind of the Step 4 expected values, written and read back.
 
     `u_total(phi, p) = u_reference(phi) [1 + beta ln(p_ref / p)]` above the reference level and
-    `u_reference` below it, written as a kind W file in its three parts so that the reader checks
-    the sum identity and the poles.
+    `u_reference` below it, written as a kind W file in its three parts and read back, the sum
+    identity computed from the file read back.
     """
     lat_file = np.asarray(inputs.wind["latitude_planetocentric_deg"].values, dtype="float64")
     p_file = np.asarray(inputs.wind["pressure_Pa"].values, dtype="float64")

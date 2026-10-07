@@ -410,9 +410,9 @@ record(8, "the cylinder-extended wind of decision P converges, holds the referen
        f"{passes} passes, changes " + ", ".join(f"{c:.2e}" for c in history) + " m/s\n"
        f"reference-level identity u_total(phi, p_ref) = u_reference(phi): largest departure "
        f"{identity:.2e} m/s over {lat_file.size} latitudes\n"
-       f"sum identity u_total = u_reference + u_shear, read from the written file: "
+       f"sum identity u_total = u_reference + u_shear, computed here from the written file: "
        f"{sum_identity:.2e} m/s; both poles exactly zero: {max(poles) == 0.0}\n"
-       f"written to {written} through lib.io.write under kind wind, which is what validates it; "
+       f"written to {written} through lib.io.write under kind wind, which validates its schema; "
        f"tools.wind.build_wind is the published-curve path and does not apply here\n"
        f"the file carries the run's season, solar_longitude_deg "
        f"{float(cio.read(written, 'wind').attrs['solar_longitude_deg'])}")

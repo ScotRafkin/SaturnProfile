@@ -150,11 +150,11 @@ def wind_reference_column(wind):
     return lat[order], u, du, flags
 
 
-def wind_profile_at(wind, latitude_deg):
-    """`u(p)` at one planetocentric latitude, linear in latitude on the file's grid."""
+def wind_profile_at(wind, latitude_deg, name="u_total_ms"):
+    """`name(p)` at one planetocentric latitude, linear in latitude on the file's grid."""
     lat = np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64")
     p = np.asarray(wind["pressure_Pa"].values, dtype="float64")
-    u = np.asarray(wind["u_total_ms"].values, dtype="float64")
+    u = np.asarray(wind[name].values, dtype="float64")
     order = np.argsort(lat)
     profile = np.array([np.interp(float(latitude_deg), lat[order], u[order, j])
                         for j in range(p.size)])
@@ -162,9 +162,34 @@ def wind_profile_at(wind, latitude_deg):
     return p[p_order], profile[p_order]
 
 
+def _reference_from_parts(wind):
+    """`wind_reference_column` for a file whose total does not give the reference level.
+
+    SPEC_08 section 6 ruling 10: the file's own `u_reference_ms`, with no uncertainty band (kind W
+    gives the reference part none), and the provenance of the reference level where it is a node
+    of the file's pressure grid.
+    """
+    lat = np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64")
+    p = np.asarray(wind["pressure_Pa"].values, dtype="float64")
+    order = np.argsort(lat)
+    u = np.asarray(wind["u_reference_ms"].values, dtype="float64")[order]
+    column = np.flatnonzero(p == float(wind["reference_level_pressure_Pa"]))
+    flags = (np.asarray(wind["value_provenance"].values)[:, int(column[0])][order]
+             if column.size else np.full(lat.size, -1))
+    return lat[order], u, np.full(lat.size, np.nan), flags
+
+
 def panel_wind_latitude(ax, wind, latitude_deg=None):
-    """`u(phi)` on the reference level, with the uncertainty band and provenance shading."""
-    lat, u, du, flags = wind_reference_column(wind)
+    """`u(phi)` on the reference level, with the uncertainty band and provenance shading.
+
+    The total at the reference level where the file carries the total on that level, and the
+    file's reference wind otherwise (SPEC_08 section 6 ruling 10).
+    """
+    p = np.asarray(wind["pressure_Pa"].values, dtype="float64")
+    on_total = ("u_total_ms" in wind.variables
+                and bool(np.any(p == float(wind["reference_level_pressure_Pa"]))))
+    lat, u, du, flags = (wind_reference_column(wind) if on_total
+                         else _reference_from_parts(wind))
     meanings = str(wind["value_provenance"].attrs.get("flag_meanings", "")).split()
     shade = {"parameterized": style.COLOR["parameterized"],
              "extrapolated": style.COLOR["extrapolated"],
@@ -187,7 +212,8 @@ def panel_wind_latitude(ax, wind, latitude_deg=None):
         ax.fill_between(lat[finite], (u - du)[finite], (u + du)[finite],
                         color=style.COLOR["band"], alpha=0.6, linewidth=0, label="+- 1 sigma")
     ax.plot(lat, u, color=style.COLOR["wind"],
-            label=f"u at {float(wind['reference_level_pressure_Pa']) / 100.0:g} mbar")
+            label=f"{'u' if on_total else 'u_reference'} at "
+                  f"{float(wind['reference_level_pressure_Pa']) / 100.0:g} mbar")
     ax.axhline(0.0, color="0.75", linewidth=0.8, zorder=0)
     if latitude_deg is not None:
         style.latitude_line(ax, latitude_deg)
@@ -209,14 +235,25 @@ def _figure_wind(wind):
     data = panel_wind_latitude(left, wind)
     left.set_title("u(phi) on the reference level, uncertainty band and provenance shading")
     left.legend(loc="upper right", fontsize=6.5)
-    for latitude, dash in ((0.0, "-"), (30.0, "--"), (-30.0, "-."), (60.0, ":"), (-60.0, ":")):
-        p, u = wind_profile_at(wind, latitude)
-        right.plot(u, p / 100.0, linestyle=dash, label=f"{latitude:+.0f} deg")
-        data[f"u_profile_{latitude:+.0f}_ms"] = u
+    # SPEC_08 section 6 ruling 10: the right panel draws the total where the file carries it, the
+    # shear where it carries only that, and is left blank where it carries neither.
+    part = next((name for name in ("u_total_ms", "u_shear_ms") if name in wind.variables), None)
+    p = np.asarray(wind["pressure_Pa"].values, dtype="float64")
+    if part is None:
+        right.text(0.5, 0.5, "the file carries no u_total or u_shear", transform=right.transAxes,
+                   ha="center", va="center", fontsize=9)
+    else:
+        marker = "o" if p.size == 1 else None
+        for latitude, dash in ((0.0, "-"), (30.0, "--"), (-30.0, "-."), (60.0, ":"), (-60.0, ":")):
+            p, u = wind_profile_at(wind, latitude, part)
+            right.plot(u, p / 100.0, linestyle=dash, marker=marker, label=f"{latitude:+.0f} deg")
+            key = "u_shear_profile" if part == "u_shear_ms" else "u_profile"
+            data[f"{key}_{latitude:+.0f}_ms"] = u
+        right.legend(loc="lower right")
     style.pressure_axis(right, p)
-    right.set_xlabel("zonal wind (m/s)")
-    right.set_title(f"u(p) at five latitudes ({wind.attrs.get('vertical_structure', '')})")
-    right.legend(loc="lower right")
+    right.set_xlabel("u_shear (m/s)" if part == "u_shear_ms" else "zonal wind (m/s)")
+    what = "u_shear(p)" if part == "u_shear_ms" else "u(p)"
+    right.set_title(f"{what} at five latitudes ({wind.attrs.get('vertical_structure', '')})")
     fig.suptitle(f"Wind: {wind.attrs.get('title', '')}")
     return fig, data
 

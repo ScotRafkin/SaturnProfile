@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.22, 28 September 2026. Author of record: S. Rafkin. Status: accepted architecture; v0.22 (author's decision on the clean clone, `docs/RUNBOOK.md`): git holds what cannot be recreated and nothing that can; the acceptance scripts are source, so they move to a committed `tests/` directory, one subdirectory per step with the regression driver at its top, while everything they write stays under the ignored `reports/step*/` (§2 rows [Y] and [Z]); v0.21 applies the amendments SPEC_04 carried in its Appendix, at SPEC_04's acceptance and closure: 3.4 the wind read as a total and placed on the model's own geometry, 6.2 kind C a field on (level, latitude) for every use with the interpolation rule of decision L stated once for kinds C and W, 6.6 kind W in three parts along the local vertical with the cylindrical decomposition retired, 6.8 kind profile in transfer mode with exactly one record group, 7.2 the transfer namelist as the steps implement it, 7.3 closed; v0.20 (REPORT_03_step4 finding 3): §7.2 no longer asks for absolute paths in the resolved namelist, which §5 forbids; the resolved form, relative paths and hashes, lives in the product's `namelist` group; v0.19 (author decision on REVIEW_03_step3 finding 1): a file whose content has no date of its own carries the date of the observation it serves, its source's own dating in `epoch_note` (§5); v0.18 (the coding agent's pre-execution review of SPEC_03 Step 3): every path a file records is relative to the directory of the file that records it (§5, §7, §8), reconciling §5 and §7, applied by every writer at the SPEC_03 Step 3 rebuild. v0.17 (the season identifier, `docs/CASSPIAN_Seasonal_Design_Note.md` §2 and §8.1): every file carries `epoch` and either `solar_longitude_deg` with its source or `season_absent_meaning = "uniform"` (§5, §6); the run declares `solar_longitude_deg` (§7.2); applied at SPEC_03 Step 3 with one rebuild of the reduction chain. Earlier: §7.3: the geopotential and hydrostatic integrations are closed by SPEC_03 Steps 1 and 2, the grid and the other integrations remain open for SPEC_04. v0.16 (SPEC_03 accepted): Eq. B1 with the tilt (§3.3, §6.7); the pressure grid variables of a source profile (§6.1); kind `profile` (§5, §6.8); the run directory's build file and the rule that every forward input is the run's own file (§2.3); namelist `mode`, `p_b_rule`, `[diagnostics]`, `product` and the closure rules (§7.2); the `input_hashes` warning for every derived kind (§8). v0.4 (after Step 1 review): harmonic_convention is a code; `modeled` provenance; `uncertainty_method`; `thermo_instance`; kind N groups; `reports/`; the `-dirty` rule; read return types. v0.5: `positive` only on vertical coordinates; uncertainty naming rule (insert before the unit suffix). v0.6: `reports/` holds the committed build record; revision history section added. v0.7: `index` provenance; `derived` versus `inferred`; NaN for unstated uncertainties. v0.8: kind W polar zero rule; `decomposition` attribute; provenance code 4. v0.9: manifest `anchor_rule`; kind D `fit_residual_range_m`; rebuild rule as a directory property. v0.10: standard diagnostics; kind N carries the mean refractivity and molar mass and a fuller `reduction_record`; manifest `[diagnostics]` and `[sensitivity]`. v0.11: the diagnostics live in `tools/plots/`, generic and kind-dispatching. v0.12: no sensitivity study in the pipeline; `[sensitivity]` removed; kind N companions defined as first-order propagation with term lists.
+Version 0.23, 7 October 2026. Author of record: S. Rafkin. Status: accepted architecture; v0.23 (SPEC_08 acceptance): kind W is a wind at a stated level, the reference wind and its level required and the total and the shear optional, on the data's own grid; the sum identity is not checked; the polar rule and the presence of the total are checked where the model takes a wind (§6.6); v0.22 (author's decision on the clean clone, `docs/RUNBOOK.md`): git holds what cannot be recreated and nothing that can; the acceptance scripts are source, so they move to a committed `tests/` directory, one subdirectory per step with the regression driver at its top, while everything they write stays under the ignored `reports/step*/` (§2 rows [Y] and [Z]); v0.21 applies the amendments SPEC_04 carried in its Appendix, at SPEC_04's acceptance and closure: 3.4 the wind read as a total and placed on the model's own geometry, 6.2 kind C a field on (level, latitude) for every use with the interpolation rule of decision L stated once for kinds C and W, 6.6 kind W in three parts along the local vertical with the cylindrical decomposition retired, 6.8 kind profile in transfer mode with exactly one record group, 7.2 the transfer namelist as the steps implement it, 7.3 closed; v0.20 (REPORT_03_step4 finding 3): §7.2 no longer asks for absolute paths in the resolved namelist, which §5 forbids; the resolved form, relative paths and hashes, lives in the product's `namelist` group; v0.19 (author decision on REVIEW_03_step3 finding 1): a file whose content has no date of its own carries the date of the observation it serves, its source's own dating in `epoch_note` (§5); v0.18 (the coding agent's pre-execution review of SPEC_03 Step 3): every path a file records is relative to the directory of the file that records it (§5, §7, §8), reconciling §5 and §7, applied by every writer at the SPEC_03 Step 3 rebuild. v0.17 (the season identifier, `docs/CASSPIAN_Seasonal_Design_Note.md` §2 and §8.1): every file carries `epoch` and either `solar_longitude_deg` with its source or `season_absent_meaning = "uniform"` (§5, §6); the run declares `solar_longitude_deg` (§7.2); applied at SPEC_03 Step 3 with one rebuild of the reduction chain. Earlier: §7.3: the geopotential and hydrostatic integrations are closed by SPEC_03 Steps 1 and 2, the grid and the other integrations remain open for SPEC_04. v0.16 (SPEC_03 accepted): Eq. B1 with the tilt (§3.3, §6.7); the pressure grid variables of a source profile (§6.1); kind `profile` (§5, §6.8); the run directory's build file and the rule that every forward input is the run's own file (§2.3); namelist `mode`, `p_b_rule`, `[diagnostics]`, `product` and the closure rules (§7.2); the `input_hashes` warning for every derived kind (§8). v0.4 (after Step 1 review): harmonic_convention is a code; `modeled` provenance; `uncertainty_method`; `thermo_instance`; kind N groups; `reports/`; the `-dirty` rule; read return types. v0.5: `positive` only on vertical coordinates; uncertainty naming rule (insert before the unit suffix). v0.6: `reports/` holds the committed build record; revision history section added. v0.7: `index` provenance; `derived` versus `inferred`; NaN for unstated uncertainties. v0.8: kind W polar zero rule; `decomposition` attribute; provenance code 4. v0.9: manifest `anchor_rule`; kind D `fit_residual_range_m`; rebuild rule as a directory property. v0.10: standard diagnostics; kind N carries the mean refractivity and molar mass and a fuller `reduction_record`; manifest `[diagnostics]` and `[sensitivity]`. v0.11: the diagnostics live in `tools/plots/`, generic and kind-dispatching. v0.12: no sensitivity study in the pipeline; `[sensitivity]` removed; kind N companions defined as first-order propagation with term lists.
 
 Companion figure: `CASSPIAN_Fig1_RepositoryLayout.png` (also `.svg`, regenerated by
 `fig1_repository_layout.py`). Bracketed identifiers in this document, such as [S1] or [D1a], are
@@ -633,12 +633,14 @@ file reference a rotation system by name and carry its value, and lets a reader 
 
 ### 6.6 Kind W: wind field (`<prefix>_wind.nc`)
 
-The single dynamical input to the model. The full field on the model's own axes, in three human
-readable parts along the local vertical, plus enough provenance to say where every value came
-from (amended at SPEC_04's acceptance, decision A). The parts are the reference level wind, the
-total, and the shear between them; the model reads the total, places it on its own geometry
-through the isobar map, and forms effective gravity and the shear kernel from that field. It
-reads no declaration of how the field was built.
+A wind at a stated level, on the file's own latitude and pressure grid (amended at SPEC_08's
+acceptance). The reference wind and its level are required; the total and the shear, its change
+from the reference level along the local vertical, are optional. A file holds the parts its
+source gives, where the source gives them. Data that are not a wind at a stated level (a shear
+alone, a temperature gradient) are not kind W. The model runs only on a file that carries the
+total: it reads the total, places it on its own geometry through the isobar map, and forms
+effective gravity and the shear kernel from that field. It reads no declaration of how the field
+was built.
 
 The cylindrical decomposition of earlier drafts is retired: `u_cylindrical_ms`, the
 `decomposition` and `decomposition_geometry` attributes and the `Omega_abs` cylinder check are
@@ -653,12 +655,12 @@ Dimensions: `latitude_planetocentric`, `pressure`.
 |---|---|---|
 | `latitude_planetocentric_deg(latitude_planetocentric)` | degrees_north | coordinate |
 | `pressure_Pa(pressure)` | Pa | coordinate |
-| `u_total_ms(latitude, pressure)` | m/s | positive eastward, relative to the declared rotation system; the field the model builds `g` (Eq. A4) and the kernel (Eq. A15) from |
-| `u_reference_ms(latitude)` | m/s | the wind at `reference_level_pressure_Pa`, the observed curve as the source gives it |
-| `u_shear_ms(latitude, pressure)` | m/s | `u_total` minus `u_reference`, along the local vertical; zero everywhere when the hypothesis is altitude independent |
-| `u_total_uncertainty_ms` | m/s | |
+| `u_total_ms(latitude, pressure)` | m/s | optional; positive eastward, relative to the declared rotation system; the field the model builds `g` (Eq. A4) and the kernel (Eq. A15) from, required to run the model |
+| `u_reference_ms(latitude)` | m/s | required; the wind at `reference_level_pressure_Pa`, the observed curve as the source gives it |
+| `u_shear_ms(latitude, pressure)` | m/s | optional; the change of the wind from `reference_level_pressure_Pa` along the local vertical; zero everywhere when the hypothesis is altitude independent |
+| `u_total_uncertainty_ms` | m/s | present with `u_total_ms` |
 | `value_provenance(latitude, pressure)` | flag | 0 observed, 1 interpolated, 2 parameterized, 3 extrapolated, 4 extended_by_source_assumption |
-| `reference_level_pressure_Pa` | Pa | scalar; the level `u_reference_ms` is given at |
+| `reference_level_pressure_Pa` | Pa | required; scalar; the level `u_reference_ms` is given at and the shear is measured from |
 
 Global attributes:
 
@@ -675,20 +677,19 @@ Global attributes:
 | `coverage_pressure_Pa` | `[min, max]` |
 | `coverage_latitude_planetocentric_deg` | `[min, max]` |
 
-Rules the model enforces at load time:
+Rules the model enforces where it takes a wind (the reduction's and both forward loaders), not on
+every read:
 
 - The file's `rotation_system_name` and rate match the kind R file the run points to; otherwise
   refuse.
-- `coverage_pressure_Pa` spans from above the declared boundary pressure to below the deepest
-  level the run delivers, and `coverage_latitude` spans every target latitude and every anchor
-  latitude; otherwise refuse. The model does not extrapolate the wind.
-- The sum identity `u_total = u_reference + u_shear` holds at every point to round-off;
-  otherwise refuse. `u_reference` is one value per latitude and is broadcast down the column.
+- The file carries `u_total_ms`; otherwise refuse, naming it.
 - Both poles are nodes of the latitude coordinate and `u_total_ms` is exactly zero there at
   every level; otherwise refuse (v0.8). A zonal wind is zero at a pole by definition, and a
   nonzero value there makes `Omega_abs` and the meridional gravity singular (REPORT_01_step7,
-  finding 5). The tool that writes the file, not the model, is where a source that does not
-  reach the pole is brought to zero, under a declared and flagged rule.
+  finding 5). The tool that writes a file for the model, not the model, is where a source that
+  does not reach the pole is brought to zero, under a declared and flagged rule.
+- The model does not extrapolate the wind: a point outside the file's grid is refused.
+- No relation among the parts is checked (the sum identity of v0.21 is retired, SPEC_08).
 - The prose provenance (`method`, `vertical_structure`, `parameterization`) is required and is
   not read by the model: it says what hypothesis the file carries, for a reader and for the
   figures, and F9 of SPEC_04 draws the field beside the temperature it delivered.
@@ -1116,6 +1117,7 @@ the repository suffice to recreate the pipeline.
 | 0.14 | 2026-09-12 | §5: `index` provenance covers a scalar that is a label (kind N's anchor isobar pressure) | REPORT_02_step4 decision 4 |
 | 0.15 | 2026-09-12 | §7.1: `anchor_rule` may be `equatorial_radius` with `anchor_quantity = "radius_equatorial_m"`; the parser refuses a rule and quantity that do not belong together | SPEC_02 v0.8 Step 6 |
 | 0.18 | 2026-09-15 | §5, §7, §8: every recorded path is relative to the directory of the file that records it; the reader resolves against that directory; §7's "resolved (absolute) form recorded" withdrawn | coding agent's pre-execution review of SPEC_03 Step 3, problem 3 |
+| 0.23 | 2026-10-07 | §6.6: kind W is a wind at a stated level; `u_reference_ms` and `reference_level_pressure_Pa` required, `u_total_ms` and `u_shear_ms` optional, on the data's own grid; the sum identity retired; the presence of the total and the polar rule checked where the model takes a wind | SPEC_08 acceptance |
 | 0.22 | 2026-09-29 | §2 rows [Y] and [Z]: git holds what cannot be recreated; the acceptance scripts move to a committed `tests/` directory, everything they write stays under the ignored `reports/step*/` and `reports/regression/`; the clone runbook `docs/RUNBOOK.md` | author's decision on the clean clone |
 | 0.21 | 2026-09-28 | The SPEC_04 Appendix amendments applied at that specification's acceptance and closure: 3.4 the wind read as a total; 6.2 kind C a field on (level, latitude), the interpolation rule of decision L stated once for C and W; 6.6 kind W in three parts along the local vertical, the cylindrical decomposition and its cylinder check retired; 6.8 kind profile in transfer mode, exactly one record group, the copied subtrees' vertical dimensions; 7.2 the transfer namelist and `kernel_uncertainty_per_rad`; 7.3 closed | SPEC_04 acceptance |
 | 0.20 | 2026-09-16 | §7.2: the resolved namelist carries relative paths and lives in the product's `namelist` group; the v0.16 words "absolute paths" and "into `output/`" withdrawn | REPORT_03_step4 finding 3 |

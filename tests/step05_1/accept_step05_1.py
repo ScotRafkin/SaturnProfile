@@ -145,7 +145,7 @@ zero = bool(np.all(total3 == 0.0))
 minus = array_equal(out3["u_shear_ms"].values,
                     np.broadcast_to(-np.asarray(source["u_reference_ms"].values)[:, None], total3.shape))
 record(3, "uniform, c = 0: u_total exactly zero; u_shear = -u_reference exactly; the file reads back "
-          "through the schema, sum identity included",
+          "through the schema",
        zero and minus,
        f"u_total exactly zero at all {total3.size} nodes: {zero}; u_shear equal to -u_reference "
        f"exactly: {minus}; read back by lib.io.read without refusal: True")
@@ -261,12 +261,12 @@ for number, (out, given) in OUTPUTS.items():
                             if not array_equal(out[v].attrs.get(key), given[v].attrs.get(key)))
     good = pole_zero and provenance and flags_kept and source_data and not unexpected and not variable_attrs
     ok = ok and good
-    lines.append(f"check {number}: read back through the schema (sum identity); u_total zero at both "
+    lines.append(f"check {number}: read back through the schema; u_total zero at both "
                  f"poles {pole_zero}; value_provenance 2 everywhere {provenance}, flag_values kept "
                  f"{flags_kept}; source data array-equal {source_data}; globals differing {differ}, of "
                  f"which unexpected {unexpected or 'none'}; variable attributes differing "
                  f"{variable_attrs or 'none'}; vertical_structure {out.attrs['vertical_structure']!r}")
-record(8, "every output of checks 2 to 7: sum identity on read, u_total exactly zero at both poles, "
+record(8, "every output of checks 2 to 7: read back through the schema, u_total exactly zero at both poles, "
           "value_provenance 2 everywhere, source data array-equal, every attribute equal to the "
           "input's except vertical_structure, input_hashes and what lib.io.write stamps",
        ok, f"excepted, as stamped by lib.io.write: {list(STAMPED)}; as replaced by the tool: "

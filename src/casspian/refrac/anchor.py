@@ -103,10 +103,11 @@ class GeoidSetup:
 def wind_of_latitude(wind):
     """`u(phi_c)` on the reference level of a kind W dataset, as a callable in radians.
 
-    Linear in planetocentric latitude on the file's own grid. Kind W carries both poles as nodes
-    with exactly zero wind (SPEC_00 section 6.6, checked by `read`), so the callable is zero at
-    the poles by the file's own values and needs no rule of its own. Returns an array shaped like
-    its argument, as `lib.geoid.wind_geoid` requires.
+    Linear in planetocentric latitude on the file's own grid. The wind the model runs on carries
+    both poles as nodes with exactly zero wind (SPEC_00 section 6.6, checked by the loaders of
+    `lib.control`), so the callable is zero at the poles by the file's own values and needs no
+    rule of its own. Returns an array shaped like its argument, as `lib.geoid.wind_geoid`
+    requires.
     """
     latitude = np.radians(np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64"))
     pressure = np.asarray(wind["pressure_Pa"].values, dtype="float64")

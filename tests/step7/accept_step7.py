@@ -4,10 +4,12 @@ Every check reports its measured value, as v0.15 requires. Figures go to reports
 which is committed; this directory keeps only the script and its output.
 """
 
+import dataclasses
 import math
 import shutil
 import sys
 from pathlib import Path
+from types import MappingProxyType
 
 import matplotlib
 matplotlib.use("Agg")
@@ -15,12 +17,12 @@ import matplotlib.pyplot as plt
 import netCDF4
 import numpy as np
 
+from casspian.lib import control as ctl
 from casspian.lib import geoid as gd
 from casspian.lib import io as cio
 from casspian.lib.gravity import g_eff_radial
 from scipy.interpolate import PchipInterpolator
 from casspian.lib import latitude as latmod
-from casspian.lib.schema import CasspianSchemaError
 from casspian.tools.wind.build_wind import bin_points, bin_rms_about, read_points
 from casspian.tools.wind.curve import AssembledCurve, read_curve
 
@@ -100,23 +102,24 @@ polar_values = u_file[poles, :]
 tampered = HERE / "tampered_wind.nc"
 shutil.copy("occul_data/lindal/lindal_wind.nc", tampered)
 with netCDF4.Dataset(tampered, "a") as handle:
-    # Both parts are perturbed together so the sum identity still holds and the polar check is
-    # what fires. Perturbing u_total alone is refused by the sum identity first, which would
-    # not exercise the rule this step added. SPEC_04 Step 0 retired `u_cylindrical_ms` for
-    # `u_reference_ms(latitude)`, which is one value per latitude, so the whole polar column of
-    # `u_total` moves with it and `u_shear` stays zero.
     handle.variables["u_total_ms"][poles[1], :] = 1e-6
-    handle.variables["u_reference_ms"][poles[1]] = 1e-6
+# The polar rule is applied where the model takes a wind (SPEC_08): the copy reads, and the
+# reduction's loader, pointed at it through the registered manifest, refuses it.
+cio.read(tampered, "wind").close()
+manifest = ctl.read_reduction_manifest("occul_data/lindal/lindal_reduction.toml")
+manifest = dataclasses.replace(
+    manifest, inputs=MappingProxyType({**manifest.inputs, "wind": tampered.resolve()}))
 refused, message = False, "not refused"
 try:
-    cio.read(tampered, "wind")
-except CasspianSchemaError as exc:
+    ctl.load_reduction_inputs(manifest)
+except ctl.ControlFileError as exc:
     refused, message = True, str(exc)
 record(2, "the wind is exactly zero at both poles, and a perturbed copy is refused",
        float(np.max(np.abs(polar_values))) == 0.0 and refused,
        f"latitudes {lat_c[poles].tolist()}; max |u| there {float(np.max(np.abs(polar_values))):.1e} m/s, "
        f"exactly zero: {float(np.max(np.abs(polar_values))) == 0.0}\n"
-       f"a copy with the north pole set to 1e-6 m/s is refused by read:\n  {message}")
+       f"a copy with the north pole set to 1e-6 m/s reads as kind W and is refused by "
+       f"load_reduction_inputs:\n  {message}")
 
 # ---------------------------------------------------------------------------
 # 3. The stated values on the curve
@@ -201,7 +204,7 @@ shear_max = float(np.max(np.abs(wind["u_shear_ms"].values)))
 # retired (SPEC_04 Appendix, SPEC_00 section 6.6 amended).
 sum_dev = float(np.max(np.abs(u_file - (wind["u_reference_ms"].values[:, None]
                                         + wind["u_shear_ms"].values))))
-record(6, "the file: identical columns, provenance, the three parts and the section 6.6 checks",
+record(6, "the file: identical columns, provenance and the three parts",
        identical and sum_dev == 0.0 and shear_max == 0.0
        and set(np.unique(np.delete(provenance, ref_col, axis=1))) == {4},
        f"shape {u_file.shape}; columns identical {identical}\n"
@@ -212,7 +215,7 @@ record(6, "the file: identical columns, provenance, the three parts and the sect
        f"u_reference_ms{tuple(wind['u_reference_ms'].dims)}; sum identity departure "
        f"{sum_dev:.1e}; max |u_shear| {shear_max:.1e} m/s, zero because this field does not "
        "vary along the column\n"
-       f"read as kind W succeeded, including the section 6.6 polar check")
+       f"read as kind W succeeded; the polar rule is the loaders' (check 2)")
 
 # ---------------------------------------------------------------------------
 # 7. The wind geoid, its convergence and the two sensitivities

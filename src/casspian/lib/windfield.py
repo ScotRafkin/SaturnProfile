@@ -170,6 +170,6 @@ class WindField:
 
         Provided so that the transfer and the reduction read one field: this is `wind_at` at
         `reference_level_pressure_Pa` and reproduces `refrac.anchor.wind_of_latitude` on a file
-        whose reference level is a pressure node, which kind W requires.
+        whose reference level is a pressure node, which the reduction's loader requires.
         """
         return self.wind_at(phi, np.full(np.shape(phi), self.reference_pressure_Pa))

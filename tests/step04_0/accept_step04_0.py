@@ -225,16 +225,7 @@ for name, (path, _) in WIND_FILES.items():
 record(3, "the sum identity holds exactly and the shear vanishes at the reference level",
        ok, "\n".join(lines))
 
-# ---------------------------------------------------------------------------
-# 4. A copy with the sum identity broken is refused
-# ---------------------------------------------------------------------------
-broken = WORK / "lindal_transfer_wind_broken.nc"
-shutil.copy(WIND_FILES["transfer"][0], broken)
-with netCDF4.Dataset(broken, "a") as handle:
-    handle["u_shear_ms"][0, 0] = 1.0e-3
-message = refusal(cio.read, broken, "wind")
-record(4, "a kind W copy whose parts do not sum to its total is refused",
-       message is not None and "u_reference + u_shear" in str(message), message)
+# 4. Retired by SPEC_08 decision 3: kind W no longer checks the sum identity.
 
 # ---------------------------------------------------------------------------
 # 5. Kind C on a latitude grid, every column the point file's

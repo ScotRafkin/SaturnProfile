@@ -1238,8 +1238,8 @@ else:
             and state_sh.record["passes"] < 10 and state_shc.record["passes"] < 10),
            f"the file: u_total(phi, p) = u_reference(phi) [1 + {BETA} ln(p_ref / p)] above "
            f"p_ref = {p_ref:g} Pa and u_reference below, written to "
-           f"{sheared_path.name} in the three parts and read back through the kind W reader, which "
-           f"checks the sum identity ({sum_identity:.1e} m/s) and the poles\n"
+           f"{sheared_path.name} in the three parts and read back through the kind W reader; the "
+           f"sum identity, computed from the file read back, {sum_identity:.1e} m/s\n"
            f"    on the anchor's column it runs {float(sheared_field.wind_at(phi_a, p_tab[TOP])):.3f} "
            f"m/s at the top level against "
            f"{float(closure_field.wind_at(phi_a, p_tab[TOP])):.3f} under the closure wind\n"

@@ -35,7 +35,7 @@ import numpy as np
 import xarray as xr
 
 from casspian.lib import io as cio
-from casspian.lib.schema import UNIT_SUFFIXES, check_wind_components, check_wind_poles
+from casspian.lib.schema import UNIT_SUFFIXES, check_wind_poles
 
 __all__ = [
     "ControlFileError",
@@ -447,6 +447,25 @@ def _load_into_memory(path: Path, kind: str):
     return loaded
 
 
+def _admit_wind(wind, where: str) -> None:
+    """Refuse a kind W file the model cannot run on. SPEC_08 section 6 ruling 4.
+
+    The model reads `u_total_ms`, which kind W does not require of a data file, so its absence is
+    refused here, by name. The polar rule follows: both poles nodes of the latitude grid and
+    `u_total_ms` exactly zero there (SPEC_00 section 6.6), applied where the model takes a wind
+    rather than on every read. The reference level needs no check here: the schema requires it.
+    """
+    if "u_total_ms" not in wind.variables:
+        raise ControlFileError(
+            f"{where}: the wind carries no u_total_ms. Kind W does not require the total of a data "
+            "file, but the model runs on it (SPEC_00 section 6.6 as SPEC_08 amends it)."
+        )
+    try:
+        check_wind_poles(wind, where)
+    except Exception as exc:
+        raise ControlFileError(str(exc)) from None
+
+
 def load_reduction_inputs(manifest: ReductionManifest) -> ReductionInputs:
     """Read the six inputs under their kinds and check them against each other.
 
@@ -455,6 +474,7 @@ def load_reduction_inputs(manifest: ReductionManifest) -> ReductionInputs:
 
     * any input carries a `casspian_git_commit` ending in `-dirty`;
     * the wind file's rotation system name or rate differs from the rotation file's;
+    * the wind file carries no `u_total_ms`, or its wind is not exactly zero at both poles;
     * the wind file's `reference_level_pressure_Pa` is not a node of its pressure grid;
     * the manifest's anchor isobar is not a surface of the geodesy file, or not a tabulated
       level of the thermo file (the reduction needs `h_ref` at that exact level, not an
@@ -484,6 +504,7 @@ def load_reduction_inputs(manifest: ReductionManifest) -> ReductionInputs:
             f"{rotation_name!r} at {rotation_rate!r} rad/s. SPEC_00 section 6.6 requires them "
             "to be the same system."
         )
+    _admit_wind(wind, manifest.inputs["wind"].name)
 
     reference = float(wind["reference_level_pressure_Pa"])
     if not np.any(np.asarray(wind["pressure_Pa"].values) == reference):
@@ -1261,7 +1282,7 @@ def load_run_inputs(namelist: RunNamelist) -> RunInputs:
     carries `-dirty`; an anchor's `profile_or_run` is not its `[[anchors]]` slug; an input does
     not carry the run name in `profile_or_run`, or `role = "forward"`, or (kind C)
     `composition_role = "forward"`; the wind's rotation system or rate differs from the run's
-    kind R; the wind's parts do not sum to its total or its poles are not zero; the wind's
+    kind R; the wind carries no `u_total_ms` or its poles are not zero; the wind's
     coverage does not span the anchors' levels and latitudes. In closure mode, also when: the
     run's season differs from the anchor's; the composition's levels are not the anchor's; the
     gauge isobar is not a tabulated level of the anchor (the nearest level named); an input
@@ -1330,11 +1351,7 @@ def load_run_inputs(namelist: RunNamelist) -> RunInputs:
             f"the run's wind is in {wind_name!r} at {wind_rate!r} rad/s but its rotation file is "
             f"{rotation_name!r} at {rotation_rate!r} rad/s (SPEC_00 section 6.6)."
         )
-    try:
-        check_wind_components(wind, namelist.inputs["wind"].name)
-        check_wind_poles(wind, namelist.inputs["wind"].name)
-    except Exception as exc:
-        raise ControlFileError(str(exc)) from None
+    _admit_wind(wind, namelist.inputs["wind"].name)
 
     root = anchor.to_dataset(inherit=False)
     levels = np.asarray(anchor["inputs/thermo"].to_dataset(inherit=False)["pressure_Pa"].values,
@@ -1535,11 +1552,7 @@ def _load_transfer_inputs(namelist: RunNamelist) -> RunInputs:
             f"the run's wind is in {wind_name!r} at {wind_rate!r} rad/s but its rotation file is "
             f"{rotation_name!r} at {rotation_rate!r} rad/s (SPEC_00 section 6.6)."
         )
-    try:
-        check_wind_components(wind, namelist.inputs["wind"].name)
-        check_wind_poles(wind, namelist.inputs["wind"].name)
-    except Exception as exc:
-        raise ControlFileError(str(exc)) from None
+    _admit_wind(wind, namelist.inputs["wind"].name)
 
     # The seasons of W, C and every anchor are recorded beside the run's and a difference is
     # warned, never refused (SPEC_04 decision N, which amends decision I's "else refused").
