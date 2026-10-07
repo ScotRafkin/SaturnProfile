@@ -35,6 +35,10 @@ Method, every step coded so that running this reproduces the CSV:
 
 The figure's printed values are not interpreted: no smoothing, no merging of dots, nothing
 dropped except by the rules above.
+
+`fit` (SPEC_10 Step 1) is the local polynomial fit of the digitized temperatures in latitude, with
+its gradient and the gradient's standard error; `running_mean` (SPEC_09) only characterizes the
+spread.
 """
 
 from __future__ import annotations
@@ -246,6 +250,80 @@ def running_mean(latitude, temperature, at, fwhm_deg=4.0):
     mean = (weight @ temperature) / weight.sum(axis=1)
     covered = (np.abs(distance) <= fwhm_deg).any(axis=1)
     return np.where(covered, mean, np.nan)
+
+
+@dataclass
+class Fit:
+    """`fit`'s result on its latitude grid. NaN outside the data's own latitude range."""
+
+    latitude_deg: np.ndarray
+    value_K: np.ndarray
+    gradient_K_per_deg: np.ndarray      #: dT/dphi, planetographic, per degree
+    gradient_error_K_per_deg: np.ndarray
+    fwhm_deg: np.ndarray                #: the window used: 4 deg, or wider where widened
+
+
+def _sigma(fwhm_deg):
+    return fwhm_deg / np.sqrt(8.0 * np.log(2.0))
+
+
+def _effective_points(distance, fwhm_deg) -> float:
+    weight = np.exp(-0.5 * (distance / _sigma(fwhm_deg)) ** 2)
+    return float(weight.sum() ** 2 / (weight ** 2).sum())
+
+
+def fit(latitude, temperature, degree=1, min_points=3, *, grid, fwhm_deg=4.0) -> Fit:
+    """A local polynomial fit of `temperature` in latitude, its value, slope and slope's error.
+
+    SPEC_10 Step 1. The defaults, local linear with at least 3 effective points, are the author's
+    choice from the comparison of the three candidates (REVIEW_10_step1). At each latitude `phi0` of `grid` a polynomial of `degree` (1, local linear,
+    or 2, local quadratic) in `x = phi - phi0` (planetographic degrees) is fitted by weighted least
+    squares with Gaussian weights of full width at half maximum `fwhm_deg`. Where the effective
+    number of points `(sum w)^2 / sum w^2` is below `min_points`, the width is widened to the
+    smallest value that reaches it, solved continuously so that the fit stays continuous in
+    latitude. The value is the polynomial's constant term and the gradient its linear term.
+
+    The gradient's standard error is that of a linear smoother with independent errors of one
+    variance: `Cov = s^2 A^-1 (X^T W^2 X) A^-1`, `A = X^T W X`, with `s^2` the weighted mean square
+    residual `sum w r^2 / sum w` scaled by `n_eff / (n_eff - (degree + 1))`.
+
+    The fit is defined from the southernmost to the northernmost point; elsewhere on `grid` it is
+    NaN (SPEC_10 section 1: beyond the data is SPEC_11's).
+    """
+    from scipy.optimize import brentq
+
+    latitude = np.asarray(latitude, dtype="float64")
+    temperature = np.asarray(temperature, dtype="float64")
+    grid = np.asarray(grid, dtype="float64")
+    parameters = degree + 1
+    if min_points <= parameters:
+        raise ValueError(f"min_points = {min_points} leaves no residual degree of freedom for a "
+                         f"polynomial of degree {degree}")
+    shape = grid.shape
+    value, gradient, error, width = (np.full(shape, np.nan) for _ in range(4))
+    inside = (grid >= latitude.min()) & (grid <= latitude.max())
+    for i in np.flatnonzero(inside):
+        x = latitude - grid[i]
+        used = fwhm_deg
+        if _effective_points(x, used) < min_points:
+            high = 2.0 * used
+            while _effective_points(x, high) < min_points:
+                high *= 2.0
+            used = brentq(lambda f: _effective_points(x, f) - min_points, used, high,
+                          xtol=1e-9)
+        w = np.exp(-0.5 * (x / _sigma(used)) ** 2)
+        design = np.vander(x, parameters, increasing=True)
+        a = design.T @ (w[:, None] * design)
+        a_inv = np.linalg.inv(a)
+        beta = a_inv @ (design.T @ (w * temperature))
+        residual = temperature - design @ beta
+        n_eff = w.sum() ** 2 / (w ** 2).sum()
+        s2 = (w @ residual ** 2) / w.sum() * n_eff / (n_eff - parameters)
+        covariance = s2 * a_inv @ (design.T @ ((w ** 2)[:, None] * design)) @ a_inv
+        value[i], gradient[i] = beta[0], beta[1]
+        error[i], width[i] = np.sqrt(covariance[1, 1]), used
+    return Fit(latitude_deg=grid, value_K=value, gradient_K_per_deg=gradient,
+               gradient_error_K_per_deg=error, fwhm_deg=width)
 
 
 def write_csv(result: Digitization, path) -> Path:
