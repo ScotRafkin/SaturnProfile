@@ -88,3 +88,11 @@ SPEC_08 accepted by the author at v0.2 on 7 October 2026; the reading ruled on a
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | kind W a wind at a stated level: the reference wind and its level required, the total and the shear optional; the sum identity removed; the presence of the total and the polar rule applied by the three loaders; the shear tool and the figures draw what a file carries | accepted (`8a22a85`; 6 of 6 under REVIEW_08_step1; no computed value moved, no sweep; `step04_0` check 4 retired, 15 to 14; `step7` check 2 restated; seven suites changed in wording only; `step08_1` added at 6; 31 of 31 at their reference counts. SPEC_08 closed) | `reports/REPORT_08_preexecution.md`, `reports/REPORT_08_step1.md`, `reports/REVIEW_08_step1.md` | 2026-10-07 |
+
+## SPEC_09, IRIS temperatures at three levels, digitized
+
+SPEC_09 accepted by the author at v0.3 on 7 October 2026 (§2 settled: the top level 110 mbar, latitude planetographic, the running mean's width 4 deg); **closed** at Step 1's acceptance on 7 October 2026.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | `tools/lindal/iris_temperatures.py` and `occul_data/lindal/iris_temperatures.csv`: Conrath and Pirraglia (1983) Fig. 1 digitized, 697 dots at 730, 290 and 110 (printed 150) mbar | accepted (`fa69050`; 3 of 3 under REVIEW_09_step1; calibration within 0.067 K and 0.077 deg; the CSV reproduced byte for byte by the tool; the spread about a 4 deg FWHM running mean 0.49, 0.51 and 0.71 K; the running mean characterizes the spread and is not the shear's fit, which SPEC_10 defines; no regression. SPEC_09 closed) | `reports/REPORT_09_preexecution.md`, `reports/REPORT_09_step1.md`, `reports/REVIEW_09_step1.md` | 2026-10-07 |
