@@ -96,3 +96,11 @@ SPEC_09 accepted by the author at v0.3 on 7 October 2026 (§2 settled: the top l
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | `tools/lindal/iris_temperatures.py` and `occul_data/lindal/iris_temperatures.csv`: Conrath and Pirraglia (1983) Fig. 1 digitized, 697 dots at 730, 290 and 110 (printed 150) mbar | accepted (`fa69050`; 3 of 3 under REVIEW_09_step1; calibration within 0.067 K and 0.077 deg; the CSV reproduced byte for byte by the tool; the spread about a 4 deg FWHM running mean 0.49, 0.51 and 0.71 K; the running mean characterizes the spread and is not the shear's fit, which SPEC_10 defines; no regression. SPEC_09 closed) | `reports/REPORT_09_preexecution.md`, `reports/REPORT_09_step1.md`, `reports/REVIEW_09_step1.md` | 2026-10-07 |
+
+## SPEC_10, the fit of the IRIS temperatures and their gradient
+
+SPEC_10 accepted by the author at v0.2 on 7 October 2026; **closed** at v0.3 on 7 October 2026, Step 1 accepted with candidate (a) chosen.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | `fit` in `tools/lindal/iris_temperatures.py`: a local polynomial in planetographic latitude, Gaussian weights of 4 deg FWHM widened to a minimum effective number of points, with the gradient and its standard error; the three-way comparison for the author | accepted (`153cd6a`; 2 of 2 under REVIEW_10_step1; exact on linear and quadratic fields; the author chose (a), local linear with at least 3 effective points, now `fit`'s defaults; `fwhm_deg` kept; `step09_1` rerun, 3 of 3; no regression. SPEC_10 closed) | `reports/REPORT_10_step1.md`, `reports/REVIEW_10_step1.md` | 2026-10-07 |
