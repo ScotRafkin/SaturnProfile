@@ -80,3 +80,11 @@ SPEC_07 accepted by the author at v0.2 on 3 October 2026; **closed, not adopted*
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | decision L2: PCHIP in latitude on each pressure row, then PCHIP in `ln p`, with the figures reading the wind through `WindField` | not adopted (interim report under v0.3, rulings of v0.4 §8, the dense reference of ruling 5 in the report's §7: L2 the closer reading wherever the hypothesis is resolved, neither reading converged at a change in shear sharper than the anchor's layers; closed by v0.5 §9; parked on `spec07-l2-parked`, not swept) | `reports/REPORT_07_preexecution.md`, `reports/REPORT_07_step1.md` | 2026-10-03 |
+
+## SPEC_08, kind W holds what the data hold
+
+SPEC_08 accepted by the author at v0.2 on 7 October 2026; the reading ruled on at v0.3, the regression rule at v0.4 (§6 ruling 15: the full set only when a change can alter a computed value, or at a milestone the author names); **closed** at v0.5 on 7 October 2026. SPEC_00 v0.23 applies its Appendix.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | kind W a wind at a stated level: the reference wind and its level required, the total and the shear optional; the sum identity removed; the presence of the total and the polar rule applied by the three loaders; the shear tool and the figures draw what a file carries | accepted (`8a22a85`; 6 of 6 under REVIEW_08_step1; no computed value moved, no sweep; `step04_0` check 4 retired, 15 to 14; `step7` check 2 restated; seven suites changed in wording only; `step08_1` added at 6; 31 of 31 at their reference counts. SPEC_08 closed) | `reports/REPORT_08_preexecution.md`, `reports/REPORT_08_step1.md`, `reports/REVIEW_08_step1.md` | 2026-10-07 |
