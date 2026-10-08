@@ -113,3 +113,11 @@ SPEC_11 accepted by the author at v0.3 on 7 October 2026 (§2 ruled: relaxation 
 |---|---|---|---|---|
 | 1 | `tools/lindal/lindal_wind.py`: the shear from the IRIS gradients at 110, 290 and 730 mbar by the model's balance, relaxed above and below, PCHIP across the equatorial band, tapered to the poles; the wind referenced to the cloud wind at 398 mbar | accepted (`7c06fb4`; 5 of 5 under REVIEW_11_step1; the 150 mbar shear reproduces Conrath and Pirraglia Fig. 3; case (ii) the working wind; no regression) | `reports/REPORT_11_step1.md`, `reports/REVIEW_11_step1.md` | 2026-10-08 |
 | 2 | the case `lindal_iris` of `casspian-wind-shear`; `[composition]` before `[shear]`; the run `lindal_iris_ii_110` | accepted (`33d8340`; 2 of 2 under REVIEW_11_step2; pressure identity within 0.074 K; round trip -1.54, +0.77, -1.13 K, explained; `step05_3` and `step11_1` edited, not rerun; no regression. SPEC_11 closed) | `reports/REPORT_11_step2.md`, `reports/REVIEW_11_step2.md` | 2026-10-08 |
+
+## SPEC_12, the Voyager 2 egress profile, and the first comparison
+
+SPEC_12 accepted by the author at v0.2 on 8 October 2026 (§2 ruled: the target at Lindal's label, 31.2 S; Fig. 4; Lindal's composition, gravity and 1 bar radius for the conversion); **closed** at Step 1's acceptance on 8 October 2026.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | `tools/lindal/egress_profile.py` and `occul_data/lindal/voyager2_egress.csv`: Lindal Fig. 4 traced, converted to pressure; `lindal_iris_ii_110` retargeted to 31.2 S; the first comparison | accepted (4 of 4 under REVIEW_12_step1; ingress check 1.15 K and 1.74 percent RMS; delivered minus egress +3.92, +2.37, -0.94 K at 110, 290, 730 mbar against the anchor's +0.3, +1.1, +4.3 K: the transfer improves only the deep troposphere; no regression. SPEC_12 closed) | `reports/REPORT_12_step1.md`, `reports/REVIEW_12_step1.md` | 2026-10-08 |
