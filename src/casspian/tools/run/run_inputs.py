@@ -1,10 +1,12 @@
 """`casspian-run-inputs`: a forward run's inputs, made by one command. SPEC_03 Step 3 deliverable 1.
 
 A thin driver over the existing tools. It reads `<run>_build.toml` beside the namelist and runs its
-five sections in order, gravity, rotation, wind, shear and composition, each with the tool that
+five sections in order, gravity, rotation, wind, composition and shear, each with the tool that
 writes that kind (SPEC_05 Step 3: `[wind]` writes the source wind, `[shear]` the wind the run
-reads, `case = "identity"` when the run wants the source as it is). It contains no physics and no
-value; every choice is in the build file, and each tool refuses what it refuses on its own.
+reads, `case = "identity"` when the run wants the source as it is; SPEC_11 v0.4: `[composition]`
+comes before `[shear]`, whose `lindal_iris` case reads the run's composition). It contains no
+physics and no value; every choice is in the build file, and each tool refuses what it refuses on
+its own.
 
 What the driver itself checks, because only it knows the file is a run's build file: the file is
 named `<run>_build.toml`; it carries exactly the five sections (no `[stage_two]`, which has no
@@ -28,13 +30,13 @@ from casspian.tools.wind import build_wind, shear
 TOOL = "casspian-run-inputs"
 
 #: The sections in the order they run: wind reads the gravity and rotation files the first two
-#: write, and shear reads the source wind that wind writes.
+#: write, and shear reads the source wind that wind writes and the composition before it.
 SECTIONS = (
     ("gravity", build_gravity.build),
     ("rotation", build_rotation.build),
     ("wind", build_wind.build),
-    ("shear", shear.build),
     ("composition", build_composition.build),
+    ("shear", shear.build),
 )
 
 #: Sections that carry no `role` or `prefix` of their own (SPEC_05 Step 3 deliverable 1).

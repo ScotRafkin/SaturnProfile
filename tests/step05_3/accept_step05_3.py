@@ -108,7 +108,7 @@ try:
     message = None
 except ControlFileError as exc:
     message = str(exc)
-five = "['gravity', 'rotation', 'wind', 'shear', 'composition']"
+five = "['gravity', 'rotation', 'wind', 'composition', 'shear']"
 record(1, "a build file without [shear] is refused, naming the five sections",
        message is not None and five in message and "missing ['shear']" in message
        and "[shear]" not in without,

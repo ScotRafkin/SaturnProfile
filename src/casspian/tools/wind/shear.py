@@ -25,6 +25,12 @@ cell), and, only when `uncertainty_ms` is given, the uncertainty's values and it
 attributes. `build` adds `input_hashes`; `lib.io.write` stamps what it stamps on every file.
 `identity` returns its input untouched.
 
+**`lindal_iris`** (SPEC_11 v0.4 Step 2) is the one case that does not rebuild the total on the
+input's own grid: it returns the whole wind of `casspian.tools.lindal.lindal_wind.construct`, the
+input being its cloud wind, on that tool's own pressure grid and reference level. Its four inputs,
+`temperatures`, `composition`, `gravity` and `rotation`, are paths in the control section; `build`
+reads them and passes them in memory, so `construct` still touches no file.
+
 What is refused, and only this (SPEC_05 Step 1 check 10, decision N): an unknown case, an unknown
 shape, a missing parameter, a parameter the case does not use, an input without `u_total_ms`
 (SPEC_08), `p_s` outside the wind grid, the stop pressure on the wrong side of `p_s`, and
@@ -50,13 +56,18 @@ TOOL = "casspian-wind-shear"
 #: The parameter keys any case may carry. Which ones a case requires or accepts is in `CASES`.
 PARAMETER_KEYS = (
     "shear_reference_pressure_Pa", "scale", "shape", "stop_pressure_Pa", "stop_fraction",
-    "uncertainty_ms",
+    "uncertainty_ms", "temperatures", "composition", "gravity", "rotation", "top_level_Pa",
+    "above_top",
 )
 
 SECTION_KEYS = {"source": True, "output": True, "case": True,
                 **{key: False for key in PARAMETER_KEYS}}
 
-PATH_KEYS = ("source", "output")
+#: The `lindal_iris` inputs `build` reads into memory, by key and kind (`None` is the IRIS CSV).
+INPUT_KEYS = {"temperatures": None, "composition": "composition", "gravity": "gravity",
+              "rotation": "rotation"}
+
+PATH_KEYS = ("source", "output", *INPUT_KEYS)
 
 SHAPES = ("linear_ln_p", "linear_p")
 
@@ -134,6 +145,17 @@ class Case:
     optional: tuple[str, ...] = ()
     #: For the two ramp cases: which side of `p_s` the stop pressure must lie on, +1 or -1.
     stop_side: int = 0
+    #: True for a case whose function returns the whole output dataset from the source.
+    whole: bool = False
+
+
+def case_lindal_iris(source, parameters):
+    """The Lindal-only wind of SPEC_11 on the cloud wind `source`, its inputs in memory."""
+    from casspian.tools.lindal import lindal_wind
+
+    return lindal_wind.construct(
+        source, parameters["temperatures"], parameters["composition"], parameters["gravity"],
+        parameters["rotation"], float(parameters["top_level_Pa"]), parameters["above_top"]).dataset
 
 
 RAMP_PARAMETERS = ("shear_reference_pressure_Pa", "shape", "stop_pressure_Pa", "stop_fraction")
@@ -143,6 +165,7 @@ CASES = {
     "uniform": Case(case_uniform, ("shear_reference_pressure_Pa",), ("scale", "uncertainty_ms")),
     "decay_above": Case(case_ramp, RAMP_PARAMETERS, ("uncertainty_ms",), stop_side=-1),
     "increase_below": Case(case_ramp, RAMP_PARAMETERS, ("uncertainty_ms",), stop_side=+1),
+    "lindal_iris": Case(case_lindal_iris, (*INPUT_KEYS, "top_level_Pa", "above_top"), whole=True),
 }
 
 
@@ -214,10 +237,23 @@ def construct(source, case: str, parameters: dict):
             "without it is refused (SPEC_08 section 2 deliverable 5).")
     if spec.function is None:
         return source.copy(deep=True)
+    if spec.whole:
+        return spec.function(source, parameters)
     u_s = u_at_pressure(source, float(parameters["shear_reference_pressure_Pa"]))
     pressure = np.asarray(source["pressure_Pa"].values, dtype="float64")
     u_total = spec.function(u_s, pressure, parameters)
     return assemble(source, u_total, case, parameters.get("uncertainty_ms"))
+
+
+def _read(path, kind):
+    """A file into memory under its kind, released; the IRIS CSV (`kind` None) as a table."""
+    if kind is None:
+        return np.genfromtxt(path, delimiter=",", names=True)
+    handle = cio.read(path, kind)
+    try:
+        return handle.load()
+    finally:
+        handle.close()
 
 
 def build(control_path, section: str = "shear") -> Path:
@@ -225,13 +261,14 @@ def build(control_path, section: str = "shear") -> Path:
     control = load_section(control_path, section, SECTION_KEYS, path_keys=PATH_KEYS)
     source_path, output = Path(control["source"]), Path(control["output"])
     parameters = {key: control[key] for key in PARAMETER_KEYS if key in control}
-    handle = cio.read(source_path, "wind")
-    try:
-        source = handle.load()
-    finally:
-        handle.close()
+    inputs = [source_path]
+    for key, kind in INPUT_KEYS.items():
+        if key in parameters:
+            inputs.append(Path(parameters[key]))
+            parameters[key] = _read(Path(parameters[key]), kind)
+    source = _read(source_path, "wind")
     dataset = construct(source, control["case"], parameters)
-    dataset.attrs["input_hashes"] = cio.input_hashes([source_path, Path(control_path)], output)
+    dataset.attrs["input_hashes"] = cio.input_hashes(inputs + [Path(control_path)], output)
     return cio.write(output, dataset, "wind", created_by=TOOL)
 
 

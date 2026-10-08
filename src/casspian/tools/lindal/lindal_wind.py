@@ -2,8 +2,9 @@
 
 Inputs: the cloud wind (kind W, as `casspian-wind-from-curve` writes it), the digitized IRIS
 temperatures (`occul_data/lindal/iris_temperatures.csv`, SPEC_09), and the run's composition,
-gravity and rotation. Output: a kind W file with all three parts. `construct` touches no file;
-`build` reads a control section, constructs and writes.
+gravity and rotation. Output: a kind W dataset with all three parts. `construct` touches no file;
+a run's build writes the wind through the `lindal_iris` case of `casspian-wind-shear`, which calls
+it (SPEC_11 v0.4 Step 2).
 
 **The reference wind** is the cloud wind's reference wind, assigned to `REFERENCE_PRESSURE_Pa`
 (398 mbar, a node of the output grid), where the shear is zero.
@@ -52,22 +53,17 @@ cloud wind's at the reference level and `parameterized` elsewhere.
 
 from __future__ import annotations
 
-import argparse
 from dataclasses import dataclass, field
-from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
 from casspian.lib import geoid as gd
-from casspian.lib import io as cio
 from casspian.lib.constants import MOLAR_GAS_CONSTANT
-from casspian.lib.control import ControlFileError, load_section
+from casspian.lib.control import ControlFileError
 from casspian.lib.gravity import g_eff_radial, omega_abs
 from casspian.lib.reduction import mean_over_species
 from casspian.tools.lindal import iris_temperatures as iris
-
-TOOL = "casspian-lindal-wind"
 
 REFERENCE_PRESSURE_Pa = 39810.7
 #: The printed levels of the IRIS file (mbar) and the pressures they are placed at (Pa); the top
@@ -83,11 +79,6 @@ EQUATORIAL_BAND_DEG = 5.0
 TOLERANCE_MS = 0.1
 MAX_ITERATIONS = 50
 PARAMETERIZED = 2
-
-SECTION_KEYS = {"cloud_wind": True, "temperatures": True, "composition": True, "gravity": True,
-                "rotation": True, "output": True, "top_level_Pa": True, "above_top": True,
-                "title": False}
-PATH_KEYS = ("cloud_wind", "temperatures", "composition", "gravity", "rotation", "output")
 
 
 @dataclass
@@ -282,6 +273,8 @@ def _dataset(cloud, u, u_ref, pressure, levels, above) -> xr.Dataset:
                  f"{'held at its top level value' if above == 'held' else f'relaxed over {ABOVE_SCALE_HEIGHTS:g} scale heights'} "
                  f"above it and relaxed over {BELOW_SCALE_HEIGHTS:g} below 730 mbar")
     out.attrs.update({
+        "title": f"{cloud.attrs.get('title', 'cloud top zonal wind')}, with the IRIS thermal wind "
+                 "shear (SPEC_11)",
         "vertical_structure": structure,
         "method": f"{cloud.attrs.get('method', 'cloud tracking')}; the shear from Voyager IRIS "
                   "temperature gradients by the model's balance",
@@ -293,39 +286,3 @@ def _dataset(cloud, u, u_ref, pressure, levels, above) -> xr.Dataset:
         "coverage_pressure_Pa": np.array([pressure.min(), pressure.max()]),
     })
     return out
-
-
-def build(control_path, section: str = "lindal_wind") -> Path:
-    """Read the control section and its inputs, construct, and write. Returns the path written."""
-    control = load_section(control_path, section, SECTION_KEYS, path_keys=PATH_KEYS)
-    handles = {}
-    for key, kind in (("cloud_wind", "wind"), ("composition", "composition"),
-                      ("gravity", "gravity"), ("rotation", "rotation")):
-        handle = cio.read(Path(control[key]), kind)
-        try:
-            handles[key] = handle.load()
-        finally:
-            handle.close()
-    table = np.genfromtxt(control["temperatures"], delimiter=",", names=True)
-    result = construct(handles["cloud_wind"], table, handles["composition"], handles["gravity"],
-                       handles["rotation"], float(control["top_level_Pa"]), control["above_top"])
-    dataset = result.dataset
-    if "title" in control:
-        dataset.attrs["title"] = control["title"]
-    output = Path(control["output"])
-    dataset.attrs["input_hashes"] = cio.input_hashes(
-        [Path(control[key]) for key in PATH_KEYS if key != "output"] + [Path(control_path)], output)
-    return cio.write(output, dataset, "wind", created_by=TOOL)
-
-
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog=TOOL, description=__doc__.splitlines()[0])
-    parser.add_argument("control", help="path to the TOML control file")
-    parser.add_argument("--section", default="lindal_wind")
-    args = parser.parse_args(argv)
-    print(f"wrote {build(args.control, args.section)}")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

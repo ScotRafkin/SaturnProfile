@@ -1,7 +1,7 @@
 """Acceptance for SPEC_11 v0.3 Step 1: the Lindal-only wind, four cases, for the author.
 
-Builds the four winds through `casspian.tools.lindal.lindal_wind.build` from control files written
-under `reports/step11_1/`, on the `lindal_transfer` run's inputs: its cloud wind (the registered
+Builds the four winds through the `lindal_iris` case of `casspian-wind-shear` (SPEC_11 v0.4 Step 2;
+the tool's own `build` was removed then) from control files written under `reports/step11_1/`, on the `lindal_transfer` run's inputs: its cloud wind (the registered
 `lindal_transfer_wind_source.nc`), composition, gravity and rotation, and the committed IRIS
 temperatures. Nothing committed is written. The figures are the author's (SPEC_11 Step 1
 acceptance 1 to 3); the checks below are what every wind the model runs on must satisfy.
@@ -24,6 +24,7 @@ from PIL import Image
 from casspian.lib import io as cio
 from casspian.lib.control import _admit_wind
 from casspian.tools.lindal import lindal_wind as lw
+from casspian.tools.wind import shear
 
 HERE = Path("reports/step11_1")
 HERE.mkdir(parents=True, exist_ok=True)
@@ -57,11 +58,10 @@ def load(path, kind):
 def control(name, top, above):
     path = HERE / name / f"{name}.toml"
     path.parent.mkdir(parents=True, exist_ok=True)
-    rel = {k: Path("../../..") / v for k, v in INPUTS.items()}
-    lines = ["[lindal_wind]"] + [f'{k} = "{v.as_posix()}"' for k, v in rel.items()]
-    lines += [f'output = "{name}_wind.nc"', f"top_level_Pa = {top!r}", f'above_top = "{above}"',
-              f'title = "Lindal-only wind, case {name}: IRIS shear on the Ingersoll and Pollard '
-              f'cloud wind (SPEC_11)"']
+    rel = {("source" if k == "cloud_wind" else k): Path("../../..") / v for k, v in INPUTS.items()}
+    lines = ["[shear]"] + [f'{k} = "{v.as_posix()}"' for k, v in rel.items()]
+    lines += [f'output = "{name}_wind.nc"', 'case = "lindal_iris"', f"top_level_Pa = {top!r}",
+              f'above_top = "{above}"']
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
 
@@ -77,7 +77,7 @@ latitude_g = np.asarray(cloud["latitude_planetographic_deg"].values, dtype="floa
 
 written, built = {}, {}
 for name, (top, above) in CASES.items():
-    written[name] = lw.build(control(name, top, above))
+    written[name] = shear.build(control(name, top, above))
     built[name] = lw.construct(cloud, table, comp, grav, rot, top, above)
 
 # ---------------------------------------------------------------------------

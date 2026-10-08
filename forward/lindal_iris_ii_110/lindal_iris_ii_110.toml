@@ -1,0 +1,71 @@
+# CASSPIAN run namelist, transfer mode (SPEC_00 section 7.2, SPEC_04 Step 0 deliverable 4).
+# The Lindal refractivity transferred to the Voyager 2 egress under the Lindal-only wind of SPEC_11,
+# case (ii) at 110 mbar, with the composition carried to every latitude (SPEC_11 v0.4 Step 2). The
+# target is Lindal's egress label, 31.2 S planetographic (SPEC_12 section 2 item 1), converted as the
+# anchor's label is: refrac's fixed point on the reduction's wind geoid (tests/step11_2/target_latitude.py).
+# Inputs built by: casspian-run-inputs forward/lindal_iris_ii_110/lindal_iris_ii_110_build.toml
+
+[run]
+name        = "lindal_iris_ii_110"
+description = "Lindal refractivity transferred to the Voyager 2 egress (31.2 S planetographic) under the Lindal-only wind, case (ii)"
+mode        = "transfer"
+solar_longitude_deg = 18.2
+date        = "1981-08-26"
+
+[[anchors]]
+slug   = "lindal"
+path   = "../../occul_data/lindal/lindal_refractivity.nc"
+weight = 1.0
+measurement_uncertainty_scale = 1.0
+
+[inputs]
+composition = "inputs/lindal_iris_ii_110_composition.nc"
+gravity     = "inputs/lindal_iris_ii_110_gravity.nc"
+rotation    = "inputs/lindal_iris_ii_110_rotation.nc"
+wind        = "inputs/lindal_iris_ii_110_wind.nc"
+
+[hydrostatic_boundary]
+p_b_rule     = "anchor_profile_top"
+p_b_location = "top_of_anchor_profile"
+
+[isobars]
+gauge_isobar_Pa = 1.0e4
+datum_isobar_Pa = 1.0e5
+
+[target]
+latitude_planetocentric_deg = -26.06095353762054
+
+[grid]
+# 50,000 m2/s2 from Step 5 (SPEC_04 decision R): the mesh was oversampled in geopotential by an
+# order of magnitude, the change from 5,000 costing 9e-7 in d ln N and 0.2 m2/s2 in the isobar
+# shift. Steps 0 to 4 were run and accepted at 5,000, which their suites pin.
+geopotential_spacing_m2s2 = 5.0e4
+latitude_spacing_deg      = 0.05
+
+[numerics.reference_surface]
+scheme = "rk4"
+[numerics.shear_integral]
+scheme = "trapezoid"
+[numerics.isobar_tracing]
+scheme = "rk4"
+[numerics.transfer]
+scheme = "trapezoid"
+[numerics.altitude]
+scheme = "trapezoid"
+[numerics.outer_loop]
+relative_tolerance_ln_p = 1.0e-8
+max_iterations          = 50
+
+[estimation]
+gauge_latitude_rule                = "weighted_centroid"
+kernel_uncertainty_per_rad         = 0.02
+model_error_correlation_length_deg = 0.0
+
+[output]
+directory = "output"
+product   = "lindal_iris_ii_110_profile.nc"
+
+[diagnostics]
+figures = true
+format  = "png"
+dpi     = 150
