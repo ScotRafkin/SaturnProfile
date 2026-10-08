@@ -104,3 +104,12 @@ SPEC_10 accepted by the author at v0.2 on 7 October 2026; **closed** at v0.3 on 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | `fit` in `tools/lindal/iris_temperatures.py`: a local polynomial in planetographic latitude, Gaussian weights of 4 deg FWHM widened to a minimum effective number of points, with the gradient and its standard error; the three-way comparison for the author | accepted (`153cd6a`; 2 of 2 under REVIEW_10_step1; exact on linear and quadratic fields; the author chose (a), local linear with at least 3 effective points, now `fit`'s defaults; `fwhm_deg` kept; `step09_1` rerun, 3 of 3; no regression. SPEC_10 closed) | `reports/REPORT_10_step1.md`, `reports/REVIEW_10_step1.md` | 2026-10-07 |
+
+## SPEC_11, the Lindal-only wind
+
+SPEC_11 accepted by the author at v0.3 on 7 October 2026 (§2 ruled: relaxation below 730 mbar, the equatorial band); v0.4 on 8 October 2026 (PCHIP bridge, one run, the build through `[shear]`); **closed** at Step 2's acceptance on 8 October 2026.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | `tools/lindal/lindal_wind.py`: the shear from the IRIS gradients at 110, 290 and 730 mbar by the model's balance, relaxed above and below, PCHIP across the equatorial band, tapered to the poles; the wind referenced to the cloud wind at 398 mbar | accepted (`7c06fb4`; 5 of 5 under REVIEW_11_step1; the 150 mbar shear reproduces Conrath and Pirraglia Fig. 3; case (ii) the working wind; no regression) | `reports/REPORT_11_step1.md`, `reports/REVIEW_11_step1.md` | 2026-10-08 |
+| 2 | the case `lindal_iris` of `casspian-wind-shear`; `[composition]` before `[shear]`; the run `lindal_iris_ii_110` | accepted (`33d8340`; 2 of 2 under REVIEW_11_step2; pressure identity within 0.074 K; round trip -1.54, +0.77, -1.13 K, explained; `step05_3` and `step11_1` edited, not rerun; no regression. SPEC_11 closed) | `reports/REPORT_11_step2.md`, `reports/REVIEW_11_step2.md` | 2026-10-08 |
