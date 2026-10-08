@@ -252,6 +252,15 @@ def running_mean(latitude, temperature, at, fwhm_deg=4.0):
     return np.where(covered, mean, np.nan)
 
 
+#: `fit`'s windows: SPEC_10's adaptive width (the default), or that width made smooth in latitude
+#: (SPEC_13 v0.5 section 2a item 1).
+WINDOWS = ("adaptive", "smooth")
+#: The smooth window: the half-width (deg) of its running maximum and of its Hann kernel, and the
+#: step (deg) of the fine latitude grid on which the adaptive width is taken.
+SMOOTH_HALFWIDTH_DEG = 4.0
+SMOOTH_STEP_DEG = 0.05
+
+
 @dataclass
 class Fit:
     """`fit`'s result on its latitude grid. NaN outside the data's own latitude range."""
@@ -272,7 +281,50 @@ def _effective_points(distance, fwhm_deg) -> float:
     return float(weight.sum() ** 2 / (weight ** 2).sum())
 
 
-def fit(latitude, temperature, degree=1, min_points=3, *, grid, fwhm_deg=4.0) -> Fit:
+def _adaptive_width(x, fwhm_deg, min_points) -> float:
+    """SPEC_10's width at one latitude: `fwhm_deg`, or the smallest wider one reaching `min_points`
+    effective points, `x` being the data's distances from that latitude."""
+    from scipy.optimize import brentq
+
+    if _effective_points(x, fwhm_deg) >= min_points:
+        return fwhm_deg
+    high = 2.0 * fwhm_deg
+    while _effective_points(x, high) < min_points:
+        high *= 2.0
+    return brentq(lambda f: _effective_points(x, f) - min_points, fwhm_deg, high, xtol=1e-9)
+
+
+def smooth_width(latitude, fwhm_deg, min_points, halfwidth_deg=SMOOTH_HALFWIDTH_DEG,
+                 step_deg=SMOOTH_STEP_DEG):
+    """The smooth window's width as a function of latitude, over the data's span.
+
+    The adaptive width `w_a` is taken on a fine grid of `step_deg`; its running maximum over
+    +/- `halfwidth_deg` is then averaged with a Hann kernel of the same half-width,
+    `cos^2(pi d / (2 H))`, renormalized where the span cuts it. Every latitude within `H` of `phi0`
+    has a running maximum at least `w_a(phi0)`, and the kernel's support is exactly that interval,
+    so the smooth width is never narrower than the adaptive one. The Hann kernel and its slope
+    vanish at its ends, so the width has a continuous derivative. Returns the fine grid and the
+    width on it."""
+    latitude = np.asarray(latitude, dtype="float64")
+    fine = np.arange(latitude.min(), latitude.max() + 0.5 * step_deg, step_deg)
+    fine[-1] = min(fine[-1], latitude.max())
+    adaptive = np.array([_adaptive_width(latitude - phi, fwhm_deg, min_points) for phi in fine])
+    reach = int(round(halfwidth_deg / step_deg))
+    padded = np.pad(adaptive, reach, constant_values=-np.inf)
+    windows = np.lib.stride_tricks.sliding_window_view(padded, 2 * reach + 1)
+    running = windows.max(axis=1)
+    offsets = np.arange(-reach, reach + 1) * step_deg
+    kernel = np.cos(np.pi * offsets / (2.0 * halfwidth_deg)) ** 2
+    inside = np.isfinite(np.pad(running, reach, constant_values=-np.inf))
+    values = np.pad(running, reach, constant_values=0.0)
+    taps = np.lib.stride_tricks.sliding_window_view(values, 2 * reach + 1)
+    weights = np.lib.stride_tricks.sliding_window_view(inside, 2 * reach + 1) * kernel
+    smooth = (taps * weights).sum(axis=1) / weights.sum(axis=1)
+    return fine, np.maximum(smooth, adaptive)
+
+
+def fit(latitude, temperature, degree=1, min_points=3, *, grid, fwhm_deg=4.0,
+        window="adaptive") -> Fit:
     """A local polynomial fit of `temperature` in latitude, its value, slope and slope's error.
 
     SPEC_10 Step 1. The defaults, local linear with at least 3 effective points, are the author's
@@ -289,9 +341,14 @@ def fit(latitude, temperature, degree=1, min_points=3, *, grid, fwhm_deg=4.0) ->
 
     The fit is defined from the southernmost to the northernmost point; elsewhere on `grid` it is
     NaN (SPEC_10 section 1: beyond the data is SPEC_11's).
-    """
-    from scipy.optimize import brentq
 
+    `window = "smooth"` (SPEC_13 v0.5 section 2a item 1) replaces the adaptive width by
+    `smooth_width`, a smooth function of latitude never narrower than it, so that the fitted
+    value bends smoothly where the data thin and its derivative carries no spike from an abrupt
+    widening. The fit itself is unchanged.
+    """
+    if window not in WINDOWS:
+        raise ValueError(f"window = {window!r}; the windows are {list(WINDOWS)}")
     latitude = np.asarray(latitude, dtype="float64")
     temperature = np.asarray(temperature, dtype="float64")
     grid = np.asarray(grid, dtype="float64")
@@ -302,15 +359,14 @@ def fit(latitude, temperature, degree=1, min_points=3, *, grid, fwhm_deg=4.0) ->
     shape = grid.shape
     value, gradient, error, width = (np.full(shape, np.nan) for _ in range(4))
     inside = (grid >= latitude.min()) & (grid <= latitude.max())
+    if window == "smooth":
+        fine, fine_width = smooth_width(latitude, fwhm_deg, min_points)
     for i in np.flatnonzero(inside):
         x = latitude - grid[i]
-        used = fwhm_deg
-        if _effective_points(x, used) < min_points:
-            high = 2.0 * used
-            while _effective_points(x, high) < min_points:
-                high *= 2.0
-            used = brentq(lambda f: _effective_points(x, f) - min_points, used, high,
-                          xtol=1e-9)
+        if window == "smooth":
+            used = float(np.interp(grid[i], fine, fine_width))
+        else:
+            used = _adaptive_width(x, fwhm_deg, min_points)
         w = np.exp(-0.5 * (x / _sigma(used)) ** 2)
         design = np.vander(x, parameters, increasing=True)
         a = design.T @ (w[:, None] * design)

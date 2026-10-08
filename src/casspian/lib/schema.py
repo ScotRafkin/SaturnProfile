@@ -337,9 +337,7 @@ _WIND = KindSpec(
         "rotation_system_name",
         "rotation_rate_rad_s",
         "epoch",
-        "method",
         "observation_level_Pa",
-        "observation_level_justification",
         "source_latitude_convention",
         "vertical_structure",
         "coverage_pressure_Pa",
@@ -686,7 +684,9 @@ def _check_season(attrs, spec: KindSpec, where: str) -> None:
             f"{where}: solar_longitude_deg is {value!r}; a season is a planetocentric solar "
             "longitude in [0, 360) degrees (SPEC_00 v0.17 section 5)."
         )
-    if "solar_longitude_source" not in attrs:
+    # SPEC_13 v0.5 section 2a item 3: a wind's season is named in its data property file's
+    # comments, not carried as a value, so kind W is not asked for the source.
+    if "solar_longitude_source" not in attrs and spec.name != "wind":
         raise CasspianSchemaError(
             f"{where}: solar_longitude_deg is present without solar_longitude_source; the season "
             "is computed, never typed from memory, and the computation is named (SPEC_00 v0.17 "

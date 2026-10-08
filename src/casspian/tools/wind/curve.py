@@ -22,6 +22,15 @@ The three regions the samples do not cover:
   linearly across a declared window so the assembled wind is continuous.
 * **The polar caps**, poleward of +81.1 and -72.8. Brought to exactly zero at the poles,
   which SPEC_00 section 6.6 requires of every kind W file.
+
+**A tabulated wind** (SPEC_13 Step 1 item 2, `curve_format = "table"`): the Sanchez-Lavega et al.
+(2000) table, one row per latitude bin with the wind and the standard deviation of the
+measurements in the bin (`u_rms`, their Eq. 6). `read_table` reads it as one segment, dropping the
+rows the file marks as not data; `TableCurve` assembles it under `gap_rule = "pchip_bridge"`: one
+PCHIP through every row, so the ring gap and the small gaps are bridged between their data edges
+with no reflection and no join, and the poles by the polar rule. Its uncertainty is the table's
+`u_rms`, linear in latitude, except in the declared ring gap, where the scatter was never measured
+and it is NaN (SPEC_13 section 3 ruling 2), and poleward of the rows, as for the curve.
 """
 
 from __future__ import annotations
@@ -33,10 +42,18 @@ from pathlib import Path
 import numpy as np
 from scipy.interpolate import PchipInterpolator
 
-__all__ = ["Segments", "read_curve", "AssembledCurve"]
+__all__ = ["Segments", "read_curve", "AssembledCurve", "Table", "read_table", "TableCurve"]
 
 #: `value_provenance` codes, SPEC_00 section 6.6.
 OBSERVED, INTERPOLATED, PARAMETERIZED, EXTRAPOLATED, EXTENDED = 0, 1, 2, 3, 4
+
+#: A tabulated wind: the marker of a row the file itself declares is not data.
+NOT_DATA_MARKER = "fake data"
+#: A tabulated wind: an interval between adjacent rows wider than this many times the median
+#: interval is a gap, and the latitudes inside it are `interpolated` rather than `observed`. The
+#: rows of the Sanchez-Lavega table are 0.5 deg apart planetocentric, 0.45 to 0.62 deg
+#: planetographic; its gaps are 1.5 deg and wider.
+GAP_FACTOR = 2.0
 
 
 @dataclass(frozen=True)
@@ -216,5 +233,107 @@ class AssembledCurve:
         # No information poleward of the data, and none at the poles.
         value[phi > self.north_max] = np.nan
         value[phi < self.south_min] = np.nan
+        value[np.abs(phi) >= 90.0] = np.nan
+        return value
+
+
+@dataclass(frozen=True)
+class Table:
+    """A tabulated wind, sorted by planetographic latitude, with the rows dropped as not data."""
+
+    latitude_deg: np.ndarray        #: planetographic
+    u_ms: np.ndarray
+    u_rms_ms: np.ndarray
+    dropped: int
+    header: str                     #: the file's first line, its own statement of its source
+
+
+def read_table(path) -> Table:
+    """The Sanchez-Lavega table: two header lines, then planetocentric latitude, planetographic
+    latitude, `u` and `u_rms` in whitespace-separated columns. A row carrying `NOT_DATA_MARKER`
+    in its trailing comment is dropped."""
+    rows, dropped = [], 0
+    with open(Path(path), encoding="utf-8") as handle:
+        lines = handle.read().splitlines()
+    for line in lines[2:]:
+        if not line.strip():
+            continue
+        values, _, comment = line.partition("!")
+        if NOT_DATA_MARKER in comment:
+            dropped += 1
+            continue
+        fields = values.split()
+        if len(fields) != 4:
+            raise ValueError(f"{path}: a row has {len(fields)} columns, not 4: {line!r}")
+        rows.append((float(fields[1]), float(fields[2]), float(fields[3])))
+    array = np.array(sorted(rows), dtype="float64")
+    if np.any(np.diff(array[:, 0]) <= 0.0):
+        raise ValueError(f"{path}: the planetographic latitudes are not distinct")
+    return Table(latitude_deg=array[:, 0], u_ms=array[:, 1], u_rms_ms=array[:, 2], dropped=dropped,
+                 header=lines[0].strip())
+
+
+class TableCurve:
+    """`u(phi_g)` on [-90, 90] from a tabulated wind, with the rule that produced every value.
+
+    `ring_gap_deg` is the declared ring gap, whose two ends must be rows of the table."""
+
+    def __init__(self, table: Table, *, gap_rule: str, polar_rule: str, ring_gap_deg):
+        if gap_rule != "pchip_bridge":
+            raise ValueError(f"gap_rule {gap_rule!r} is not a rule for a tabulated wind; "
+                             "the rule is 'pchip_bridge'")
+        self.table = table
+        self.gap_rule = gap_rule
+        self.polar_rule = polar_rule
+        lat, u = table.latitude_deg, table.u_ms
+        self.ring_lo, self.ring_hi = sorted(float(v) for v in ring_gap_deg)
+        for edge in (self.ring_lo, self.ring_hi):
+            if not np.any(lat == edge):
+                raise ValueError(f"the ring gap's edge {edge} deg is not a row of the table")
+        inside = (lat > self.ring_lo) & (lat < self.ring_hi)
+        if inside.any():
+            raise ValueError(f"the table has rows inside the declared ring gap: {lat[inside]}")
+        self.south_min, self.north_max = float(lat[0]), float(lat[-1])
+        self._u = PchipInterpolator(lat, u, extrapolate=False)
+        spacing = np.diff(lat)
+        self.gaps = [(float(lat[i]), float(lat[i + 1]))
+                     for i in np.flatnonzero(spacing > GAP_FACTOR * np.median(spacing))]
+        self._north_cap = _polar_piece(self.north_max, float(u[-1]), float(lat[-2]), float(u[-2]),
+                                       90.0, polar_rule)
+        self._south_cap = _polar_piece(self.south_min, float(u[0]), float(lat[1]), float(u[1]),
+                                       -90.0, polar_rule)
+
+    def __call__(self, phi):
+        phi = np.asarray(phi, dtype="float64")
+        out = np.empty(phi.shape, dtype="float64")
+        rows = (phi >= self.south_min) & (phi <= self.north_max)
+        out[rows] = self._u(phi[rows])
+        north_cap, south_cap = phi > self.north_max, phi < self.south_min
+        out[north_cap] = self._north_cap(phi[north_cap])
+        out[south_cap] = self._south_cap(phi[south_cap])
+        out[np.abs(phi) >= 90.0] = 0.0
+        return out
+
+    def _in_gap(self, phi):
+        inside = np.zeros(phi.shape, dtype=bool)
+        for lo, hi in self.gaps:
+            inside |= (phi > lo) & (phi < hi)
+        return inside
+
+    def provenance(self, phi):
+        """`observed` among the rows, `interpolated` inside a gap, `extrapolated` beyond the rows
+        (SPEC_13 section 3 ruling 2)."""
+        phi = np.asarray(phi, dtype="float64")
+        code = np.full(phi.shape, OBSERVED, dtype="int8")
+        code[self._in_gap(phi)] = INTERPOLATED
+        code[(phi > self.north_max) | (phi < self.south_min) | (np.abs(phi) >= 90.0)] = EXTRAPOLATED
+        return code
+
+    def uncertainty(self, phi):
+        """`u_rms` linear in latitude; NaN in the ring gap and beyond the rows."""
+        phi = np.asarray(phi, dtype="float64")
+        value = np.interp(phi, self.table.latitude_deg, self.table.u_rms_ms, left=np.nan,
+                          right=np.nan)
+        value[(phi > self.ring_lo) & (phi < self.ring_hi)] = np.nan
         value[np.abs(phi) >= 90.0] = np.nan
         return value

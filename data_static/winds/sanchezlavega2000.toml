@@ -1,0 +1,23 @@
+# Sanchez-Lavega, A., Rojas, J. F., and Sada, P. V. 2000, Icarus 147, 405, Table II, as received in
+# vasavada_saturn_winds.txt (see its note). Mean zonal wind of the loess-smoothed Voyager 1 and 2
+# cloud-tracking points in each 0.5 deg bin (their Eq. 5); u_rms is the standard deviation of the
+# measurements in each bin (their Eq. 6), linear in latitude between rows, NaN in the ring gap and
+# poleward of the rows (SPEC_13 ruling 2).
+#
+# Latitude planetographic (their abstract). System III, eastward positive (their section 2).
+# Observation level: 1 bar, a project assignment as for Ingersoll and Pollard; the source states no
+# pressure. A run with the IRIS shear reassigns the cloud wind to 398 mbar (SPEC_11).
+# Epoch: the profile combines Voyager 1 (Nov 1980) and Voyager 2 (Aug 1981) imaging and carries the
+# date of the Voyager 2 occultation it serves. Ls 18.2 deg computed for that date (15 Sep 2026, JPL
+# approximate elements); to be replaced by the ephemeris value.
+# Wind source: sanchezlavega2000.
+
+[observation_level]
+value_Pa = 1.0e5
+
+[latitude]
+convention = "planetographic"
+
+[epoch]
+value = "1981-08-26"
+solar_longitude_deg = 18.2

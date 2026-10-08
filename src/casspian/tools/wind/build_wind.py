@@ -18,6 +18,18 @@ what makes the curve the mean curve of the data to the precision of the digitiza
 The point based path of `fit.py` is retained for a data set with no published curve, selected
 by `wind_source_kind = "points"`. It is not exercised by this build.
 
+**A tabulated wind** (SPEC_13 Step 1 item 2, section 3 ruling 1): `curve_format = "table"` reads
+`curve_source` as a table with its own per-row standard deviation (`curve.read_table`), assembled
+under `gap_rule = "pchip_bridge"` with `uncertainty_source = "table"` and the declared
+`ring_gap_deg`. Such a source has no points file, no bins and no join, so `points_source`,
+`bin_width_deg`, `min_count_per_bin` and `join_window_deg` belong to the default
+`curve_format = "segments"` alone. A tabulated file's `source` is its own first line, with the
+file's name.
+
+**The data properties file carries only values that matter** (SPEC_13 v0.5 section 2a item 3): the
+observation level, the latitude convention, the epoch and the season. Their sources, justification
+and descriptions are its comments, and this module reads none of them.
+
 No physical value appears in this module. The bin width, the minimum count, the gap and polar
 rules, the join window and the two grids come from the control file; the observation level and
 the latitude convention come from the static properties file beside the digitizations; the wind
@@ -38,30 +50,33 @@ from casspian.lib import geoid as gd
 from casspian.lib import io as cio
 from casspian.lib import latitude as latmod
 from casspian.lib.control import ControlFileError, build_role, load_section
-from casspian.tools.wind.curve import EXTENDED, AssembledCurve, read_curve
+from casspian.tools.wind.curve import EXTENDED, AssembledCurve, TableCurve, read_curve, read_table
 
 TOOL = "casspian-wind-from-curve"
 
 #: The keys the data properties file's [epoch] table must carry (SPEC_01 v0.25 Step 7): the
-#: epoch as an ISO date and the season with its source; `epoch_note` is optional.
-EPOCH_KEYS = ("value", "solar_longitude_deg", "solar_longitude_source")
+#: epoch as an ISO date and the season (SPEC_13 v0.5 section 2a item 3: its source is a comment).
+EPOCH_KEYS = ("value", "solar_longitude_deg")
 
 SECTION_KEYS = {
     "role": True,
     "wind_source_kind": True,
     "curve_source": True,
-    "points_source": True,
+    "points_source": False,
     "data_properties": True,
     "gravity_file": True,
     "rotation_file": True,
     "raw_bundle": True,
     "output": True,
     "prefix": True,
-    "bin_width_deg": True,
-    "min_count_per_bin": True,
+    "bin_width_deg": False,
+    "min_count_per_bin": False,
     "gap_rule": True,
     "polar_rule": True,
-    "join_window_deg": True,
+    "join_window_deg": False,
+    "curve_format": False,
+    "uncertainty_source": False,
+    "ring_gap_deg": False,
     "latitude_grid_step_deg": True,
     "vertical_structure": True,
     "pressure_grid_Pa": True,
@@ -73,6 +88,11 @@ PATH_KEYS = (
     "gravity_file", "rotation_file", "raw_bundle", "output",
 )
 
+#: The two forms of curve source, with the uncertainty source each takes and the keys each needs.
+CURVE_FORMATS = {
+    "segments": ("points", ("points_source", "bin_width_deg", "min_count_per_bin", "join_window_deg")),
+    "table": ("table", ("ring_gap_deg",)),
+}
 PROVENANCE_FLAG_VALUES = np.array([0, 1, 2, 3, 4], dtype="int8")
 PROVENANCE_FLAG_MEANINGS = (
     "observed interpolated parameterized extrapolated extended_by_source_assumption"
@@ -133,11 +153,26 @@ def build(control_path, section: str = "wind") -> Path:
             "exercised here (SPEC_01 v0.15 Step 7)."
         )
 
+    curve_format = control.get("curve_format", "segments")
+    if curve_format not in CURVE_FORMATS:
+        raise ControlFileError(f"curve_format = {curve_format!r}; the formats are {list(CURVE_FORMATS)}")
+    uncertainty_source, needed = CURVE_FORMATS[curve_format]
+    if control.get("uncertainty_source", uncertainty_source) != uncertainty_source:
+        raise ControlFileError(
+            f"uncertainty_source = {control['uncertainty_source']!r} with curve_format = "
+            f"{curve_format!r}; that format takes {uncertainty_source!r}")
+    missing = [key for key in needed if key not in control]
+    if missing:
+        raise ControlFileError(f"curve_format = {curve_format!r} needs {missing}")
+    unused = [key for _, (_, keys) in CURVE_FORMATS.items() for key in keys
+              if key not in needed and key in control]
+    if unused:
+        raise ControlFileError(f"curve_format = {curve_format!r} does not use {unused}")
+    table_form = curve_format == "table"
+
     output = Path(control["output"])
     prefix = control["prefix"]
     role = build_role(control, control_path, section)
-    width = float(control["bin_width_deg"])
-    min_count = int(control["min_count_per_bin"])
     pressure = np.asarray(control["pressure_grid_Pa"], dtype="float64")
     step = float(control["latitude_grid_step_deg"])
 
@@ -174,19 +209,26 @@ def build(control_path, section: str = "wind") -> Path:
         rotation.close()
         raw.close()
 
-    segments = read_curve(Path(control["curve_source"]))
-    points_lat, points_u = read_points(Path(control["points_source"]))
-    centers, index, count, mean, low = bin_points(points_lat, points_u, width, min_count)
+    if table_form:
+        table = read_table(Path(control["curve_source"]))
+        curve = TableCurve(table, gap_rule=control["gap_rule"], polar_rule=control["polar_rule"],
+                           ring_gap_deg=control["ring_gap_deg"])
+    else:
+        width = float(control["bin_width_deg"])
+        min_count = int(control["min_count_per_bin"])
+        segments = read_curve(Path(control["curve_source"]))
+        points_lat, points_u = read_points(Path(control["points_source"]))
+        centers, index, count, mean, low = bin_points(points_lat, points_u, width, min_count)
 
-    curve = AssembledCurve(
-        segments,
-        gap_rule=control["gap_rule"],
-        polar_rule=control["polar_rule"],
-        join_window_deg=control["join_window_deg"],
-        bin_centers=centers,
-        bin_values=mean,
-    )
-    rms, _ = bin_rms_about(curve, points_lat, points_u, index, centers, count, min_count)
+        curve = AssembledCurve(
+            segments,
+            gap_rule=control["gap_rule"],
+            polar_rule=control["polar_rule"],
+            join_window_deg=control["join_window_deg"],
+            bin_centers=centers,
+            bin_values=mean,
+        )
+        rms, _ = bin_rms_about(curve, points_lat, points_u, index, centers, count, min_count)
 
     # The product grid is planetocentric, with both poles and the equator as nodes.
     n_steps = int(round(180.0 / step))
@@ -214,7 +256,8 @@ def build(control_path, section: str = "wind") -> Path:
 
     u_1d = curve(phi_g)
     provenance_1d = curve.provenance(phi_g)
-    sigma_1d = curve.uncertainty(phi_g, centers, rms, count, min_count)
+    sigma_1d = (curve.uncertainty(phi_g) if table_form
+                else curve.uncertainty(phi_g, centers, rms, count, min_count))
 
     n_lat, n_p = phi_c_deg.size, pressure.size
     u_total = np.repeat(u_1d[:, None], n_p, axis=1)
@@ -245,16 +288,19 @@ def build(control_path, section: str = "wind") -> Path:
         {
             "u_total_ms": (dims, u_total,
                            attrs("m s-1", "total zonal wind, positive eastward", "derived",
-                                 value_source="Ingersoll and Pollard 1982, Fig. 5, solid "
-                                              "curve")),
+                                 value_source=(None if table_form else
+                                               "Ingersoll and Pollard 1982, Fig. 5, solid "
+                                               "curve"))),
             "u_total_uncertainty_ms": (
                 dims, u_uncertainty,
-                attrs("m s-1", "scatter of the cloud tracking points about the curve",
+                attrs("m s-1", ("standard deviation of the measurements in the latitude bin"
+                                if table_form else
+                                "scatter of the cloud tracking points about the curve"),
                       "derived", uncertainty_kind="1sigma",
-                      uncertainty_method=(
+                      uncertainty_method=(None if table_form else (
                           "RMS of the Smith et al. 1982 Fig. 4 points about the Ingersoll and "
                           "Pollard 1982 Fig. 5 curve within a 2 degree planetographic bin; "
-                          "NaN where the bin has fewer than the minimum count")),
+                          "NaN where the bin has fewer than the minimum count"))),
             ),
             "u_reference_ms": (
                 ("latitude_planetocentric",), u_reference,
@@ -269,20 +315,11 @@ def build(control_path, section: str = "wind") -> Path:
                                        flag_meanings=PROVENANCE_FLAG_MEANINGS)),
             "reference_level_pressure_Pa": (
                 (), level_ref,
-                attrs("Pa", "level the cloud top wind is assigned to", "assumed",
-                      value_source=properties["observation_level"]["value_source"]),
+                attrs("Pa", "level the cloud top wind is assigned to", "assumed"),
             ),
             "latitude_planetographic_deg": (
                 ("latitude_planetocentric",), phi_g,
                 attrs("degrees_north", "grid latitude in the source convention", "derived"),
-            ),
-            "bin_rms_ms": (
-                ("bin_latitude",), rms,
-                attrs("m s-1", "RMS of the points about the curve in the bin", "derived"),
-            ),
-            "bin_count": (
-                ("bin_latitude",), count,
-                attrs("1", "cloud tracking points in the bin", "index"),
             ),
         },
         coords={
@@ -295,13 +332,80 @@ def build(control_path, section: str = "wind") -> Path:
                 attrs("Pa", "declared pressure grid", "index",
                       positive="down", direction="increasing"),
             ),
+        },
+    )
+
+    if table_form:
+        dataset.attrs.update({
+            "title": control.get("title", f"{prefix} cloud top zonal wind"),
+            "profile_or_run": prefix,
+            "role": role,
+            "source": f"{table.header} ({Path(control['curve_source']).name})",
+            "rotation_system_name": rotation_name,
+            "rotation_rate_rad_s": Omega,
+            "epoch": str(epoch_table["value"]),
+            "solar_longitude_deg": float(epoch_table["solar_longitude_deg"]),
+            "observation_level_Pa": level_ref,
+            "source_latitude_convention": properties["latitude"]["convention"],
+            "vertical_structure": control["vertical_structure"],
+            "coverage_pressure_Pa": np.array([pressure.min(), pressure.max()]),
+            "coverage_latitude_planetocentric_deg": np.array([-90.0, 90.0]),
+            "curve_format": curve_format,
+            "uncertainty_source": uncertainty_source,
+            "gap_rule": control["gap_rule"],
+            "polar_rule": control["polar_rule"],
+            "ring_gap_deg": np.array([curve.ring_lo, curve.ring_hi]),
+            "parameterization": (
+                f"one PCHIP through all {table.latitude_deg.size} rows, which bridges the ring gap "
+                f"{curve.ring_lo:g} to {curve.ring_hi:g} deg and the gaps "
+                + ", ".join(f"{lo:g} to {hi:g}" for lo, hi in curve.gaps
+                            if (lo, hi) != (curve.ring_lo, curve.ring_hi))
+                + f" deg between their data edges, with no reflection and no join; the caps "
+                f"poleward of {curve.north_max:g} and {curve.south_min:g} deg by the polar rule; "
+                f"the uncertainty u_rms linear in latitude, NaN in the ring gap and poleward of "
+                f"the rows; {table.dropped} rows the file marks as not data dropped"),
+            "curve_segments_deg": np.array([curve.south_min, curve.north_max]),
+            "latitude_conversion_inputs": cio.input_hashes(
+                [Path(control["gravity_file"]), Path(control["rotation_file"])], output
+            ),
+            "latitude_conversion_note": (
+                "grid latitudes converted from planetocentric to planetographic by the direct "
+                "relation on the no wind reference geoid. The wind itself makes the geoid depart "
+                "from no wind; using the no wind surface is a second order choice, recorded here "
+                "rather than hidden"
+            ),
+            "input_hashes": cio.input_hashes([
+                Path(control["curve_source"]), Path(control["data_properties"]),
+                Path(control["gravity_file"]), Path(control["rotation_file"]),
+                Path(control["raw_bundle"]), Path(control_path),
+            ], output),
+        })
+        cio.history_append(
+            dataset,
+            f"{TOOL}: wind from {Path(control['curve_source']).name} ({table.latitude_deg.size} rows, "
+            f"{table.dropped} dropped as not data) assembled under gap_rule={control['gap_rule']} "
+            f"and polar_rule={control['polar_rule']}; uncertainty the table's u_rms; evaluated on "
+            f"a {step} deg planetocentric grid and extended onto {n_p} pressure levels under the "
+            "source's altitude independence",
+        )
+        return cio.write(output, dataset, "wind", created_by=TOOL)
+
+    dataset = dataset.assign({
+            "bin_rms_ms": (
+                ("bin_latitude",), rms,
+                attrs("m s-1", "RMS of the points about the curve in the bin", "derived"),
+            ),
+            "bin_count": (
+                ("bin_latitude",), count,
+                attrs("1", "cloud tracking points in the bin", "index"),
+            ),
+    })
+    dataset = dataset.assign_coords({
             "bin_latitude_deg": (
                 ("bin_latitude",), centers,
                 attrs("degrees_north", "uncertainty bin center, planetographic", "index"),
             ),
-        },
-    )
-
+    })
     north_min, north_max = curve.north_min, curve.north_max
     south_min, south_max = curve.south_min, curve.south_max
     dataset.attrs.update({
@@ -316,13 +420,9 @@ def build(control_path, section: str = "wind") -> Path:
         "rotation_rate_rad_s": Omega,
         "epoch": str(epoch_table["value"]),
         "solar_longitude_deg": float(epoch_table["solar_longitude_deg"]),
-        "solar_longitude_source": str(epoch_table["solar_longitude_source"]),
         "method": "cloud tracking, smoothed by the source",
         "observation_level_Pa": level_ref,
-        "observation_level_justification":
-            properties["observation_level"]["justification"],
         "source_latitude_convention": properties["latitude"]["convention"],
-        "source_latitude_convention_source": properties["latitude"]["convention_source"],
         "vertical_structure": control["vertical_structure"],
         "coverage_pressure_Pa": np.array([pressure.min(), pressure.max()]),
         "coverage_latitude_planetocentric_deg": np.array([-90.0, 90.0]),
@@ -367,9 +467,6 @@ def build(control_path, section: str = "wind") -> Path:
             Path(control_path),
         ], output),
     })
-    if epoch_table.get("epoch_note"):
-        dataset.attrs["epoch_note"] = str(epoch_table["epoch_note"])
-
     cio.history_append(
         dataset,
         f"{TOOL}: wind from the Ingersoll and Pollard 1982 Fig. 5 solid curve "

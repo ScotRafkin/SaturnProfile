@@ -121,3 +121,13 @@ SPEC_12 accepted by the author at v0.2 on 8 October 2026 (§2 ruled: the target 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | `tools/lindal/egress_profile.py` and `occul_data/lindal/voyager2_egress.csv`: Lindal Fig. 4 traced, converted to pressure; `lindal_iris_ii_110` retargeted to 31.2 S; the first comparison | accepted (`a8733b6`; 4 of 4 under REVIEW_12_step1; ingress check 1.15 K and 1.74 percent RMS; delivered minus egress +3.92, +2.37, -0.94 K at 110, 290, 730 mbar against the anchor's +0.3, +1.1, +4.3 K: the transfer improves only the deep troposphere; no regression. SPEC_12 closed) | `reports/REPORT_12_step1.md`, `reports/REVIEW_12_step1.md` | 2026-10-08 |
+
+## SPEC_13, the gradient from the fitted temperatures, and the Sanchez-Lavega wind
+
+SPEC_13 accepted by the author at v0.3 on 8 October 2026 (§3 ruled on the pre-execution report); v0.4 and v0.5 add Step 3 (a smooth window, the IRIS values in the figure, the data property files); **closed** at Step 3's acceptance on 8 October 2026.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | `gradient = "value"` in the case `lindal_iris`; the curve path takes a table (`curve_format`, `gap_rule = "pchip_bridge"`, `uncertainty_source`); the Sanchez-Lavega cloud wind | accepted under REVIEW_13_step1 and step3 | `reports/REPORT_13_preexecution.md`, `reports/REPORT_13_step1.md`, `reports/REVIEW_13_step1.md` | 2026-10-08 |
+| 2 | the runs `lindal_iris_v_ii_110` and `lindal_iris_v_sl_ii_110` | accepted under REVIEW_13_step2 and step3 | `reports/REPORT_13_step2.md`, `reports/REVIEW_13_step2.md` | 2026-10-08 |
+| 3 | `fit(window = "smooth")`; the two runs rebuilt with it; the IRIS values in `profiles.png`; the data property files cut to the values code reads (SPEC_00 v0.24) | accepted (round trip within 0.11 K at 110 mbar, the equatorial bridge 0.6 to 0.9 K at 290 and 730 mbar; against the egress +5.0, +2.3, +0.4 K; no regression. SPEC_13 closed) | `reports/REPORT_13_step3.md`, `reports/REVIEW_13_step3.md` | 2026-10-08 |

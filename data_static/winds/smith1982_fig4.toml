@@ -1,38 +1,20 @@
-# CASSPIAN data_static: properties of the Voyager cloud-top wind data set.
+# Ingersoll and Pollard (1982) Fig. 5 curve is the wind; the Smith et al. (1982) Fig. 4 points are
+# the uncertainty. Both digitized beside this file.
 #
-# These are properties of the data, not choices of any one build, so they live beside the
-# digitizations rather than in a control file (SPEC_01 v0.10, Step 7). The wind values
-# themselves are in the two CSVs beside this file: the Ingersoll and Pollard (1982) Fig. 5
-# curve is the wind, the Smith et al. (1982) Fig. 4 points are the uncertainty.
-#
-# Written by the coding agent at Step 7 from the values previously carried in the [wind]
-# section of occul_data/lindal/lindal_build.toml; every value below is either quoted from a
-# source or is the project's stated reading of one. Marked for the author, since data_static
-# is normally written by hand.
+# Latitude planetographic (Ingersoll and Pollard Fig. 3 caption; Lindal et al. 1985 Appendix).
+# System III, eastward positive (Smith et al. Fig. 4 caption).
+# Observation level: 1 bar, a project assignment; neither source states a pressure. The reduction
+# wind is altitude independent, so the level sets only which column is flagged observed.
+# Epoch: the curve combines Voyager 1 (Nov 1980) and Voyager 2 (late Aug 1981) imaging and carries
+# the date of the Voyager 2 ingress occultation it serves. Ls 18.2 deg computed for that date
+# (15 Sep 2026, JPL approximate elements); to be replaced by the ephemeris value.
 
 [observation_level]
-# The level the cloud-top wind is assigned to. This is a declared assignment, not a
-# measurement: neither source states a pressure for the tracked features.
-value_Pa   = 1.0e5
-value_source = "project assignment, not stated by either source"
-justification = "Cloud-tracked features are ammonia cloud tops. Lindal et al. (1985) carry the zonal wind in the geoid fitted on the 100 mbar surface and assume it independent of altitude (Appendix p. 1144), so the level assigned to it does not enter their geodesy and is a declared choice here. 1 bar is taken as the nominal cloud-top level; because the reduction wind is altitude independent, no result depends on this number."
-enters_reduction = "no; the reduction wind is altitude independent, so the assigned level sets only which column of the kind W file is flagged observed"
+value_Pa = 1.0e5
 
 [latitude]
 convention = "planetographic"
-convention_source = "Ingersoll and Pollard 1982, Fig. 3 caption: 'the latitudes are planetographic'; Lindal et al. 1985, Appendix p. 1144: the published zonal-wind data 'give V_w as a function of the planetographic latitude'"
-
-[frame]
-rotation_system = "System III"
-frame_source = "Smith et al. 1982, Fig. 4 caption: 'Zonal (eastward) winds in the reference frame of Saturn's magnetic field'; the magnetic field frame is System III"
-positive_direction = "eastward"
 
 [epoch]
-# SPEC_00 v0.19 section 5, SPEC_01 v0.28 Step 7: a wind curve has no date of its own and carries
-# the date of the observation it serves, the Voyager 2 ingress occultation; the curve's own dating
-# is the epoch_note.
 value = "1981-08-26"
-value_source = "the date of the Lindal et al. (1985) Voyager 2 ingress occultation this curve serves (SPEC_01 v0.28); Ingersoll and Pollard 1982 Fig. 5 caption, 'from Voyager 2 in late August, 1981'"
-epoch_note = "The curve combines Voyager 1 imaging (November 1980, Ls about 8 deg) and Voyager 2 imaging (late August 1981); it is assigned the occultation date (SPEC_01 v0.28 Step 7)."
 solar_longitude_deg = 18.2
-solar_longitude_source = "computed by the reviewing agent on 15 September 2026 for 1981-08-26 from the JPL approximate Keplerian elements of Saturn and the IAU pole (RA 40.589 deg, Dec 83.537 deg), a method that reproduces the equinoxes of February 1980 and 11 August 2009 to 0.3 deg; not stated by the source; to be replaced by the ephemeris value when the season tool exists (SPEC_01 v0.28 Step 7)"

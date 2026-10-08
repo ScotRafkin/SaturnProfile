@@ -9,10 +9,15 @@ it (SPEC_11 v0.4 Step 2).
 **The reference wind** is the cloud wind's reference wind, assigned to `REFERENCE_PRESSURE_Pa`
 (398 mbar, a node of the output grid), where the shear is zero.
 
-**The gradient** at each of the three levels is `iris_temperatures.fit` at its defaults, evaluated
+**The gradient** at each of the three levels is from `iris_temperatures.fit` at its defaults, evaluated
 at the planetographic latitudes of the cloud wind's planetocentric grid (the file's own
 `latitude_planetographic_deg`, which the wind tool computed by its rule), and converted to per
-planetocentric radian with `dphi_g/dphi_c` differenced on that grid.
+planetocentric radian with `dphi_g/dphi_c` differenced on that grid. `gradient` chooses which
+(SPEC_13 Step 1 item 1): `"slope"`, the fit's local slope `gradient_K_per_deg` (SPEC_11, the
+default); or `"value"`, the derivative of the fit's `value_K` in planetographic latitude, by
+central differences on that grid and one-sided at the ends of the fit's span (`np.gradient`), so
+that the shear stands for the temperatures the fit gives. `window` is `fit`'s: SPEC_10's adaptive
+width (the default) or the smooth one (SPEC_13 v0.5 section 2a item 1).
 
 **The shear from the model's balance.** Along an isobar the transfer integrates
 `d ln N / dphi = K = S / g` (Eq. A27 with the composition uniform in latitude, which the run's is),
@@ -73,6 +78,7 @@ TOP_LEVEL_MBAR = 110
 NODES_PER_DECADE = 20
 GRID_DECADES = (0, 6)
 ABOVE_CASES = ("held", "relaxed")
+GRADIENTS = ("slope", "value")
 ABOVE_SCALE_HEIGHTS = 2.0
 BELOW_SCALE_HEIGHTS = 1.0
 EQUATORIAL_BAND_DEG = 5.0
@@ -170,13 +176,35 @@ def shape_in_latitude(computed, latitude_deg) -> np.ndarray:
     return s
 
 
+def derivative_of_value(value_K, latitude_g_deg) -> np.ndarray:
+    """`dT/dphi_g` (K per degree) of a fit's values on its grid, NaN where the value is NaN.
+
+    The fit is defined on one contiguous span of the grid (between the data's ends); the
+    derivative is central inside it and one-sided at its two ends."""
+    value_K = np.asarray(value_K, dtype="float64")
+    latitude_g_deg = np.asarray(latitude_g_deg, dtype="float64")
+    out = np.full(value_K.shape, np.nan)
+    inside = np.flatnonzero(np.isfinite(value_K))
+    if inside.size < 2:
+        return out
+    if inside[-1] - inside[0] + 1 != inside.size:
+        raise ValueError("the fit's values are not one contiguous span of the grid")
+    out[inside] = np.gradient(value_K[inside], latitude_g_deg[inside])
+    return out
+
+
 def construct(cloud, table, composition, gravity, rotation, top_level_Pa, above,
-              equatorial_radius_m=None) -> Construction:
+              equatorial_radius_m=None, gradient="slope", window="adaptive") -> Construction:
     """The wind for one case, from in-memory inputs. No file is read or written.
 
     `table` is the IRIS CSV as a structured array (`numpy.genfromtxt(..., names=True)`)."""
     if above not in ABOVE_CASES:
         raise ControlFileError(f"above_top = {above!r}; the cases are {list(ABOVE_CASES)}")
+    if gradient not in GRADIENTS:
+        raise ControlFileError(f"gradient = {gradient!r}; the choices are {list(GRADIENTS)}")
+    if window not in iris.WINDOWS:
+        raise ControlFileError(f"window = {window!r}; the windows are {list(iris.WINDOWS)}")
+    gradient_choice = gradient
     lat_c = np.asarray(cloud["latitude_planetocentric_deg"].values, dtype="float64")
     lat_g = np.asarray(cloud["latitude_planetographic_deg"].values, dtype="float64")
     phi = np.radians(lat_c)
@@ -197,9 +225,11 @@ def construct(cloud, table, composition, gravity, rotation, top_level_Pa, above,
     for k, level in enumerate(printed):
         rows = table["pressure_mbar"] == level
         result = iris.fit(table["latitude_planetographic_deg"][rows], table["temperature_K"][rows],
-                          grid=lat_g)
+                          grid=lat_g, window=window)
         temperature[k] = result.value_K
-        gradient[k] = result.gradient_K_per_deg * dg_dc * (180.0 / np.pi)
+        per_deg = (result.gradient_K_per_deg if gradient_choice == "slope"
+                   else derivative_of_value(result.value_K, lat_g))
+        gradient[k] = per_deg * dg_dc * (180.0 / np.pi)
     m_bar = mean_molar_mass(composition, levels, lat_c)
     computed_mask = np.isfinite(gradient) & (np.abs(lat_c) >= EQUATORIAL_BAND_DEG)
 
@@ -237,13 +267,13 @@ def construct(cloud, table, composition, gravity, rotation, top_level_Pa, above,
     else:
         raise ValueError(f"the wind did not settle in {MAX_ITERATIONS} iterations: the last "
                          f"changes {changes[-3:]} m/s against a tolerance of {TOLERANCE_MS} m/s")
-    dataset = _dataset(cloud, u, u_ref, pressure, levels, above)
+    dataset = _dataset(cloud, u, u_ref, pressure, levels, above, gradient_choice, window)
     return Construction(dataset=dataset, level_Pa=levels, shear_ms=shear, shear_computed_ms=computed,
                         temperature_K=temperature, gradient_K_per_rad=gradient,
                         iterations=iteration, changes_ms=changes)
 
 
-def _dataset(cloud, u, u_ref, pressure, levels, above) -> xr.Dataset:
+def _dataset(cloud, u, u_ref, pressure, levels, above, gradient="slope", window="adaptive") -> xr.Dataset:
     """The output kind W dataset, the cloud wind's attributes and auxiliaries replaced where false."""
     lat_dim, p_dim = "latitude_planetocentric", "pressure"
     reference_column = int(np.flatnonzero(pressure == REFERENCE_PRESSURE_Pa)[0])
@@ -277,7 +307,10 @@ def _dataset(cloud, u, u_ref, pressure, levels, above) -> xr.Dataset:
                  "shear (SPEC_11)",
         "vertical_structure": structure,
         "method": f"{cloud.attrs.get('method', 'cloud tracking')}; the shear from Voyager IRIS "
-                  "temperature gradients by the model's balance",
+                  "temperature gradients by the model's balance"
+                  + ("" if gradient == "slope" else
+                     ", the gradient the derivative of the fitted temperatures (SPEC_13)")
+                  + ("" if window == "adaptive" else ", the fit's window smooth in latitude (SPEC_13)"),
         "source": f"{cloud.attrs.get('source', '')}; shear from Conrath, B. J., and Pirraglia, J. A. "
                   "1983, Icarus 53, 286, Fig. 1, digitized (SPEC_09) and fitted (SPEC_10)",
         "observation_level_Pa": REFERENCE_PRESSURE_Pa,

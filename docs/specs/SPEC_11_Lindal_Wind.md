@@ -1,7 +1,7 @@
 # SPEC 11. The Lindal-only wind
 
-Version 0.4, 8 October 2026. Author of record: S. Rafkin. **Status: accepted by the author, §2 ruled;
-v0.4 rules on the Step 1 report (§2 items 4 to 7).**
+Version 0.5, 8 October 2026. Author of record: S. Rafkin. **Status: closed. v0.5 records a correction
+to Step 2's diagnosis (§2 item 8).**
 Depends on SPEC_08, SPEC_09 and SPEC_10.
 
 ## 0. Purpose
@@ -84,6 +84,11 @@ existing suite is rerun for the reorder.
 7. **Composition is fixed.** The tool reads the run's composition only for the mean molar mass in
    `dln p / dr`.
 
+8. **The Step 2 diagnosis, corrected (REPORT_13_step2 §2).** Its path integrals ran over the grid
+   nodes inside the path and left out the partial cells at the two ends. Integrated from the
+   anchor's latitude to the target's exactly, part (A) at 110 mbar is -1.21 K: -1.15 K the slope
+   against the fitted value (A1) and -0.06 K the linearization (A2). The conclusions stand.
+
 ## 3. Revision history
 
 - v0.1, 7 October 2026: first draft.
@@ -91,3 +96,4 @@ existing suite is rerun for the reorder.
 - v0.3, 7 October 2026: accepted; §2 ruled (relaxation below 730 mbar, the equatorial band).
 - v0.4, 8 October 2026: rulings on the Step 1 report: PCHIP bridge, one run in Step 2, the build as
   the coding agent proposed.
+- v0.5, 8 October 2026: closed; §2 item 8 records the corrected diagnosis of Step 2.

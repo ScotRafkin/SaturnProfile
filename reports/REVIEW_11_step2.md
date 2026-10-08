@@ -45,3 +45,7 @@ Order of work: commit and push the following. No regression.
 - `tests/step11_2/`;
 - the report and this review;
 - the SPEC_11 rows in `STATE.md`.
+
+**Correction (8 October 2026).** The diagnosis's path integrals left out the partial cells at the
+path's ends. Corrected in REPORT_13_step2 §2 and recorded in SPEC_11 v0.5 §2 item 8. Part (A) at
+110 mbar is -1.21 K, of which -1.15 K is the slope against the fitted value. The rulings stand.

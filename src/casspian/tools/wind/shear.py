@@ -29,7 +29,10 @@ attributes. `build` adds `input_hashes`; `lib.io.write` stamps what it stamps on
 input's own grid: it returns the whole wind of `casspian.tools.lindal.lindal_wind.construct`, the
 input being its cloud wind, on that tool's own pressure grid and reference level. Its four inputs,
 `temperatures`, `composition`, `gravity` and `rotation`, are paths in the control section; `build`
-reads them and passes them in memory, so `construct` still touches no file.
+reads them and passes them in memory, so `construct` still touches no file. Its optional
+`gradient` is `lindal_wind.construct`'s, `"slope"` when absent (SPEC_13 Step 1 item 1), and its
+optional `window` is `iris_temperatures.fit`'s, `"adaptive"` when absent (SPEC_13 v0.5 section 2a
+item 1).
 
 What is refused, and only this (SPEC_05 Step 1 check 10, decision N): an unknown case, an unknown
 shape, a missing parameter, a parameter the case does not use, an input without `u_total_ms`
@@ -57,7 +60,7 @@ TOOL = "casspian-wind-shear"
 PARAMETER_KEYS = (
     "shear_reference_pressure_Pa", "scale", "shape", "stop_pressure_Pa", "stop_fraction",
     "uncertainty_ms", "temperatures", "composition", "gravity", "rotation", "top_level_Pa",
-    "above_top",
+    "above_top", "gradient", "window",
 )
 
 SECTION_KEYS = {"source": True, "output": True, "case": True,
@@ -155,7 +158,9 @@ def case_lindal_iris(source, parameters):
 
     return lindal_wind.construct(
         source, parameters["temperatures"], parameters["composition"], parameters["gravity"],
-        parameters["rotation"], float(parameters["top_level_Pa"]), parameters["above_top"]).dataset
+        parameters["rotation"], float(parameters["top_level_Pa"]), parameters["above_top"],
+        gradient=parameters.get("gradient", "slope"),
+        window=parameters.get("window", "adaptive")).dataset
 
 
 RAMP_PARAMETERS = ("shear_reference_pressure_Pa", "shape", "stop_pressure_Pa", "stop_fraction")
@@ -165,7 +170,8 @@ CASES = {
     "uniform": Case(case_uniform, ("shear_reference_pressure_Pa",), ("scale", "uncertainty_ms")),
     "decay_above": Case(case_ramp, RAMP_PARAMETERS, ("uncertainty_ms",), stop_side=-1),
     "increase_below": Case(case_ramp, RAMP_PARAMETERS, ("uncertainty_ms",), stop_side=+1),
-    "lindal_iris": Case(case_lindal_iris, (*INPUT_KEYS, "top_level_Pa", "above_top"), whole=True),
+    "lindal_iris": Case(case_lindal_iris, (*INPUT_KEYS, "top_level_Pa", "above_top"), ("gradient", "window"),
+                        whole=True),
 }
 
 

@@ -1,0 +1,34 @@
+# SPEC_13 Step 1: the Sanchez-Lavega cloud wind, built outside any run for the Step 1 figures.
+# The [wind] section of forward/lindal_iris_v_sl_ii_110 is the same but for its paths and output
+# (Step 2). Paths are relative to this file.
+
+[wind]
+wind_source_kind = "curve"
+curve_format       = "table"
+uncertainty_source = "table"
+curve_source     = "../../data_static/winds/vasavada_saturn_winds.txt"
+data_properties  = "../../data_static/winds/sanchezlavega2000.toml"
+gravity_file     = "../../forward/lindal_iris_ii_110/inputs/lindal_iris_ii_110_gravity.nc"
+rotation_file    = "../../forward/lindal_iris_ii_110/inputs/lindal_iris_ii_110_rotation.nc"
+raw_bundle       = "../../occul_data/lindal/raw/lindal_raw.nc"
+output           = "../../reports/step13_1/sl_wind_source.nc"
+prefix           = "step13_1"
+role             = "forward"
+title            = "Sanchez-Lavega et al. (2000) cloud top zonal wind, for SPEC_13 Step 1"
+
+gap_rule     = "pchip_bridge"
+polar_rule   = "pchip_to_zero"
+ring_gap_deg = [-10.7, -2.1]
+
+latitude_grid_step_deg = 0.5
+vertical_structure     = "altitude independent"
+
+pressure_grid_Pa = [
+  1, 1.25893, 1.58489, 1.99526, 2.51189, 3.16228, 3.98107, 5.01187, 6.30957, 7.94328,
+  10, 12.5893, 15.8489, 19.9526, 25.1189, 31.6228, 39.8107, 50.1187, 63.0957, 79.4328,
+  100, 125.893, 158.489, 199.526, 251.189, 316.228, 398.107, 501.187, 630.957, 794.328,
+  1000, 1258.93, 1584.89, 1995.26, 2511.89, 3162.28, 3981.07, 5011.87, 6309.57, 7943.28,
+  10000, 12589.3, 15848.9, 19952.6, 25118.9, 31622.8, 39810.7, 50118.7, 63095.7, 79432.8,
+  100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
+  1e+06
+]

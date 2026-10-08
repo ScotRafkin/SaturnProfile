@@ -29,3 +29,5 @@ as the Step 7 gap fill. See `sanchezlavega2000_vs_ip1982.png` in the notes.
 Intended use: a second declared reduction wind source (`wind_source = "sanchezlavega2000"`)
 through the wind tool's curve path, with u_rms as its uncertainty, for the Step 7 sensitivity
 and the SPEC_02 Monte Carlo; not a change to the accepted Step 7 build. Median u_rms 10.6 m/s.
+
+**Settled by SPEC_13 section 0** (8 October 2026): the table matches the paper's Table II row for row; Voyager 1 and 2 only, System III; `u_rms` is the standard deviation of the measurements in each 0.5 deg bin (their Eq. 6).
