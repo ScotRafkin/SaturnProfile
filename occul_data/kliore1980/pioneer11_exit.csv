@@ -6,7 +6,7 @@
 # planetographic. Transcribed as published, for 90 percent H2 and 10 percent He by number; the
 # uncertainty ranges are Kliore's extremes from the refractivity baseline and the initial
 # temperature, not one sigma, tabulated on every fifth row and empty elsewhere. Kliore's
-# additional +/-3 K for composition is not included. Two misprints are corrected, each checked
+# additional +/-3 K for composition is not included. Three misprints are corrected, each checked
 # against the scanned page and marked on its row.
 equatorial_radius_km,refractivity_n_units,temperature_K,pressure_mbar,temperature_uncertainty_minus_K,temperature_uncertainty_plus_K,pressure_uncertainty_minus_mbar,pressure_uncertainty_plus_mbar
 60496.4,0.5,121.6,1.8,-11.5,21.1,-0.2,0.4  # pressure range published '-02.'; -0.2, the only number its digits make
@@ -32,7 +32,7 @@ equatorial_radius_km,refractivity_n_units,temperature_K,pressure_mbar,temperatur
 60406.9,5.1,95.3,14.3,-2.2,3.1,-0.3,0.6
 60403.9,5.5,95.8,15.5,,,,
 60401.4,5.8,96.0,16.5,,,,
-60398.9,6.2,96.0,17.1,,,,
+60398.9,6.2,96.0,17.5,,,,  # published 17.1 mbar; 17.5, the pressure of 6.2 n-units at 96.0 K and between 16.5 and 18.4 on the rows either side (SPEC_16, REVIEW_16_step1)
 60396.9,6.5,95.8,18.4,,,,
 60395.0,6.9,95.4,19.3,-1.7,2.4,-0.4,0.6
 60392.7,7.3,95.1,20.5,,,,

@@ -155,3 +155,11 @@ SPEC_15 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: Lindal's l
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | `tools/lindal/radio_profiles.py`, Lindal Figs. 5 and 6 traced; Kliore Table 1 transcribed; three data files; six runs, both hypotheses at 74.2 S, 3.0 S and 11.9 S; the comparison at four targets | accepted (`75823a8`; 5 of 5 under REVIEW_15_step1; calibration traces RMS 0.95 and 1.51 K, the excess at depth Fig. 5's own; Pioneer 11 trace minus Kliore rescaled +0.16 K mean, as published -3.31 K; below 30 mbar the transfer works at all four targets, above it the equatorial profiles carry wave structure neither hypothesis makes; no regression. SPEC_15 closed) | `reports/REPORT_15_step1.md`, `reports/REVIEW_15_step1.md` | 2026-10-30 |
+
+## SPEC_16, Pioneer 11 refractivity against the transferred Lindal anchor
+
+SPEC_16 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: both readings of Kliore's radius mapping, the pressure comparison the one independent of them; constants in comments, no new keys). Measures only; no new run. **Closed** at Step 1's acceptance on 30 October 2026 (REVIEW_16_step1): the self-check agrees to 0.02 percent; the planetocentric reading, 7 km from the delivered 100 mbar radius; the 17.1 mbar misprint corrected to 17.5.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | the self-check of our refractivity against Kliore's; his N against the delivered N at 11.9 S, by radius with a fitted offset and by pressure rescaled to the anchor's mixture | not started | | |
