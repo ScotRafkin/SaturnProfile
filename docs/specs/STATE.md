@@ -162,4 +162,4 @@ SPEC_16 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: both readi
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 1 | the self-check of our refractivity against Kliore's; his N against the delivered N at 11.9 S, by radius with a fitted offset and by pressure rescaled to the anchor's mixture | not started | | |
+| 1 | the self-check of our refractivity against Kliore's; his N against the delivered N at 11.9 S, by radius with a fitted offset and by pressure rescaled to the anchor's mixture | accepted (`f128202`; 2 of 2 under REVIEW_16_step1; self-check RMS 0.034 n-units, implied mean refractivity 125.87 against 125.90; planetocentric reading ruled, offset +9.2 km, residual 2.3 % RMS from 10 to 182 mbar, above 10 mbar the layering of SPEC_15; the pressure comparison restates SPEC_15's in temperature; Kliore's 17.1 mbar misprint corrected to 17.5; no regression. SPEC_16 closed) | `reports/REPORT_16_step1.md`, `reports/REVIEW_16_step1.md` | 2026-10-30 |
