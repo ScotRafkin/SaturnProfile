@@ -146,4 +146,4 @@ SPEC_14 accepted by the author at v0.2 on 22 October 2026 (§2 ruled: f held abo
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 1 | case (iii) `above_top = "reversed"` in `tools/lindal/lindal_wind.py`; the run `lindal_iris_v_sl_iii_110` from `lindal_iris_v_sl_ii_110` | reported (2 of 3: check 1 misses "value for value" by 4.5e-3 m/s, the construction's stopping rule, ruling asked; delivered minus egress +0.20, -0.77, -2.17, +2.88 K at 10, 4.5, 1, 0.3 mbar) | `reports/REPORT_14_step1.md` | 2026-10-30 |
+| 1 | case (iii) `above_top = "reversed"` in `tools/lindal/lindal_wind.py`; the run `lindal_iris_v_sl_iii_110` from `lindal_iris_v_sl_ii_110` | accepted (`cfe8030`; 3 of 3 under REVIEW_14_step1, check 1 to within the construction's tolerance (v0.3); delivered minus egress +0.20, -0.77, -2.17, +2.88 K at 10, 4.5, 1, 0.3 mbar, inside sigma_T; no regression. SPEC_14 closed) | `reports/REPORT_14_step1.md`, `reports/REVIEW_14_step1.md` | 2026-10-30 |
