@@ -138,7 +138,7 @@ SPEC_R1 accepted by the author at v0.3 on 22 October 2026 (now v0.4, §2 ruling 
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 1 | the closure content comparison, the closure season equality, the name and label refusals, `step9` check 6 and the `-dirty` refusal removed; every other refusal, check and required key judged by the rule; writers stop writing what no code reads; the seven newer suites in `tests/run_regression.sh` | reported (38 of 38 at their counts after two expectation changes; no value changed) | `reports/REPORT_R1_preexecution.md`, `reports/REPORT_R1_step1.md` | 2026-10-22 |
+| 1 | the closure content comparison, the closure season equality, the name and label refusals, `step9` check 6 and the `-dirty` refusal removed; every other refusal, check and required key judged by the rule; writers stop writing what no code reads; the seven newer suites in `tests/run_regression.sh` | accepted (`15965af`; 38 of 38 at their counts under REVIEW_R1_step1, after two expectation changes; no value changed; `tests/step03_0/` removed. SPEC_R1 closed) | `reports/REPORT_R1_preexecution.md`, `reports/REPORT_R1_step1.md`, `reports/REVIEW_R1_step1.md` | 2026-10-30 |
 
 ## SPEC_14, hypothesis 2: the shear reversed aloft
 
