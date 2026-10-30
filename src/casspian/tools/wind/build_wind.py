@@ -49,7 +49,7 @@ import xarray as xr
 from casspian.lib import geoid as gd
 from casspian.lib import io as cio
 from casspian.lib import latitude as latmod
-from casspian.lib.control import ControlFileError, build_role, load_section
+from casspian.lib.control import ControlFileError, load_section
 from casspian.tools.wind.curve import EXTENDED, AssembledCurve, TableCurve, read_curve, read_table
 
 TOOL = "casspian-wind-from-curve"
@@ -59,7 +59,6 @@ TOOL = "casspian-wind-from-curve"
 EPOCH_KEYS = ("value", "solar_longitude_deg")
 
 SECTION_KEYS = {
-    "role": True,
     "wind_source_kind": True,
     "curve_source": True,
     "points_source": False,
@@ -172,7 +171,6 @@ def build(control_path, section: str = "wind") -> Path:
 
     output = Path(control["output"])
     prefix = control["prefix"]
-    role = build_role(control, control_path, section)
     pressure = np.asarray(control["pressure_grid_Pa"], dtype="float64")
     step = float(control["latitude_grid_step_deg"])
 
@@ -338,8 +336,6 @@ def build(control_path, section: str = "wind") -> Path:
     if table_form:
         dataset.attrs.update({
             "title": control.get("title", f"{prefix} cloud top zonal wind"),
-            "profile_or_run": prefix,
-            "role": role,
             "source": f"{table.header} ({Path(control['curve_source']).name})",
             "rotation_system_name": rotation_name,
             "rotation_rate_rad_s": Omega,
@@ -410,8 +406,6 @@ def build(control_path, section: str = "wind") -> Path:
     south_min, south_max = curve.south_min, curve.south_max
     dataset.attrs.update({
         "title": control.get("title", f"{prefix} cloud top zonal wind"),
-        "profile_or_run": prefix,
-        "role": role,
         "source": ("Ingersoll, A. P., and Pollard, D. 1982, Icarus 52, 62, Fig. 5, solid "
                    "curve; uncertainty from Smith, B. A., et al. 1982, Science 215, 504, "
                    "Fig. 4"),

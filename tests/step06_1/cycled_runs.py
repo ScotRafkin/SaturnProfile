@@ -42,10 +42,6 @@ def copy_at_1e8(run, spacing):
     return copy / f"{run}.toml"
 
 
-original = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-    attrs.get("casspian_git_commit", ""))
-print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this process only\n")
 try:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -59,4 +55,4 @@ try:
                 print(f"{run} at {spacing}, tolerance 1e-8: {type(exc).__name__}: {exc}\n"
                       + traceback.format_exc().strip().splitlines()[-1] + "\n", flush=True)
 finally:
-    ctl._refuse_dirty_commit = original
+    pass

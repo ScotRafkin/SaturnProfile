@@ -6,8 +6,7 @@ and runs them with the transfer driver. `lindal_iris_ii_110` is read as SPEC_11 
 and is rebuilt and rerun only if its product is absent. Run inputs and products are written in the
 run directories, as a run's are; this script writes under `reports/step13_2/`.
 
-**The relaxation.** The tools are uncommitted, so the runs' inputs carry `-dirty`; the one refusal
-point, `casspian.lib.control._refuse_dirty_commit`, is replaced for this script's runs only.
+SPEC_R1 removed the `-dirty` refusal, and the in-process relaxation went with it.
 
 **The round trip** is SPEC_11 Step 2's: the delivered `T(target) - T(anchor)` at 110, 290 and 730
 mbar against the IRIS fit's change in value between the two planetographic latitudes. Its
@@ -86,9 +85,6 @@ def at_pressure(p, values, targets):
 
 
 warnings.simplefilter("ignore")
-_original = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(attrs.get("casspian_git_commit", ""))
-print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this script's runs only\n")
 products, passes, rerun = {}, {}, {}
 for name in RUNS:
     run = Path("forward") / name
@@ -100,7 +96,6 @@ for name in RUNS:
         product_path = state.product
         passes[name] = int(state.state.record["passes"])
     products[name] = tree(product_path)
-ctl._refuse_dirty_commit = _original
 
 # ---------------------------------------------------------------------------
 # 1. The round trip of each run

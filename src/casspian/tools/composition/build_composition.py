@@ -32,13 +32,11 @@ from scipy.interpolate import interp1d
 
 from casspian.lib import io as cio
 from casspian.lib.constants import CODATA_RELEASE, LOSCHMIDT_CONSTANT
-from casspian.lib.control import ControlFileError, build_role, load_section
+from casspian.lib.control import ControlFileError, load_section
 
 TOOL = "casspian-composition-lindal"
 
 SECTION_KEYS = {
-    # SPEC_01 v0.26: required, no default; also written as composition_role.
-    "role": True,
     "raw_bundle": True,
     "species_master": True,
     "species_set": True,
@@ -142,7 +140,6 @@ def build(control_path, section: str = "composition") -> Path:
     control = load_section(control_path, section, SECTION_KEYS, path_keys=PATH_KEYS)
     output = Path(control["output"])
     prefix = control["prefix"]
-    role = build_role(control, control_path, section)
     set_name = control["species_set"]
     h2_share = float(control["h2_fraction_of_remainder"])
     he_share = float(control["he_fraction_of_remainder"])
@@ -266,11 +263,8 @@ def build(control_path, section: str = "composition") -> Path:
         )
     )
     dataset.attrs.update({
-        "title": control.get("title", f"{prefix} {role} composition"),
-        "profile_or_run": prefix,
-        "role": role,
+        "title": control.get("title", f"{prefix} composition"),
         "source": str(source_group.get("citation", "")),
-        "composition_role": role,
         # SPEC_01 v0.25 Step 8: the composition is an assumption of the source, valid at the
         # observation's date and declared season independent.
         "epoch": observation_date,

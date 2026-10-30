@@ -121,10 +121,6 @@ def transfer_run(source, name, **options):
     return product
 
 
-original_refusal = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-    attrs.get("casspian_git_commit", ""))
-print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this process only\n")
 try:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -148,7 +144,7 @@ try:
         (closure_copy / "lindal_closure.toml").write_bytes(text.encode("utf-8"))
         products["closure"] = Path(fp.run(closure_copy / "lindal_closure.toml").product)
 finally:
-    ctl._refuse_dirty_commit = original_refusal
+    pass
 
 registered = root_of(REGISTERED_TRANSFER)
 level = int(np.argmin(np.abs(values(registered, "pressure_label_Pa") - LEVEL_PRESSURE_PA)))

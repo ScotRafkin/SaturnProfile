@@ -14,7 +14,6 @@
 source = "../../data_static/harmonics/null1981.toml"
 output = "inputs/shear_r5_decay20_gravity.nc"
 prefix = "shear_r5_decay20"
-role   = "forward"
 epoch  = "1981-08-26"   # SPEC_01 v0.28: the date of the occultation the run transfers from
 title  = "Null et al. (1981) harmonic set, as assumed by the shear_r5_decay20 run"
 
@@ -23,7 +22,6 @@ source = "../../data_static/rotation/system_iii.toml"
 entry  = "system_iii"
 output = "inputs/shear_r5_decay20_rotation.nc"
 prefix = "shear_r5_decay20"
-role   = "forward"
 epoch  = "1981-08-26"
 title  = "System III rotation, as assumed by the shear_r5_decay20 run"
 
@@ -39,7 +37,6 @@ rotation_file    = "inputs/shear_r5_decay20_rotation.nc"
 raw_bundle       = "../../occul_data/lindal/raw/lindal_raw.nc"
 output           = "inputs/shear_r5_decay20_wind_source.nc"
 prefix           = "shear_r5_decay20"
-role             = "forward"
 title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as assumed by the shear_r5_decay20 run"
 
 bin_width_deg     = 2.0
@@ -83,7 +80,6 @@ species_master = "../../data_static/species_master.toml"
 species_set    = "lindal1985"
 output         = "inputs/shear_r5_decay20_composition.nc"
 prefix         = "shear_r5_decay20"
-role           = "forward"
 title          = "Lindal et al. (1985) composition, 94 percent H2 with He and NH3, as assumed by the shear_r5_decay20 run"
 
 h2_fraction_of_remainder = 0.94

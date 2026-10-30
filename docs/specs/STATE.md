@@ -131,3 +131,19 @@ SPEC_13 accepted by the author at v0.3 on 8 October 2026 (§3 ruled on the pre-e
 | 1 | `gradient = "value"` in the case `lindal_iris`; the curve path takes a table (`curve_format`, `gap_rule = "pchip_bridge"`, `uncertainty_source`); the Sanchez-Lavega cloud wind | accepted (`cf33cd6`) under REVIEW_13_step1 and step3 | `reports/REPORT_13_preexecution.md`, `reports/REPORT_13_step1.md`, `reports/REVIEW_13_step1.md` | 2026-10-08 |
 | 2 | the runs `lindal_iris_v_ii_110` and `lindal_iris_v_sl_ii_110` | accepted (`cf33cd6`) under REVIEW_13_step2 and step3 | `reports/REPORT_13_step2.md`, `reports/REVIEW_13_step2.md` | 2026-10-08 |
 | 3 | `fit(window = "smooth")`; the two runs rebuilt with it; the IRIS values in `profiles.png`; the data property files cut to the values code reads (SPEC_00 v0.24) | accepted (`cf33cd6`; round trip within 0.11 K at 110 mbar, the equatorial bridge 0.6 to 0.9 K at 290 and 730 mbar; against the egress +5.0, +2.3, +0.4 K; no regression. SPEC_13 closed) | `reports/REPORT_13_step3.md`, `reports/REVIEW_13_step3.md` | 2026-10-08 |
+
+## SPEC_R1, the lean pass
+
+SPEC_R1 accepted by the author at v0.3 on 22 October 2026 (now v0.4, §2 ruling on the pre-execution report): a refusal, test check or required key stays only if without it the code would compute a wrong number without saying so, or fail with no clear message; the `-dirty` refusal goes. **Closed** at Step 1's acceptance on 30 October 2026 (REVIEW_R1_step1). SPEC_00 v0.25 makes §8 the whole of what readers enforce. Next: SPEC_14.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | the closure content comparison, the closure season equality, the name and label refusals, `step9` check 6 and the `-dirty` refusal removed; every other refusal, check and required key judged by the rule; writers stop writing what no code reads; the seven newer suites in `tests/run_regression.sh` | reported (38 of 38 at their counts after two expectation changes; no value changed) | `reports/REPORT_R1_preexecution.md`, `reports/REPORT_R1_step1.md` | 2026-10-22 |
+
+## SPEC_14, hypothesis 2: the shear reversed aloft
+
+SPEC_14 accepted by the author at v0.2 on 22 October 2026 (§2 ruled: f held above 0.2 mbar, the first guesses `hold_Pa = 1500`, `cross_Pa = 450`). Starts after SPEC_R1 is accepted and pushed. Tuned to the Voyager 2 egress.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | case (iii) `above_top = "reversed"` in `tools/lindal/lindal_wind.py`; the run `lindal_iris_v_sl_iii_110` from `lindal_iris_v_sl_ii_110` | not started | | |

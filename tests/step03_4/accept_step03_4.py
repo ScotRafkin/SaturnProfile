@@ -14,7 +14,6 @@ import sys
 import warnings
 from pathlib import Path
 
-import netCDF4
 import numpy as np
 import xarray as xr
 from matplotlib.image import imread
@@ -249,34 +248,7 @@ record(9, "the residual is drawn in F6 against the envelope band; the levels out
                    for k in outside)
        + f"\nband from {envelope.min():.3e} to {envelope.max():.3e}")
 
-# ---------------------------------------------------------------------------
-# 10. The kind C source_statement rule (v0.11)
-# ---------------------------------------------------------------------------
-cases = HERE / "source_statement"
-if cases.exists():
-    shutil.rmtree(cases)
-cases.mkdir(parents=True)
-reduction_copy, forward_copy = cases / "lindal_composition.nc", cases / "lindal_closure_composition.nc"
-shutil.copy2(D / "lindal_composition.nc", reduction_copy)
-shutil.copy2(RUN / "inputs/lindal_closure_composition.nc", forward_copy)
-for path in (reduction_copy, forward_copy):
-    with netCDF4.Dataset(path, "a") as handle:
-        handle.delncattr("source_statement")
-lines, ok = [], True
-try:
-    cio.read(reduction_copy, "composition").close()
-    ok = False
-    lines.append("reduction composition without source_statement: not refused")
-except CasspianSchemaError as exc:
-    lines.append(f"reduction composition without source_statement: {exc}")
-try:
-    cio.read(forward_copy, "composition").close()
-    lines.append("forward composition without source_statement: accepted")
-except CasspianSchemaError as exc:
-    ok = False
-    lines.append(f"forward composition without source_statement: REFUSED {exc}")
-record(10, "the kind C reader enforces source_statement for role reduction and not for forward (SPEC_03 "
-           "v0.11 Step 4)", ok, "\n".join(lines))
+# Check 10, source_statement required of a reduction composition, is retired by SPEC_R1.
 
 # ---------------------------------------------------------------------------
 # 11. Beyond the specification: produce is pure and reproduces the product bit for bit
@@ -299,7 +271,7 @@ all_nan = all(np.all(np.isnan(np.asarray(root[n].values))) for n in companions)
 paths = str(root.attrs["input_hashes"]).splitlines()
 relative = all(not (line.startswith("/") or line[1:3] in (":/", ":\\")) for line in paths)
 keys = ["mode", "gauge_level_index", "boundary_pressure_Pa", "p_b_rule", "geopotential_rule", "hydrostatic_rule",
-        "closure_comparison_composition", "closure_comparison_wind", "anchor_radius_projection_rule",
+        "anchor_radius_projection_rule",
         "residual_pressure", "residual_mean_below_10mbar", "casspian_git_commit"]
 record(12, "beyond the specification: the product carries its season, the anchor's season, NaN companions, "
            "relative input_hashes and the production record",
@@ -315,7 +287,6 @@ record(12, "beyond the specification: the product carries its season, the anchor
        f"{root['pressure_uncertainty_Pa'].attrs.get('uncertainty_terms_unstated')!r}\n"
        f"input_hashes:\n  " + "\n  ".join(paths) + "\n"
        f"production_record keys present: {[k for k in keys if k in rec]}\n"
-       f"closure comparisons: {[rec[f'closure_comparison_{k}'] for k in ctl.RUN_INPUT_KINDS]}\n"
        f"namelist group resolved form:\n  " + str(product['namelist'].attrs['resolved']).replace('\n', '\n  '))
 
 # ---------------------------------------------------------------------------

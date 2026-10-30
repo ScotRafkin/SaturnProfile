@@ -79,8 +79,7 @@ control.write_bytes(
         + str((OUT / "iess2019_gravity.nc").resolve()).replace("\\", "/")
         + '"\n'
         'prefix = "iess2019"\n'
-        # SPEC_01 v0.26 and v0.28: every build-file section declares its role; G and R their epoch.
-        'role = "reduction"\n'
+        # SPEC_01 v0.28: G and R declare their epoch. SPEC_R1 retired `role`.
         'epoch = "2026-09-10"\n'
     ).encode("utf-8")
 )

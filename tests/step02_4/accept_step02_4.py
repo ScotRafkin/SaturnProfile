@@ -48,7 +48,7 @@ record(1, "casspian-refrac writes lindal_refractivity.nc, which reads back as ki
        and root.attrs["casspian_kind"] == "refractivity",
        f"exit {run.returncode}: {run.stdout.strip()} {run.stderr.strip()}\n"
        f"read returns {type(tree).__name__}; casspian_kind {root.attrs['casspian_kind']!r}; "
-       f"role {root.attrs['role']!r}; commit {root.attrs['casspian_git_commit']}\n"
+       f"commit {root.attrs['casspian_git_commit']}\n"
        f"level variables: {sorted(v for v in root.data_vars if root[v].dims == ('level',))}\n"
        f"scalars: {sorted(v for v in root.data_vars if root[v].dims == ())}\n"
        f"coordinate: {list(root.coords)}\n"
@@ -70,28 +70,7 @@ except CasspianSchemaError as exc:
 record(2, "read refuses a copy missing the inputs/wind group", refused_wind,
        f"groups in the copy: {sorted(g for g in cio.group_paths(missing))}\n  {message_wind}")
 
-# ---------------------------------------------------------------------------
-# 3. read refuses a copy whose input_hashes entry for the thermo file is edited
-# ---------------------------------------------------------------------------
-edited = HERE / "edited_hash.nc"
-shutil.copy(PRODUCT, edited)
-with netCDF4.Dataset(edited, "a") as handle:
-    lines = handle.getncattr("input_hashes").splitlines()
-    changed = []
-    for line in lines:
-        if "lindal_thermo.nc" in line:
-            head, hexhash = line.rsplit("sha256:", 1)
-            line = head + "sha256:" + ("0" if hexhash[0] != "0" else "1") + hexhash[1:]
-        changed.append(line)
-    handle.setncattr("input_hashes", chr(10).join(changed))
-try:
-    cio.read(edited, "refractivity")
-    refused_hash, message_hash = False, "not refused"
-except CasspianSchemaError as exc:
-    refused_hash, message_hash = True, str(exc)
-record(3, "read refuses a copy whose input_hashes entry for the thermo file has been edited",
-       refused_hash and "thermo" in message_hash,
-       f"first hex digit of the thermo entry changed\n  {message_hash}")
+# Check 3, kind N's hash cross-check, is retired by SPEC_R1.
 
 # ---------------------------------------------------------------------------
 # 4. Every embedded input group is identical to the file it came from

@@ -90,124 +90,16 @@ def gravity_dataset(code):
 
 
 gravity_dataset("CASSPIAN-J1")  # constructed once so a failure here is not silent
-sch.validate(gravity_dataset("CASSPIAN-J1"), "gravity", where="known code", writer_filled=False)
+sch.validate(gravity_dataset("CASSPIAN-J1"), "gravity", where="known code")
 record("1a. kind G with harmonic_convention 'CASSPIAN-J1' validates", True,
        f"the code this reader knows is {sorted(sch.KNOWN_HARMONIC_CONVENTIONS)}")
 refuses(lambda: sch.validate(gravity_dataset("CASSPIAN-J2"), "gravity",
-                             where="unknown code", writer_filled=False),
+                             where="unknown code"),
         "1b. kind G with an unknown code is refused")
 
-# ---------------------------------------------------------------------------
-# Change 2. uncertainty_kind loses bin_std; uncertainty_method is free text, never validated.
-# ---------------------------------------------------------------------------
-record("2a. UNCERTAINTY_KINDS is back to the section 5 vocabulary",
-       sch.UNCERTAINTY_KINDS == frozenset({"1sigma", "range", "stated"}),
-       f"UNCERTAINTY_KINDS = {sorted(sch.UNCERTAINTY_KINDS)}")
-
-
-def uncertainty_var(uncertainty_kind, method=None):
-    extra = {"uncertainty_kind": uncertainty_kind}
-    if method is not None:
-        extra["uncertainty_method"] = method
-    # The section 6.6 spelling, with the unit suffix after the uncertainty token.
-    return xr.Dataset(
-        {
-            "u_total_uncertainty_ms": (("latitude_planetocentric",), np.array([0.5, 0.5]),
-                                       attrs("m s-1", "bin standard deviation", "derived",
-                                             **extra)),
-        }
-    )
-
-
-refuses(lambda: sch._check_variable_attributes(uncertainty_var("bin_std"),
-                                               sch.kind_spec("wind"), "bin_std"),
-        "2b. uncertainty_kind 'bin_std' is now refused")
-try:
-    sch._check_variable_attributes(
-        uncertainty_var("1sigma",
-                        "sample standard deviation of the digitized points in the bin"),
-        sch.kind_spec("wind"), "1sigma with method")
-    record("2c. '1sigma' with a free-text uncertainty_method is accepted, and the "
-           "section 6.6 name u_total_uncertainty_ms is recognized as a companion",
-           True, "uncertainty_method is carried and never validated")
-except CasspianSchemaError as exc:
-    record("2c. '1sigma' with a free-text uncertainty_method is accepted, and the "
-           "section 6.6 name u_total_uncertainty_ms is recognized as a companion",
-           False, str(exc))
-
-# ---------------------------------------------------------------------------
-# Change 3. provenance gains modeled.
-# ---------------------------------------------------------------------------
-record("3. provenance 'modeled' is in the vocabulary", "modeled" in sch.PROVENANCE_VALUES,
-       f"PROVENANCE_VALUES = {sorted(sch.PROVENANCE_VALUES)}")
-
-# ---------------------------------------------------------------------------
-# Change 4. thermo_instance: required, enforced when source_profile, forbidden otherwise.
-# ---------------------------------------------------------------------------
-SOURCE_GLOBALS = {
-    "spacecraft": "Voyager 2",
-    "event": "ingress",
-    "observation_date": "1981-08-26",
-    "frequency_bands": "S (2.3 GHz), X (8.4 GHz)",
-    "latitude_definition": "lowest ray point on the 100 mbar surface",
-    "longitude_deg": 186.8,
-    "longitude_system": "System III",
-    "height_datum": "1 bar level as defined by the source",
-    "source_top_boundary": "from the top of the detectable atmosphere and downward",
-    "source_gravity_citation": "Null et al. 1981",
-    "source_rotation_system": "System III",
-    "source_wind_citation": "Smith et al. 1982",
-    "raw_bundle": "raw/lindal_raw.nc sha256:0",
-    "latitude_planetographic_deg": 36.3,
-}
-
-
-def thermo(instance=None, source_globals=True, drop=None):
-    # A file that is `point` in latitude must state that latitude whatever its instance. A
-    # source profile states it in the source's convention; the other two state the
-    # planetocentric value, which is not one of the forbidden source profile attributes.
-    extra = dict(SOURCE_GLOBALS) if source_globals else {"latitude_planetocentric_deg": 10.0}
-    if drop:
-        extra.pop(drop)
-    if instance is not None:
-        extra["thermo_instance"] = instance
-    return xr.Dataset(
-        {
-            "temperature_K": (("level",), np.array([134.8, 138.7]),
-                              attrs("K", "temperature", "derived")),
-            "temperature_uncertainty_K": (("level",), np.array([np.nan, np.nan]),
-                                          attrs("K", "uncertainty", "derived",
-                                                uncertainty_kind="stated")),
-            "pressure_Pa": (("level",), np.array([100000.0, 20.0]),
-                            attrs("Pa", "pressure", "derived")),
-            "pressure_uncertainty_Pa": (("level",), np.array([np.nan, np.nan]),
-                                        attrs("Pa", "uncertainty", "derived",
-                                              uncertainty_kind="stated")),
-        },
-        attrs=globals_for("kind T instance check", vertical_coordinate="pressure_Pa",
-                          latitude_planetocentric_absent_meaning="point", **extra),
-    )
-
-
-refuses(lambda: sch.validate(thermo(None), "thermo", where="no instance", writer_filled=False),
-        "4a. kind T without thermo_instance is refused")
-try:
-    sch.validate(thermo("source_profile"), "thermo", where="source", writer_filled=False)
-    record("4b. a complete source_profile validates", True, "all thirteen source globals present")
-except CasspianSchemaError as exc:
-    record("4b. a complete source_profile validates", False, str(exc))
-refuses(lambda: sch.validate(thermo("source_profile", drop="raw_bundle"), "thermo",
-                             where="missing raw_bundle", writer_filled=False),
-        "4c. a source_profile missing one source global is refused")
-refuses(lambda: sch.validate(thermo("model_output"), "thermo", where="forbidden",
-                             writer_filled=False),
-        "4d. a model_output carrying source profile globals is refused")
-try:
-    sch.validate(thermo("model_output", source_globals=False), "thermo", where="clean field",
-                 writer_filled=False)
-    record("4e. a model_output without them validates", True, "the forbid rule is not a blanket ban")
-except CasspianSchemaError as exc:
-    record("4e. a model_output without them validates", False, str(exc))
+# Changes 2 to 4 and the `positive` narrowing (old checks 2a to 4e and 6) are retired by
+# SPEC_R1: uncertainty_kind, provenance, thermo_instance, the source profile globals and the
+# `positive` attribute are no longer required or checked.
 
 # ---------------------------------------------------------------------------
 # Change 5 (decision 5 of the review). Return type is fixed by kind, not by content.
@@ -230,15 +122,6 @@ record("5. read returns Dataset for kind R and DataTree for kind raw, with no gr
        f"kind raw -> {type(raw_back).__name__} (groups in file: {cio.group_paths(OUT / 'acceptance_raw.nc')})")
 rot_back.close()
 raw_back.close()
-
-# ---------------------------------------------------------------------------
-# 6. The narrowing of the `positive` rule, found while building check 1.
-# ---------------------------------------------------------------------------
-record("6. a harmonic `degree` coordinate needs no `positive` attribute",
-       True,
-       "SPEC_00 section 5 asks it of every coordinate; CF defines it for vertical ones only.\n"
-       "Required now only of names containing "
-       f"{list(sch.VERTICAL_COORDINATE_HINTS)}. Check 1a above passes because of it.")
 
 # ---------------------------------------------------------------------------
 # 7. SPEC_00 v0.5 uncertainty naming rule, produced by the default with no overrides.

@@ -13,7 +13,6 @@ rotation_file    = "../../forward/lindal_iris_ii_110/inputs/lindal_iris_ii_110_r
 raw_bundle       = "../../occul_data/lindal/raw/lindal_raw.nc"
 output           = "../../reports/step13_1/sl_wind_source.nc"
 prefix           = "step13_1"
-role             = "forward"
 title            = "Sanchez-Lavega et al. (2000) cloud top zonal wind, for SPEC_13 Step 1"
 
 gap_rule     = "pchip_bridge"

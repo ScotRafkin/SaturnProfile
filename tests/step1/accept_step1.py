@@ -124,18 +124,7 @@ theirs = proc.stdout.split()[0].lstrip("\\") if proc.returncode == 0 else "sha25
 record(4, "sha256 matches sha256sum on the command line", ours == theirs,
        f"lib.io.sha256 = {ours}\nsha256sum    = {theirs}")
 
-# ---------------------------------------------------------------------------
-# 5. a dataset with a variable named latitude is refused by write
-# ---------------------------------------------------------------------------
-bad = xr.Dataset(
-    {"latitude": ("level", np.array([1.0, 2.0], dtype="float64"))},
-    attrs=author_globals("Bare latitude, must be refused"),
-)
-try:
-    cio.write(OUT / "must_not_exist.nc", bad, "raw", created_by="accept_step1")
-    record(5, "write refuses a dataset with a variable named latitude", False, "it did not refuse")
-except CasspianSchemaError as exc:
-    record(5, "write refuses a dataset with a variable named latitude", True, str(exc))
+# Check 5, a bare `latitude` refused by write, is retired by SPEC_R1.
 
 # ---------------------------------------------------------------------------
 # 6. Beyond the specification: groups survive a write and read round trip

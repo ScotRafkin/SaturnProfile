@@ -8,12 +8,10 @@ comes before `[shear]`, whose `lindal_iris` case reads the run's composition). I
 physics and no value; every choice is in the build file, and each tool refuses what it refuses on
 its own.
 
-What the driver itself checks, because only it knows the file is a run's build file: the file is
-named `<run>_build.toml`; it carries exactly the five sections (no `[stage_two]`, which has no
-forward counterpart); every section but `[shear]`, which carries neither key, declares
-`role = "forward"` and the run's prefix; and every output is a file under the run's `inputs/`
-directory carrying the prefix (SPEC_00 section 2.3: the tools write `inputs/`, `forward` writes
-`output/`).
+What the driver itself checks, because only it knows the file is a run's build file: it carries
+exactly the five sections (no `[stage_two]`, which has no forward counterpart); and every output
+is a file inside the run's directory, since a run writes only inside its own directory (SPEC_R1
+section 2). Names, prefixes and roles are not checked (SPEC_R1).
 """
 
 from __future__ import annotations
@@ -39,21 +37,12 @@ SECTIONS = (
     ("shear", shear.build),
 )
 
-#: Sections that carry no `role` or `prefix` of their own (SPEC_05 Step 3 deliverable 1).
-WITHOUT_ROLE = ("shear",)
-
 
 def build(control_path) -> list[Path]:
     """Run the five sections of a run's build file. Returns the paths written, in order."""
     path = Path(control_path).resolve()
     if not path.exists():
         raise ControlFileError(f"{path}: build control file does not exist")
-    if not path.name.endswith("_build.toml"):
-        raise ControlFileError(
-            f"{path}: a run's build control file is <run>_build.toml beside the namelist (SPEC_00 "
-            "section 2.3)."
-        )
-    run = path.name[: -len("_build.toml")]
     with open(path, "rb") as handle:
         document = tomllib.load(handle)
 
@@ -70,27 +59,17 @@ def build(control_path) -> list[Path]:
             f"{path}: a run's build file carries exactly the sections {names}; unknown "
             f"{unknown or 'none'}, missing {missing or 'none'}."
         )
-    inputs_directory = path.parent / "inputs"
+    run_directory = path.parent
     for name in names:
         table = document[name]
-        if name not in WITHOUT_ROLE and table.get("role") != "forward":
+        output = (run_directory / str(table.get("output", ""))).resolve()
+        if not output.is_relative_to(run_directory) or output == run_directory:
             raise ControlFileError(
-                f"{path}: [{name}] role = {table.get('role')!r}; a run's inputs are role 'forward' "
-                "(SPEC_03 Step 3 deliverable 1)."
-            )
-        if name not in WITHOUT_ROLE and table.get("prefix") != run:
-            raise ControlFileError(
-                f"{path}: [{name}] prefix = {table.get('prefix')!r}; a run's inputs carry the run "
-                f"prefix {run!r} (SPEC_00 section 8)."
-            )
-        output = (path.parent / str(table.get("output", ""))).resolve()
-        if output.parent != inputs_directory or not output.name.startswith(f"{run}_"):
-            raise ControlFileError(
-                f"{path}: [{name}] output = {table.get('output')!r} is not a file under the run's "
-                f"inputs/ directory carrying the prefix '{run}_' (SPEC_00 section 2.3)."
+                f"{path}: [{name}] output = {table.get('output')!r} is not a file inside the run's "
+                "directory; a run writes only inside its own directory (SPEC_R1 section 2)."
             )
 
-    inputs_directory.mkdir(parents=True, exist_ok=True)
+    (run_directory / "inputs").mkdir(parents=True, exist_ok=True)
     return [builder(path, name) for name, builder in SECTIONS]
 
 

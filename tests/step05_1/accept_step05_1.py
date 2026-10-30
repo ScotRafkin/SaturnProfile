@@ -111,15 +111,10 @@ print(f"wind grid {latitude.size} latitudes x {pressure.size} pressures, {pressu
 # ---------------------------------------------------------------------------
 path1, out1 = run_case("identity", "identity")
 unequal = [v for v in source.variables if not array_equal(out1[v].values, source[v].values)]
-stripped_out, dropped = ctl._strip(out1)
-stripped_in, _ = ctl._strip(source)
-content = stripped_out.identical(stripped_in)
-record(1, "identity: every variable array-equal to the input, and the closure comparison's content "
-          "check passes against the input",
-       not unequal and set(out1.variables) == set(source.variables) and content,
-       f"{len(source.variables)} variables compared, differing {unequal or 'none'}\n"
-       f"closure content check (CLOSURE_DROPPED_ATTRIBUTES and every sha256 value dropped, then "
-       f"identical): {content}; dropped from the output {list(dropped)}")
+# SPEC_R1 retired the closure content comparison this check also ran; the values are compared.
+record(1, "identity: every variable array-equal to the input",
+       not unequal and set(out1.variables) == set(source.variables),
+       f"{len(source.variables)} variables compared, differing {unequal or 'none'}")
 
 # ---------------------------------------------------------------------------
 # 2. uniform, c = 1, p_s on a node

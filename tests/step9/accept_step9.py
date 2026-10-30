@@ -75,10 +75,10 @@ record(2, "kind T has exactly the three profile variables and their three compan
        f"exactly equal: {present == expected}\n"
        f"x_* or geodesy variables present: {strays if strays else 'none'}\n"
        f"the three companions are present and all NaN: {uncertainties_nan}\n"
-       f"thermo_instance = {thermo.attrs['thermo_instance']!r}, "
-       f"vertical_coordinate = {thermo.attrs['vertical_coordinate']!r}, "
+       f"thermo_instance = {thermo.attrs.get('thermo_instance')!r} (not written since SPEC_R1), "
+       f"vertical_coordinate = {thermo.attrs.get('vertical_coordinate')!r}, "
        f"latitude_planetocentric_absent_meaning = "
-       f"{thermo.attrs['latitude_planetocentric_absent_meaning']!r}")
+       f"{thermo.attrs.get('latitude_planetocentric_absent_meaning')!r}")
 
 # ---------------------------------------------------------------------------
 # 3. The anchor latitude and its provenance
@@ -139,49 +139,17 @@ with open(manifest_path, "rb") as handle:
     manifest = tomllib.load(handle)
 named = manifest["inputs"]
 missing = [v for v in named.values() if not (DIRECTORY / v).exists()]
-unprefixed = [v for v in named.values() if not v.startswith("lindal_")]
-outside = [v for v in named.values() if "/" in v or "\\" in v or v.startswith("..")]
+# SPEC_R1: the prefix and same-directory rules are retired; the check keeps what code needs.
 record(5, "the reduction manifest parses, names six inputs, and every path exists",
-       not missing and not unprefixed and not outside and len(named) == 6,
+       not missing and len(named) == 6,
        f"sections: {sorted(manifest)}\n"
        f"profile slug = {manifest['profile']['slug']!r}\n"
        f"inputs ({len(named)}): {list(named.values())}\n"
-       f"missing: {missing if missing else 'none'}; unprefixed: "
-       f"{unprefixed if unprefixed else 'none'}; pointing outside the directory: "
-       f"{outside if outside else 'none'}\n"
+       f"missing: {missing if missing else 'none'}\n"
        f"anchor_isobar.pressure_Pa = {manifest['anchor_isobar']['pressure_Pa']}\n"
        f"anchor_latitude = {manifest['anchor_latitude']}\n"
        f"geoid = {manifest['geoid']}\n"
        f"output.product = {manifest['output']['product']!r}, which refrac writes (SPEC_02)")
-
-# ---------------------------------------------------------------------------
-# 6. The directory matches SPEC_00 section 2.2
-# ---------------------------------------------------------------------------
-expected_top = {
-    "lindal_build.toml", "lindal_thermo.nc", "lindal_composition.nc", "lindal_geodesy.nc",
-    "lindal_gravity.nc", "lindal_rotation.nc", "lindal_wind.nc", "lindal_reduction.toml",
-}
-expected_raw = {"lindal_table1.csv", "lindal_scalars.toml", "lindal_raw.nc", "notes.md"}
-actual_top = {p.name for p in DIRECTORY.iterdir() if p.is_file()}
-actual_raw = {p.name for p in (DIRECTORY / "raw").iterdir() if p.is_file()}
-not_prefixed = sorted(n for n in actual_top | actual_raw if not n.startswith("lindal_"))
-# SPEC_02 Step 4 writes the kind N product into this directory, the last entry of the SPEC_00
-# section 2.2 listing, so from then on it is expected here rather than counted as unexpected.
-PRODUCT_N = "lindal_refractivity.nc"
-record(6, "the directory listing matches SPEC_00 section 2.2",
-       actual_top - {PRODUCT_N} == expected_top and actual_raw == expected_raw,
-       f"top level ({len(actual_top)}): {sorted(actual_top)}\n"
-       f"  expected: {sorted(expected_top)}, plus {PRODUCT_N} once SPEC_02 Step 4 has run\n"
-       f"  missing {sorted(expected_top - actual_top) or 'none'}; "
-       f"unexpected {sorted(actual_top - expected_top - {PRODUCT_N}) or 'none'}\n"
-       f"raw/ ({len(actual_raw)}): {sorted(actual_raw)}\n"
-       f"  missing {sorted(expected_raw - actual_raw) or 'none'}; "
-       f"unexpected {sorted(actual_raw - expected_raw) or 'none'}\n"
-       f"files without the lindal_ prefix: {not_prefixed}. SPEC_00 section 2.2 lists "
-       f"notes.md unprefixed in its own directory listing, so that is the specification's "
-       f"own exception rather than a defect.\n"
-       f"{PRODUCT_N}: "
-       f"{'present, written by refrac at SPEC_02 Step 4' if PRODUCT_N in actual_top else 'absent, as before SPEC_02 Step 4'}.")
 
 print()
 failed = [r for r in results if not r[2]]

@@ -7,11 +7,10 @@ export PYTHONIOENCODING=utf-8
 # Each accepted suite and its reference count. A count that changes at an acceptance changes here in
 # the same commit. SPEC_03 and SPEC_04 counts are STATE.md's; STATE.md carries none for SPEC_01 and
 # SPEC_02, so theirs are the full regression STATE.md cites for SPEC_04 Step 5 (25 of 25).
-# step03_0 is absent on purpose: it checks its one-time rebuild against `before/` products that
-# today's reader refuses (no `epoch`, SPEC_00 v0.17); every later suite covers the same products.
+# SPEC_R1 retired the checks that exercised a removed refusal; the counts below are after it.
 SUITES="
-step1/accept_step1 6
-step1/verify_review_changes 14
+step1/accept_step1 5
+step1/verify_review_changes 4
 step2/accept_step2 8
 step3/accept_step3 5
 step4/accept_step4 7
@@ -19,18 +18,18 @@ step5/accept_step5 7
 step6/accept_step6 6
 step7/accept_step7 8
 step8/accept_step8 9
-step9/accept_step9 6
-step02_1/accept_step02_1 6
+step9/accept_step9 5
+step02_1/accept_step02_1 5
 step02_2/accept_step02_2 7
 step02_3/accept_step02_3 9
-step02_4/accept_step02_4 9
+step02_4/accept_step02_4 8
 step02_5/accept_step02_5 7
 step02_6/accept_step02_6 7
 step03_1/accept_step03_1 9
 step03_2/accept_step03_2 8
-step03_3/accept_step03_3 16
-step03_4/accept_step03_4 13
-step04_0/accept_step04_0 14
+step03_3/accept_step03_3 13
+step03_4/accept_step03_4 12
+step04_0/accept_step04_0 13
 step04_1/accept_step04_1 13
 step04_2/accept_step04_2 13
 step04_3/accept_step04_3 9
@@ -38,9 +37,16 @@ step04_4/accept_step04_4 11
 step04_5/accept_step04_5 11
 step05_1/accept_step05_1 11
 step05_2/accept_step05_2 3
-step05_3/accept_step05_3 7
+step05_3/accept_step05_3 6
 step05_4/accept_step05_4 4
 step08_1/accept_step08_1 6
+step09_1/accept_step09_1 3
+step10_1/accept_step10_1 2
+step11_1/accept_step11_1 5
+step11_2/accept_step11_2 2
+step12_1/accept_step12_1 4
+step13_1/accept_step13_1 3
+step13_2/accept_step13_2 2
 "
 
 # The suites to run: all of them, or those named (a directory name selects every suite in it).

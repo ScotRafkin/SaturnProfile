@@ -4,16 +4,13 @@ This step changes speed and nothing else, so its acceptance is that nothing else
 script builds candidate copies of all 18 registered files from the working tree, which carries
 the step's uncommitted code, and compares every variable of every group with the committed files.
 
-**The candidates, and the relaxation named here** (SPEC_05 §2a, as SPEC_03 and SPEC_04 built
+**The candidates** (SPEC_05 §2a, as SPEC_03 and SPEC_04 built
 theirs). The registered files and everything they are built from (`data_static/`, the Lindal
 reduction's control files and raw bundle, the two runs' control files) are copied into
 `reports/step05_2/<stage>/tree/` in the repository's own layout, so every relative path resolves
-inside the copy, and the chain is rebuilt there in the order `tests/step04_0/sweep.py` uses. The
-working tree is not clean, so every candidate carries `casspian_git_commit` ending in `-dirty`, and
-`refrac` and `forward` refuse a `-dirty` input. The single refusal point,
-`casspian.lib.control._refuse_dirty_commit`, is relaxed for this script and nowhere else; nothing
-under `occul_data/` or `forward/` is written. The comparison is by value, so the stamps do not
-matter.
+inside the copy, and the chain is rebuilt there in the order `tests/step04_0/sweep.py` uses;
+nothing under `occul_data/` or `forward/` is written. The comparison is by value, so the stamps
+do not matter. SPEC_R1 removed the `-dirty` refusal, and the in-process relaxation went with it.
 
 `--stage` names the output directory and the record: `fix1` after fix 1, `fix2` (the default) after
 fix 2. Run from the repository root.
@@ -164,17 +161,12 @@ def compare(registered: Path, candidate: Path):
 
 print(f"stage {STAGE}: candidates under {TREE}")
 copy_tree()
-_original_refuse = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(attrs.get("casspian_git_commit", ""))
-print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this script only\n")
 started = time.perf_counter()
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     seconds = build_candidates()
-ctl._refuse_dirty_commit = _original_refuse
 built = [name for name in REGISTERED if (TREE / name).exists()]
-record(1, "the 18 registered files built as candidates from the working tree, in a copy, the -dirty "
-          "refusal relaxed for this script only",
+record(1, "the 18 registered files built as candidates from the working tree, in a copy",
        len(built) == len(REGISTERED),
        f"built {len(built)} of {len(REGISTERED)} in {time.perf_counter() - started:.1f} s; "
        + "; ".join(f"{name} {value:.1f} s" for name, value in seconds.items()))

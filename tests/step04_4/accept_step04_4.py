@@ -12,11 +12,8 @@ as a kind W file in its three parts and read back through the reader; two constr
 kernel that reverses sign in the vertical and the closure wind with its sign reversed, exercise
 the two things the tracing must refuse or report.
 
-**What is relaxed.** The synthetic anchor of the M = 2 test is written by this script on a
-working tree that is not clean, so its `casspian_git_commit` ends in `-dirty` and
-`lib.control` refuses it. The refusal is relaxed in this process only, at the one point
-`_refuse_dirty_commit`, and the relaxation is named in check 8's output. Nothing in the code
-changes, and no registered input is touched.
+**The synthetic anchor** of the M = 2 test is written by this script; its commit is named in
+check 8's output. SPEC_R1 removed the `-dirty` refusal, and the in-process relaxation went with it. No registered input is touched.
 
 **The development flag.** `--quick <factor>` multiplies both mesh spacings and is a development
 aid only: the recorded run takes no argument and every check prints the spacings it used, which
@@ -771,9 +768,6 @@ _, Phi60_other, N60_other, _, _ = write_synthetic(
 lattice_lnN = float(np.max(np.abs(np.log(N60_own) - np.log(N60_other))))
 lattice_Phi = float(np.max(np.abs(Phi60_own - Phi60_other)))
 
-_original_refuse = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-    attrs.get("casspian_git_commit", ""))
 
 M2_NAMELIST = """# Written by the SPEC_04 Step 4 acceptance. The transfer namelist with a second
 # anchor, the synthetic 60 N profile the closure-wind run produced (decision M). The run keeps
@@ -806,7 +800,6 @@ wind        = "inputs/lindal_transfer_wind.nc"
 
 [hydrostatic_boundary]
 p_b_rule     = "anchor_profile_top"
-p_b_location = "top_of_anchor_profile"
 
 [isobars]
 gauge_isobar_Pa = 1.0e4
@@ -1028,9 +1021,7 @@ record(8, "M = 2 with the synthetic 60 N anchor traced on this run's own mesh: p
         and tracing_identity <= 1e-12),
        f"spacings {spacings()}, mesh {state_m2.mesh.shape[0]} by {state_m2.mesh.shape[1]}, "
        f"outer loop {state_m2.record['passes']} passes\n"
-       f"RELAXATION: casspian.lib.control._refuse_dirty_commit is replaced for this script only, "
-       f"so that the synthetic anchors this script writes on a working tree that is not clean can "
-       f"be loaded; their commit is {synthetic_commit!r}\n"
+       f"the synthetic anchors this script writes carry the commit {synthetic_commit!r}\n"
        f"the mesh was built first, for this run's required latitudes, and every M = 2 run is "
        f"formed on it (ruling 1): 10 N the target, {math.degrees(phi_a):.6f} the Lindal anchor, "
        f"{math.degrees(phi_r2):.6f} the gauge, {math.degrees(phi_r_season):.6f} the gauge the "
@@ -1273,7 +1264,6 @@ record(7, "the outer loop's pass count and residuals are reported for every wind
        "zero; the code does not special-case it, and the first pass's residual is the departure "
        "of the traced map from the flat guess")
 
-ctl._refuse_dirty_commit = _original_refuse
 
 # ---------------------------------------------------------------------------------------------
 results.sort(key=lambda row: row[0])

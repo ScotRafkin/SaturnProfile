@@ -353,10 +353,7 @@ def build(raw_dir: Path, output: Path) -> Path:
     root = xr.Dataset(
         attrs={
             "title": "Lindal et al. (1985) Voyager 2 ingress, raw transcription bundle",
-            "profile_or_run": "lindal",
             # The raw bundle is written from the transcription with no build-file section, so
-            # its role is the transcription's own: the reduction of a source.
-            "role": "reduction",
             "source": citation,
             "epoch": str(source_table["observation_date"]),
             "solar_longitude_deg": float(source_table["solar_longitude_deg"]),

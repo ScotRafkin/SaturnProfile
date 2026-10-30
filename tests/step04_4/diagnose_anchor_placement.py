@@ -81,8 +81,6 @@ print("spacings %.3g degrees by %.3g m2/s2, mesh %s"
 print("radius A against B: largest %.4e m" % float(np.max(np.abs(radius_A - radius_B))))
 print("z_lv   A against B: largest %.4e m" % float(np.max(np.abs(z_A - z_B))))
 
-_original = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda p, a, c, what=None: str(a.get("casspian_git_commit", ""))
 own_at_gauge = fe.Arrival(
     slug="lindal", latitude_rad=phi_a, weight=1.0,
     geopotential_m2s2=curves.geopotential_m2s2[:, mesh.latitude_index(phi_r)],
@@ -127,4 +125,3 @@ for name, radius, z_lv in (("A, interpolated from the mesh's nodes", radius_A, z
     D = np.asarray(list(E.differences.values())[0], dtype="float64")
     print("%s: place()'s Phi against the traced %.4e m2/s2, |D_12| %.4e"
           % (name, gap, float(np.max(np.abs(D[np.isfinite(D)])))))
-ctl._refuse_dirty_commit = _original

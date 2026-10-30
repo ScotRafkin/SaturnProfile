@@ -31,7 +31,6 @@ import xarray as xr
 from casspian.lib import constants
 from casspian.lib.schema import (
     CONVENTIONS,
-    WRITER_FILLED_GLOBALS,
     CasspianSchemaError,
     kind_spec,
     validate,
@@ -136,32 +135,22 @@ def history_append(dataset, line: str):
 
 
 def package_version() -> str:
-    """Return the installed package version, refusing if it disagrees with `__version__`.
+    """Return the installed package version, which `write` records in `created_by`.
 
-    SPEC_01 v0.3 Step 1, the version rule: `pyproject.toml` and `casspian.__version__` must
-    agree, `write` obtains the version through `importlib.metadata` so that there is one
-    source at run time, and the literal in `__init__.py` is for humans.
+    SPEC_01 v0.3 Step 1: `write` obtains the version through `importlib.metadata`, so that there
+    is one source at run time. SPEC_R1: the installed version is recorded and not compared with
+    the literal in `__init__.py`.
     """
     from importlib.metadata import PackageNotFoundError
     from importlib.metadata import version as _installed_version
 
-    import casspian
-
-    literal = casspian.__version__
     try:
-        installed = _installed_version("casspian")
+        return _installed_version("casspian")
     except PackageNotFoundError:
         raise CasspianSchemaError(
             "casspian is not installed, so no version can be recorded in created_by. "
             "Install it with 'pip install -e .'."
         ) from None
-    if installed != literal:
-        raise CasspianSchemaError(
-            f"version disagreement: importlib.metadata reports {installed!r} but "
-            f"casspian.__version__ is {literal!r}. SPEC_01 Step 1 requires them to agree; "
-            "reinstall after changing pyproject.toml."
-        )
-    return installed
 
 
 def git_commit(start=None) -> str:
@@ -211,23 +200,8 @@ def _check_attribute_types(dataset, where: str) -> None:
 
 
 def _check_types(dataset, kind: str, where: str) -> None:
-    spec = kind_spec(kind)
-    flags = {v.name for v in spec.variables if v.is_flag}
     for name, var in dataset.variables.items():
         dtype = var.dtype
-        if str(name) in flags:
-            if dtype != np.int8:
-                raise CasspianSchemaError(
-                    f"{where}: {name!r} is a status flag and must be int8 with flag_values "
-                    f"and flag_meanings (SPEC_00 section 5); it is {dtype}."
-                )
-            for required in ("flag_values", "flag_meanings"):
-                if required not in var.attrs:
-                    raise CasspianSchemaError(
-                        f"{where}: flag variable {name!r} has no {required!r} attribute "
-                        "(SPEC_00 section 5, CF style)."
-                    )
-            continue
         if np.issubdtype(dtype, np.floating) and dtype != np.float64:
             raise CasspianSchemaError(
                 f"{where}: {name!r} is {dtype}; SPEC_00 section 5 requires float64 for all "
@@ -272,13 +246,10 @@ def write(path, dataset, kind: str, groups=None, created_by: str = "casspian"):
 
     _check_attribute_types(dataset, f"{path.name}")
     _check_types(dataset, kind, f"{path.name}")
-    validate(dataset, kind, where=f"{path.name}", writer_filled=True)
+    validate(dataset, kind, where=f"{path.name}")
 
     group_datasets = dict(groups or {})
     for group_path, group_ds in group_datasets.items():
-        from casspian.lib.schema import check_names
-
-        check_names(group_ds, f"{path.name}:{group_path}")
         _check_attribute_types(group_ds, f"{path.name}:{group_path}")
 
     for name in spec.groups_required:
@@ -340,9 +311,10 @@ def read(path, kind: str):
 
     Returns an `xarray.DataTree` for the grouped kinds (C, N, raw) and an `xarray.Dataset` for
     the rest (T, D, G, R, W), per the return-type rule of SPEC_00 section 3.1. The type follows
-    the kind, not the file. Refuses per SPEC_00 section 8: a declared kind that is not asked for, a
-    schema version newer than this reader, a missing required item, a non monotonic
-    coordinate, mole fractions that do not sum to one, or an unknown harmonic convention.
+    the kind, not the file. Refuses per SPEC_00 section 8 as SPEC_R1 leaves it: a declared kind
+    that is not asked for, a schema version newer than this reader, a missing required item, a
+    non monotonic coordinate, mole fractions that do not sum to one, or an unknown harmonic
+    convention.
     """
     path = Path(path)
     spec = kind_spec(kind)
@@ -372,15 +344,7 @@ def read(path, kind: str):
                 f"{where}: schema version {stated_version} is newer than this reader, which "
                 f"knows version {spec.schema_version} of kind {kind} (SPEC_00 section 8)."
             )
-        for name in WRITER_FILLED_GLOBALS:
-            if name == "codata_release":
-                continue
-            if name not in root.attrs:
-                raise CasspianSchemaError(
-                    f"{where}: required global attribute {name!r} is missing "
-                    "(SPEC_00 section 5)."
-                )
-        validate(root, kind, where=where, writer_filled=True)
+        validate(root, kind, where=where)
         present = group_paths(path)
         for name in spec.groups_required:
             if name not in present:
@@ -399,12 +363,6 @@ def read(path, kind: str):
         return root
     root.close()
     tree = xr.open_datatree(path, engine="netcdf4")
-    if kind == "refractivity":
-        try:
-            _check_refractivity_hashes(tree, path)
-        except Exception:
-            tree.close()
-            raise
     warn_changed_inputs(tree.attrs, path)
     return tree
 
@@ -424,41 +382,4 @@ def _check_profile_anchor_groups(groups, where: str) -> None:
             f"{where}: kind profile carries exactly one record group, production_record in "
             f"closure mode or transfer_record in transfer mode; this has {records or 'neither'} "
             "(SPEC_03 Step 3 deliverable 3, SPEC_04 Step 5 deliverable 3)."
-        )
-
-
-#: The inputs whose hashes kind N records, in `reduction_record` and in `input_hashes`.
-_REFRACTIVITY_HASHED = ("thermo", "composition", "geodesy", "gravity", "rotation", "wind",
-                        "manifest")
-
-
-def _check_refractivity_hashes(tree, path: Path) -> None:
-    """Refuse a kind N file whose `input_hashes` disagrees with its reduction record.
-
-    SPEC_02 Step 4. `refrac` records the SHA-256 of each input twice: in the global
-    `input_hashes` (SPEC_00 section 5) and as `input_sha256_<input>` in `reduction_record`. A
-    global entry that no longer lists the recorded hash means the file was altered after it was
-    written, and it is refused, naming the input. An entry that no longer matches the file now
-    beside it only warns, by the rule `read` applies to every derived kind
-    (`warn_changed_inputs`, SPEC_00 v0.18 section 8): the embedded copy is authoritative.
-    """
-    where = path.name
-    record = tree["reduction_record"].attrs
-    entries = hash_entries(tree.attrs.get("input_hashes", ""))
-    listed = set(entries.values())
-    for key in _REFRACTIVITY_HASHED:
-        recorded = record.get(f"input_sha256_{key}")
-        if recorded is None:
-            raise CasspianSchemaError(
-                f"{where}: reduction_record carries no input_sha256_{key} (SPEC_02 Step 4)."
-            )
-        if str(recorded) not in listed:
-            raise CasspianSchemaError(
-                f"{where}: input_hashes does not list the {key} hash the reduction recorded "
-                f"({str(recorded)[:16]}...). The file has been altered since refrac wrote it."
-            )
-    if len(entries) != len(_REFRACTIVITY_HASHED):
-        raise CasspianSchemaError(
-            f"{where}: input_hashes lists {len(entries)} entries; kind N lists the six inputs "
-            "and the manifest (SPEC_00 section 6.7)."
         )

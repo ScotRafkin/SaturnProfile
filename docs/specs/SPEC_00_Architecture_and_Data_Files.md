@@ -2,7 +2,7 @@
 
 CASSPIAN Saturn atmosphere reference model. Specification for the coding agent.
 
-Version 0.24, 8 October 2026. Author of record: S. Rafkin. Status: accepted architecture; v0.24 (author, SPEC_13 Step 3): descriptive text about a data source lives in comments of its data property file, not in keys or attributes; for kind W, `method`, `observation_level_justification` and `solar_longitude_source` are not required (§5, §6.6); v0.23 (SPEC_08 acceptance): kind W is a wind at a stated level, the reference wind and its level required and the total and the shear optional, on the data's own grid; the sum identity is not checked; the polar rule and the presence of the total are checked where the model takes a wind (§6.6); v0.22 (author's decision on the clean clone, `docs/RUNBOOK.md`): git holds what cannot be recreated and nothing that can; the acceptance scripts are source, so they move to a committed `tests/` directory, one subdirectory per step with the regression driver at its top, while everything they write stays under the ignored `reports/step*/` (§2 rows [Y] and [Z]); v0.21 applies the amendments SPEC_04 carried in its Appendix, at SPEC_04's acceptance and closure: 3.4 the wind read as a total and placed on the model's own geometry, 6.2 kind C a field on (level, latitude) for every use with the interpolation rule of decision L stated once for kinds C and W, 6.6 kind W in three parts along the local vertical with the cylindrical decomposition retired, 6.8 kind profile in transfer mode with exactly one record group, 7.2 the transfer namelist as the steps implement it, 7.3 closed; v0.20 (REPORT_03_step4 finding 3): §7.2 no longer asks for absolute paths in the resolved namelist, which §5 forbids; the resolved form, relative paths and hashes, lives in the product's `namelist` group; v0.19 (author decision on REVIEW_03_step3 finding 1): a file whose content has no date of its own carries the date of the observation it serves, its source's own dating in `epoch_note` (§5); v0.18 (the coding agent's pre-execution review of SPEC_03 Step 3): every path a file records is relative to the directory of the file that records it (§5, §7, §8), reconciling §5 and §7, applied by every writer at the SPEC_03 Step 3 rebuild. v0.17 (the season identifier, `docs/CASSPIAN_Seasonal_Design_Note.md` §2 and §8.1): every file carries `epoch` and either `solar_longitude_deg` with its source or `season_absent_meaning = "uniform"` (§5, §6); the run declares `solar_longitude_deg` (§7.2); applied at SPEC_03 Step 3 with one rebuild of the reduction chain. Earlier: §7.3: the geopotential and hydrostatic integrations are closed by SPEC_03 Steps 1 and 2, the grid and the other integrations remain open for SPEC_04. v0.16 (SPEC_03 accepted): Eq. B1 with the tilt (§3.3, §6.7); the pressure grid variables of a source profile (§6.1); kind `profile` (§5, §6.8); the run directory's build file and the rule that every forward input is the run's own file (§2.3); namelist `mode`, `p_b_rule`, `[diagnostics]`, `product` and the closure rules (§7.2); the `input_hashes` warning for every derived kind (§8). v0.4 (after Step 1 review): harmonic_convention is a code; `modeled` provenance; `uncertainty_method`; `thermo_instance`; kind N groups; `reports/`; the `-dirty` rule; read return types. v0.5: `positive` only on vertical coordinates; uncertainty naming rule (insert before the unit suffix). v0.6: `reports/` holds the committed build record; revision history section added. v0.7: `index` provenance; `derived` versus `inferred`; NaN for unstated uncertainties. v0.8: kind W polar zero rule; `decomposition` attribute; provenance code 4. v0.9: manifest `anchor_rule`; kind D `fit_residual_range_m`; rebuild rule as a directory property. v0.10: standard diagnostics; kind N carries the mean refractivity and molar mass and a fuller `reduction_record`; manifest `[diagnostics]` and `[sensitivity]`. v0.11: the diagnostics live in `tools/plots/`, generic and kind-dispatching. v0.12: no sensitivity study in the pipeline; `[sensitivity]` removed; kind N companions defined as first-order propagation with term lists.
+Version 0.25, 30 October 2026. Author of record: S. Rafkin. Status: accepted architecture; v0.25 (SPEC_R1, accepted): a refusal, check or required key stays only if without it the code would compute a wrong number without saying so, or fail with no clear message; §8 is the list of what readers enforce and governs any older wording in this document; §2.2's listing is the reduction's, other data beside it under any name; names, labels, prefixes, the season on files, descriptive attributes and the `-dirty` mark are written but not enforced (§5, §6, §7.2); v0.24 (author, SPEC_13 Step 3): descriptive text about a data source lives in comments of its data property file, not in keys or attributes; for kind W, `method`, `observation_level_justification` and `solar_longitude_source` are not required (§5, §6.6); v0.23 (SPEC_08 acceptance): kind W is a wind at a stated level, the reference wind and its level required and the total and the shear optional, on the data's own grid; the sum identity is not checked; the polar rule and the presence of the total are checked where the model takes a wind (§6.6); v0.22 (author's decision on the clean clone, `docs/RUNBOOK.md`): git holds what cannot be recreated and nothing that can; the acceptance scripts are source, so they move to a committed `tests/` directory, one subdirectory per step with the regression driver at its top, while everything they write stays under the ignored `reports/step*/` (§2 rows [Y] and [Z]); v0.21 applies the amendments SPEC_04 carried in its Appendix, at SPEC_04's acceptance and closure: 3.4 the wind read as a total and placed on the model's own geometry, 6.2 kind C a field on (level, latitude) for every use with the interpolation rule of decision L stated once for kinds C and W, 6.6 kind W in three parts along the local vertical with the cylindrical decomposition retired, 6.8 kind profile in transfer mode with exactly one record group, 7.2 the transfer namelist as the steps implement it, 7.3 closed; v0.20 (REPORT_03_step4 finding 3): §7.2 no longer asks for absolute paths in the resolved namelist, which §5 forbids; the resolved form, relative paths and hashes, lives in the product's `namelist` group; v0.19 (author decision on REVIEW_03_step3 finding 1): a file whose content has no date of its own carries the date of the observation it serves, its source's own dating in `epoch_note` (§5); v0.18 (the coding agent's pre-execution review of SPEC_03 Step 3): every path a file records is relative to the directory of the file that records it (§5, §7, §8), reconciling §5 and §7, applied by every writer at the SPEC_03 Step 3 rebuild. v0.17 (the season identifier, `docs/CASSPIAN_Seasonal_Design_Note.md` §2 and §8.1): every file carries `epoch` and either `solar_longitude_deg` with its source or `season_absent_meaning = "uniform"` (§5, §6); the run declares `solar_longitude_deg` (§7.2); applied at SPEC_03 Step 3 with one rebuild of the reduction chain. Earlier: §7.3: the geopotential and hydrostatic integrations are closed by SPEC_03 Steps 1 and 2, the grid and the other integrations remain open for SPEC_04. v0.16 (SPEC_03 accepted): Eq. B1 with the tilt (§3.3, §6.7); the pressure grid variables of a source profile (§6.1); kind `profile` (§5, §6.8); the run directory's build file and the rule that every forward input is the run's own file (§2.3); namelist `mode`, `p_b_rule`, `[diagnostics]`, `product` and the closure rules (§7.2); the `input_hashes` warning for every derived kind (§8). v0.4 (after Step 1 review): harmonic_convention is a code; `modeled` provenance; `uncertainty_method`; `thermo_instance`; kind N groups; `reports/`; the `-dirty` rule; read return types. v0.5: `positive` only on vertical coordinates; uncertainty naming rule (insert before the unit suffix). v0.6: `reports/` holds the committed build record; revision history section added. v0.7: `index` provenance; `derived` versus `inferred`; NaN for unstated uncertainties. v0.8: kind W polar zero rule; `decomposition` attribute; provenance code 4. v0.9: manifest `anchor_rule`; kind D `fit_residual_range_m`; rebuild rule as a directory property. v0.10: standard diagnostics; kind N carries the mean refractivity and molar mass and a fuller `reduction_record`; manifest `[diagnostics]` and `[sensitivity]`. v0.11: the diagnostics live in `tools/plots/`, generic and kind-dispatching. v0.12: no sensitivity study in the pipeline; `[sensitivity]` removed; kind N companions defined as first-order propagation with term lists.
 
 Companion figure: `CASSPIAN_Fig1_RepositoryLayout.png` (also `.svg`, regenerated by
 `fig1_repository_layout.py`). Bracketed identifiers in this document, such as [S1] or [D1a], are
@@ -116,8 +116,8 @@ appears in a static file may be hard-coded in any tool; the tool reads the file.
 ### 2.2 `occul_data/<profile>/` [D1a]
 
 One directory per published profile, named by a short slug (`lindal`, and later for example
-`schinder2011_a`). Every file in it carries the slug as a prefix. The directory holds, in the
-order they are made:
+`schinder2011_a`). Every file of the reduction carries the slug as a prefix. The directory holds, in
+the order they are made:
 
 ```
 occul_data/lindal/
@@ -139,6 +139,9 @@ occul_data/lindal/
     lindal_refractivity.nc        kind N, §6.7, the product of refrac
 ```
 
+The listing is the reduction's. Other data from the same source, such as the IRIS temperatures
+(SPEC_09) and the Voyager 2 egress (SPEC_12), may sit beside it under any name.
+
 Two profile-specific tools stand between the ASCII and the model inputs (§3.2, and
 `SPEC_01_Lindal_Tool_Chain.md` for the Lindal instance). The first turns the transcriptions into the
 raw bundle. The second, driven by `lindal_build.toml` (§2.2.2), turns the raw bundle plus the
@@ -147,8 +150,8 @@ generic tools for the conversions. No physical value is hard-coded in either too
 own values come from the raw bundle, and shared values (harmonic sets, rotation systems, wind
 tables, species properties) come from [D0] by pointer. `refrac` reads only the standard files and
 neither knows nor cares which profile they describe. After `refrac` has
-run, the directory is complete and is not written to again unless the reduction is redone from
-the start. Nothing under `forward/` may write here.
+run, the reduction's files are complete and are not written to again unless the reduction is redone
+from the start. Nothing under `forward/` may write here.
 
 #### 2.2.1 The raw bundle (`raw/<profile>_raw.nc`)
 
@@ -364,7 +367,7 @@ made for the reason above. It is one line to reverse.**
 
 Format is netCDF-4. The following apply to every file of every kind.
 
-**Global attributes, required.**
+**Global attributes, written.** (v0.25) Writers write these; readers require only `casspian_kind` and `casspian_schema_version`, and the few that code reads, named in §8.
 
 | Attribute | Content |
 |---|---|
@@ -372,18 +375,17 @@ Format is netCDF-4. The following apply to every file of every kind.
 | `casspian_kind` | one of `thermo`, `composition`, `geodesy`, `gravity`, `rotation`, `wind`, `refractivity`, `raw`, `profile` (v0.16) |
 | `casspian_schema_version` | integer, per kind, bumped when the kind's schema changes |
 | `title` | one line |
-| `profile_or_run` | the slug the file's prefix carries |
-| `role` | `reduction` or `forward` (kind N is always `reduction`) |
+| `profile_or_run` | (v0.25) written on kinds N and profile only, where the figures read it |
 | `source` | full citation of the published source, or the tool and parameters for a generated field |
 | `created_by` | tool name and version |
 | `created_at` | ISO 8601, UTC |
-| `casspian_git_commit` | commit hash of the package that wrote the file, with the suffix `-dirty` when the working tree had uncommitted changes; a file carrying `-dirty` is a development product and is never an input to a later step (§8) |
+| `casspian_git_commit` | commit hash of the package that wrote the file, with the suffix `-dirty` when the working tree had uncommitted changes; (v0.25) recorded, not refused |
 | `codata_release` | for any file that used a constant of nature |
 | `input_hashes` | for any derived file: `"<path> sha256:<hex>"`, one entry per input, newline separated. (v0.18) The path is relative to the directory of the file that records it, using `/` as the separator, and so is every other attribute that names a file (`control_file`, `raw_bundle`, `raw_sources`, `master_table`, `latitude_conversion_inputs`); an absolute path in a file is a defect, because a run directory must be self-contained and movable (§2.3, §11) |
 | `history` | append-only, one line per tool that touched the file |
 | `epoch` | (v0.17) ISO 8601 date the file is valid at: an observation's date or a run's declared date. Every file is valid at an instant. (v0.19) A file whose content has no date of its own, a harmonic set, a rotation system, a wind curve, a composition, carries the date of the observation it serves, so that one reduction is one date; the source's own dating (an encounter, a span of imaging) goes in the optional free-text `epoch_note` when it is not already stated elsewhere in the file. A forward product whose run declared a season but no date carries `epoch = "none: season declared as solar longitude only"` |
-| `solar_longitude_deg`, `solar_longitude_source` | (v0.17) the season: planetocentric solar longitude `Ls` in degrees, zero at northern spring equinox, defined by `sin δ_s = sin ε sin Ls` with `δ_s` the sub-solar planetocentric latitude and `ε = 26.73°`, the quadrant fixed by the sign of `dδ_s/dt`; computed from the date and an ephemeris, never typed from memory, with the computation named in the source attribute. Required on every file that belongs to a season. (v0.24) `solar_longitude_source` is not required on kind W; the computation is named in the comments of the data property file |
-| `season_absent_meaning` | (v0.17) `"uniform"` on a file whose content has no season by its nature (a harmonic set, a rotation system, molecular properties, a composition declared season-independent). Exactly one of `solar_longitude_deg` and `season_absent_meaning` is present; the reader refuses a file with neither or both |
+| `solar_longitude_deg`, `solar_longitude_source` | (v0.17) the season: planetocentric solar longitude `Ls` in degrees, zero at northern spring equinox, defined by `sin δ_s = sin ε sin Ls` with `δ_s` the sub-solar planetocentric latitude and `ε = 26.73°`, the quadrant fixed by the sign of `dδ_s/dt`; computed from the date and an ephemeris, never typed from memory, with the computation named in the source attribute. (v0.25) Written on every file that belongs to a season; required only by a step whose arithmetic reads it. (v0.24) `solar_longitude_source` is not required on kind W; the computation is named in the comments of the data property file |
+| `season_absent_meaning` | (v0.17) `"uniform"` on a file whose content has no season by its nature (a harmonic set, a rotation system, molecular properties, a composition declared season-independent). (v0.25) Not enforced on files |
 
 **Descriptive text (v0.24).** Text about a data source, such as its citation, where a value was
 read, why a level was assigned, how an uncertainty was formed, or how a date or season was
@@ -437,7 +439,7 @@ same whichever side of the model a file sits on: a delivered temperature and pre
 a kind T, a retrieval consumed by the wind tool is a kind T, the wind a run used is a kind W.
 Input and output share one schema and one reader.
 
-**Per-variable attributes, required.** `units`, `long_name`, `provenance` (one of `measured`,
+**Per-variable attributes, written (v0.25: required by no reader).** `units`, `long_name`, `provenance` (one of `measured`,
 `derived`, `assumed`, `inferred`, `interpolated`, `parameterized`, `extrapolated`, `modeled`;
 `modeled` means produced by `casspian.forward` and appears only in files the model writes;
 `index` is for a coordinate or scalar that is a label rather than a measurement, such as
@@ -498,12 +500,10 @@ Dimensions: `level`, and `latitude_planetocentric` when present.
 | `pressure_uncertainty_Pa`, `temperature_uncertainty_K`, `height_uncertainty_m` | as above | | present as NaN when the source gives none |
 | `pressure_printed_Pa(level)` | Pa | `derived` | optional, source profiles only (v0.16): the pressure as the source printed it, when `pressure_Pa` has been placed on a grid the transcription declares; the rule is quoted in the global attribute `pressure_grid_rule` (SPEC_01 v0.21 Step 2, SPEC_03 Step 0) |
 
-A global attribute `thermo_instance` declares which instance the file is: `source_profile`,
-`retrieval`, or `model_output`. For a source profile the global attributes below are required
-and the latitude of the profile is a global attribute in the source's convention (converted
-later, never here). For the other two instances the latitude is the coordinate variable (or the
-file is `point` in latitude with the planetocentric value stated) and the profile-specific
-attributes are absent.
+(v0.25) No attribute declares the instance. For a source profile the latitude of the profile is a
+global attribute in the source's convention (converted later, never here), which `refrac` reads;
+the source's other statements stay in the raw bundle. For a retrieval or a model output the
+latitude is the coordinate variable.
 
 Global attributes beyond §5:
 
@@ -580,9 +580,7 @@ Group attributes: `master_table` (path under [D0]) and `master_table_hash`. The 
 identical in every kind C file; the tool generates it from the master table so that a change in
 one species value propagates by regeneration, never by editing a file.
 
-Global attribute `composition_role`: `reduction` or `forward`. A reduction composition also
-carries `source_statement`, the source's own words (`"94% H2 with the remainder being He and
-NH3"`).
+(v0.25) No `composition_role`; the source's own words stay in the raw bundle.
 
 ### 6.3 Kind D: geodesy (`<profile>_geodesy.nc`)
 
@@ -676,8 +674,8 @@ Global attributes:
 | `rotation_system_name`, `rotation_rate_rad_s` | must equal the run's or manifest's kind R file |
 | `epoch` | of the observations |
 | `method` | (v0.24, optional) `"cloud tracking"`, `"thermal wind from <retrieval>"`, `"parameterized"`, or a combination |
-| `observation_level_Pa`, `observation_level_justification` | where the observed wind was assigned; (v0.24) the justification optional |
-| `source_latitude_convention` | `planetographic` or `planetocentric`, as published |
+| `observation_level_Pa` | where the observed wind was assigned; (v0.25) written, not required |
+| `source_latitude_convention` | `planetographic` or `planetocentric`, as published; (v0.25) written, not required |
 | `latitude_conversion_inputs` | when converted: the gravity, rotation, and wind files (paths and hashes) used in the fixed point |
 | `vertical_structure` | `"altitude independent"`, `"parameterized: <form>"`, or `"two-dimensional from <source>"` |
 | `parameterization` | the functional form and every parameter, as a TOML fragment in the attribute |
@@ -697,7 +695,7 @@ every read:
   does not reach the pole is brought to zero, under a declared and flagged rule.
 - The model does not extrapolate the wind: a point outside the file's grid is refused.
 - No relation among the parts is checked (the sum identity of v0.21 is retired, SPEC_08).
-- The prose provenance (`method`, `vertical_structure`, `parameterization`) is required and is
+- The prose provenance (`vertical_structure`, `parameterization`, and `method` where given) is
   not read by the model: it says what hypothesis the file carries, for a reader and for the
   figures, and F9 of SPEC_04 draws the field beside the temperature it delivered.
 
@@ -853,12 +851,12 @@ solar_longitude_deg = 35.4     # v0.17: the run's declared season, required; in 
                                # for a calendar date; the product's `epoch` is that date.
 
 [[anchors]]                    # one table per profile; the only pointers outside this directory
-slug   = "lindal"              # must equal profile_or_run inside the file, or refuse
+slug   = "lindal"              # names the anchor's group in the product
 path   = "../../occul_data/lindal/lindal_refractivity.nc"
 weight = 1.0                   # role per handoff §12.4: construction (1), validation (0), calibration (between)
 measurement_uncertainty_scale = 1.0   # multiplies the profile's own uncertainty variables in Eq. A30
 
-[inputs]                       # all under inputs/, all prefixed with the run name
+[inputs]                       # anywhere; v0.25: no location or prefix rule
 composition = "inputs/baseline_cassini_composition.nc"
 gravity     = "inputs/baseline_cassini_gravity.nc"
 rotation    = "inputs/baseline_cassini_rotation.nc"
@@ -870,7 +868,6 @@ p_b_Pa       = 20.0            # pressure at the top of the anchor profile, wher
                                # v0.16: exactly one of p_b_Pa and p_b_rule; p_b_rule = "anchor_profile_top"
                                # takes the anchor's own top tabulated pressure, and is the only
                                # form accepted in closure mode
-p_b_location = "top_of_anchor_profile"   # the only value accepted; present so the choice is visible
 
 [isobars]
 gauge_isobar_Pa = 1.0e4        # where Phi = 0, Eq. A13 and §B5.2; must be an isobar
@@ -929,21 +926,15 @@ latitude; `[grid]`, `[numerics]` and `[estimation]` are as the steps implement t
 `[numerics]` schemes above being those in the code; `datum_isobar_Pa` is required, and the
 delivered altitude is measured from it.
 
-Closure mode (v0.16, SPEC_03 Step 3): `[target]` absent (the target is the anchor's own
-latitude); the run's `solar_longitude_deg` equals the anchor's (v0.17); the run's four inputs must be content-identical to the anchor's embedded copies
-apart from prefix, title, role and writer attributes, or the run is refused; the gauge isobar
-must be a tabulated level of the anchor; `[grid]`, `[numerics]`, `[estimation]` and
-`datum_isobar_Pa` are refused as not implemented, a message distinct from the unknown-key
-refusal, until SPEC_04.
+Closure mode (v0.16, SPEC_03 Step 3; v0.25): one anchor; `[target]` and the transfer sections
+absent (the target is the anchor's own latitude); `p_b_rule` required; the composition's levels
+the anchor's; the gauge isobar a tabulated level of the anchor; the wind's coverage spanning the
+anchor. The inputs are not compared with the anchor's embedded copies, and the season need not
+equal the anchor's.
 
 Rules: `forward` writes the resolved namelist (every path relative to the product as §5
 requires, hashes, defaults filled) into the product's `namelist` group beside the namelist's
-text and hash, and writes no separate file into `output/` (v0.20). `forward` refuses the run if the wind
-and rotation files disagree, if any pointed-to file is not of the declared kind, if a `geodesy`
-key is present at all, if any file under `inputs/` does not carry the run prefix, if
-`p_b_declared_at` is anything other than the top of the anchor profile, or if the wind coverage
-or component rules of §6.6 fail, or if `p_b_location` is anything other than
-`top_of_anchor_profile`.
+text and hash, and writes no separate file into `output/` (v0.20). `forward` refuses the run on the rules of §8.
 
 The manuscript's `p_b` uncertainty (Eq. B7) is not a model input. The model does not need it and
 does not propagate it; if an ensemble wants it, the wrapper varies `p_b_Pa` directly.
@@ -991,8 +982,7 @@ integrations and the outer loop were open for SPEC_04.
 - **Estimation.** The model-error correlation length is a property of the kernel error (the wind
   field), so it is one number shared by all profiles. Per-profile quantities are the measurement
   uncertainties, which live in each profile's own file and can be scaled per anchor entry. Each
-  anchor entry carries the profile's slug and the model refuses a mismatch with the file's
-  `profile_or_run` attribute.
+  anchor entry carries the profile's slug, which names its group in the product.
 
 
 
@@ -1000,39 +990,50 @@ integrations and the outer loop were open for SPEC_04.
 
 ## 8. Provenance and refusal, collected
 
-Every rule that a file or a reader enforces, in one place, so the coding agent can implement them
-as one validation layer in `lib.schema` and `lib.control`.
+(v0.25, SPEC_R1.) The rule: a refusal, a check or a required key stays only if without it the code
+would compute a wrong number without saying so, or fail with no clear message. This section is the
+whole of what readers enforce, and governs any older wording elsewhere in this document. Names,
+prefixes, locations, labels, descriptive attributes, the season on files and the `-dirty` mark are
+written for people and enforced by nothing.
 
-**Writers.** Every file gets the §5 global attributes. Every derived file lists its inputs by
-relative path and SHA-256. Every file under [D1a] or [D2a] carries the directory's prefix.
-Uncertainty variables exist even when empty. Latitude and radius names carry their convention.
-Pressure is Pa. Refractivity is unscaled.
+**Writers.** Every derived file lists its inputs by relative path and SHA-256 and records the
+package commit, `-dirty` included. Latitude and radius names carry their convention. Pressure is
+Pa. Refractivity is unscaled. The records (`reduction_record`, `production_record`,
+`transfer_record`, the embedded namelist) are results and are always written.
 
-**The rebuild rule is a property of the directory, not of a step (v0.9).** After every
-acceptance commit, every product under `occul_data/` or `forward/` whose `casspian_git_commit`
-carries `-dirty` is rebuilt, whichever step wrote it; a product rerun in passing from an
-uncommitted tree (as happened to the Step 3 products during Step 7) is caught by that sweep and
-by the check the Step 9 acceptance runs.
+**Readers refuse when:**
+- **Control files:** an unknown key or section (a typo); a required key missing, of the wrong type,
+  or not positive where a positive is used; a manifest anchor rule and quantity that do not belong
+  together; in a namelist, a weight other than 0 or 1, a scale not positive, other than one of
+  `p_b_rule` and `p_b_Pa`, an unknown rule or scheme, a correlation length other than 0, a target
+  that is not a latitude, a season outside [0, 360), a date not ISO.
+- **Closure mode:** more than one anchor; `[target]` or a transfer section present; `p_b_rule`
+  absent; the composition's levels not the anchor's; the gauge isobar not a tabulated level of
+  the anchor.
+- **A file:** `casspian_kind` absent or not the kind asked for; the schema version newer than the
+  reader; a variable, dimension or group the code reads is missing, including the uncertainty
+  companions `refrac`, `forward` and the figures read, and the globals G `harmonic_convention`,
+  R `system_name`, W `rotation_system_name`, `rotation_rate_rad_s`, `vertical_structure` and
+  `coverage_*`, N and profile `profile_or_run`; a coordinate not strictly monotonic, or a profile's
+  geopotential not monotonic; mole fractions not summing to one; a float variable not float64;
+  `harmonic_convention` not a known code; a profile without `anchors/<slug>` and exactly one
+  record group.
+- **Cross-checks:** the wind's rotation system or rate differs from the rotation file; the
+  reduction's reference level not a node, its anchor isobar not a geodesy surface and a thermo
+  level, its geoid anchor surface absent, its composition levels not the thermo levels; the wind
+  without `u_total_ms`, or not zero at both poles, which must be nodes; a wind or composition
+  whose coverage does not span the run.
+- **Numerics:** extrapolation, crossing isobars, non-convergence, wrong shapes, as each module
+  names them.
+- **Writing:** a run writes outside its own run directory; `casspian-new-run` would write over an
+  existing run.
 
-**Readers refuse when:** a file offered as an input to `refrac` or `forward` carries a
-`casspian_git_commit` ending in `-dirty` (tools may read such files during development; the
-model may not); the `casspian_kind` is not the kind asked for; a dimension is absent
-without an `_absent_meaning` attribute, or a `point` file is asked for a value away from its
-stated coordinate; the schema version is
-newer than the reader; a required variable or attribute is missing; a coordinate is not
-monotonic; mole fractions do not sum to one; a harmonic file's `harmonic_convention` is not the
-known string; a wind file's rotation system differs from the rotation file; a wind file's coverage
-does not span the run; a wind file's components do not sum to its total, or its cylindrical
-component is not constant on cylinders on the model geometry to tolerance; a namelist or manifest
-contains an unknown key; a namelist names a geodesy file; a namelist points at a file lacking the
-run prefix; a manifest points outside its own directory; a namelist points outside its own
-directory to anything but a kind N file.
+**Readers warn when** an `input_hashes` entry, resolved against the directory of the file being
+read, names a file that exists and whose hash differs. A listed path that does not resolve is
+silent.
 
-**Readers warn when:** a `value_source` is absent on a value that is not from a table; an
-`input_hashes` entry, resolved against the directory of the file being read, names a file that
-exists and whose hash differs (the embedded copy remains authoritative; implemented for every
-derived kind at SPEC_03 Step 3, v0.16; a listed path that does not resolve to a file is silent,
-since a copied file is not a defect, v0.18).
+**Rebuilds.** A committed product carrying `-dirty` is rebuilt from the commit at the next sweep.
+Nothing refuses it in the meantime.
 
 ---
 
@@ -1124,6 +1125,7 @@ the repository suffice to recreate the pipeline.
 | 0.14 | 2026-09-12 | §5: `index` provenance covers a scalar that is a label (kind N's anchor isobar pressure) | REPORT_02_step4 decision 4 |
 | 0.15 | 2026-09-12 | §7.1: `anchor_rule` may be `equatorial_radius` with `anchor_quantity = "radius_equatorial_m"`; the parser refuses a rule and quantity that do not belong together | SPEC_02 v0.8 Step 6 |
 | 0.18 | 2026-09-15 | §5, §7, §8: every recorded path is relative to the directory of the file that records it; the reader resolves against that directory; §7's "resolved (absolute) form recorded" withdrawn | coding agent's pre-execution review of SPEC_03 Step 3, problem 3 |
+| 0.25 | 2026-10-30 | The author's rule; §8 rewritten as the whole of what readers enforce, governing older wording; §2.2 the listing the reduction's; §5 globals and variable attributes written, not required; `role`, `composition_role`, `thermo_instance` and `p_b_location` gone; `profile_or_run` on N and profile only; the season not enforced on files; `-dirty` recorded, not refused; §6.6 `method`, `observation_level_Pa` and `source_latitude_convention` not required, `observation_level_justification` gone; §7.2 the closure rules as kept, no prefix or location rule | SPEC_R1 v0.4 and REPORT_R1_step1; author, 22 October: a key or check that is not needed goes |
 | 0.24 | 2026-10-08 | §5: descriptive text about a data source lives in comments of its data property file; §5 and §6.6: for kind W, `method`, `observation_level_justification` and `solar_longitude_source` not required | author, SPEC_13 Step 3 (REPORT_13_step3 §3) |
 | 0.23 | 2026-10-07 | §6.6: kind W is a wind at a stated level; `u_reference_ms` and `reference_level_pressure_Pa` required, `u_total_ms` and `u_shear_ms` optional, on the data's own grid; the sum identity retired; the presence of the total and the polar rule checked where the model takes a wind | SPEC_08 acceptance |
 | 0.22 | 2026-09-29 | §2 rows [Y] and [Z]: git holds what cannot be recreated; the acceptance scripts move to a committed `tests/` directory, everything they write stays under the ignored `reports/step*/` and `reports/regression/`; the clone runbook `docs/RUNBOOK.md` | author's decision on the clean clone |

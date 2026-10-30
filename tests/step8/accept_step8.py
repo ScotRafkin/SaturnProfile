@@ -161,7 +161,7 @@ except CasspianSchemaError as exc:
     refused, message = True, str(exc)
 record(6, "read as kind C succeeds, and a copy with one mole fraction perturbed is refused",
        refused,
-       f"composition_role = {root.attrs['composition_role']!r}; "
+       f"composition_role = {root.attrs.get('composition_role')!r}; "
        f"vertical_coordinate = {root.attrs['vertical_coordinate']!r}\n"
        f"a field on {dict(field.sizes)} (SPEC_04 decision O), the source column's own latitude "
        f"latitude_planetographic_deg = {root.attrs['latitude_planetographic_deg']}\n"

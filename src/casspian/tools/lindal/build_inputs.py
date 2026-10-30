@@ -31,7 +31,6 @@ from casspian.lib import io as cio
 from casspian.lib.control import (
     ANCHOR_QUANTITY_FOR_RULE,
     ControlFileError,
-    build_role,
     load_section,
 )
 from casspian.lib.schema import WRITER_FILLED_GLOBALS, CasspianSchemaError
@@ -40,7 +39,6 @@ TOOL = "casspian-lindal-inputs"
 
 SECTION_KEYS = {
     # SPEC_01 v0.26: required, no default; written into kinds T and D.
-    "role": True,
     "raw_bundle": True,
     "prefix": True,
     "description": True,
@@ -72,9 +70,15 @@ _WRITING_ATTRIBUTES = frozenset(WRITER_FILLED_GLOBALS) | {"history", "control_fi
                                                         "input_hashes"}
 
 
-def _content(dataset):
+def _content(dataset, written):
+    """`dataset` with the writing attributes dropped, and with only the globals in `written`.
+
+    SPEC_R1: a global this tool no longer writes (`role`, `thermo_instance` and the source profile
+    set) is not content, so a file written before SPEC_R1 that still carries one is kept.
+    """
     kept = dataset.copy()
-    kept.attrs = {k: v for k, v in dataset.attrs.items() if k not in _WRITING_ATTRIBUTES}
+    kept.attrs = {k: v for k, v in dataset.attrs.items()
+                  if k not in _WRITING_ATTRIBUTES and k in written}
     return kept
 
 
@@ -93,7 +97,9 @@ def _write_unless_unchanged(path: Path, dataset, kind: str) -> Path:
                 handle.close()
         except CasspianSchemaError:
             existing = None
-        if existing is not None and _content(existing).identical(_content(dataset)):
+        written = set(dataset.attrs)
+        if existing is not None and _content(existing, written).identical(
+                _content(dataset, written)):
             print(f"kept {path}: content unchanged, verified against what this run would write")
             return path
     return cio.write(path, dataset, kind, created_by=TOOL)
@@ -125,7 +131,6 @@ def build(control_path, section: str = "stage_two"):
     """Write kinds T and D and the reduction manifest. Returns the three paths."""
     control = load_section(control_path, section, SECTION_KEYS, path_keys=PATH_KEYS)
     prefix = control["prefix"]
-    role = build_role(control, control_path, section)
     expected_quantity = ANCHOR_QUANTITY_FOR_RULE.get(control["geoid_anchor_rule"])
     if expected_quantity is None or control["geoid_anchor_quantity"] != expected_quantity:
         raise ControlFileError(
@@ -240,12 +245,9 @@ def build(control_path, section: str = "stage_two"):
     )
     thermo.attrs.update({
         "title": f"{prefix} thermodynamic profile, kind T",
-        "profile_or_run": prefix,
-        "role": role,
         **season,
         "source": source["citation"],
         "vertical_coordinate": "pressure_Pa",
-        "thermo_instance": "source_profile",
         "latitude_planetocentric_absent_meaning": "point",
         "latitude_planetographic_deg": float(latitude["planetographic_deg"]),
         "latitude_planetographic_deg_value_source": latitude["value_source"],
@@ -255,21 +257,8 @@ def build(control_path, section: str = "stage_two"):
         "latitude_planetographic_deg_uncertainty": float(latitude["uncertainty_deg"]),
         "latitude_planetographic_deg_uncertainty_kind": latitude["uncertainty_kind"],
         "latitude_definition": latitude["convention_source"],
-        "spacecraft": source["spacecraft"],
-        "event": source["event"],
-        "observation_date": source["observation_date"],
-        "frequency_bands": source["frequency_bands"],
-        # The source states the longitude as a swath; the scalar is its first end, where the
-        # ingress data begin, and the pair is kept beside it.
-        "longitude_deg": float(longitudes[0]),
         "longitude_swath_deg": longitudes,
-        "longitude_system": rotation_scalars["system"],
         "longitude_source": latitude["longitude_source"],
-        "height_datum": (
-            "the 1 bar pressure level as defined by the source; Table I gives the local "
-            "altitude of the measurements relative to it"
-        ),
-        "source_top_boundary": top_boundary["statement"],
         # SPEC_01 v0.23 Step 9: the grid declaration of the transcription, quoted.
         "pressure_grid_rule": (
             f"{pressure_grid['rule']}; rows printed as "
@@ -279,12 +268,9 @@ def build(control_path, section: str = "stage_two"):
         # From the dedicated table the Step 9 review added to the transcription. It used to be
         # cut from the prose of `fit_inputs`, which is still carried below as the source's own
         # statement of everything that went into the geoid fit.
-        "source_gravity_citation": gravity_scalars["citations"],
         "source_gravity_citation_value_source": gravity_scalars["value_source"],
         "source_pole_vector": gravity_scalars["pole_vector"],
         "source_fit_inputs": geodesy["fit_inputs"],
-        "source_rotation_system": rotation_scalars["system"],
-        "source_wind_citation": wind_scalars["citations"],
         "source_wind_vertical_structure": wind_scalars["vertical_structure"],
         **provenance(thermo_output),
     })
@@ -338,8 +324,6 @@ def build(control_path, section: str = "stage_two"):
     )
     geodesy_ds.attrs.update({
         "title": f"{prefix} fitted reference surfaces, kind D",
-        "profile_or_run": prefix,
-        "role": role,
         **season,
         "source": source["citation"],
         "citation": source["citation"],
@@ -377,11 +361,6 @@ def build(control_path, section: str = "stage_two"):
     for kind_name, file_name in names.items():
         if not (directory / file_name).exists():
             raise ControlFileError(f"the manifest would name {file_name}, which does not exist")
-        if not file_name.startswith(f"{prefix}_"):
-            raise ControlFileError(
-                f"{file_name} does not carry the directory prefix {prefix!r} (SPEC_00 "
-                "section 2.2)"
-            )
 
     lines = [
         f"# Reduction manifest for the {prefix} profile (SPEC_00 section 7.1).",

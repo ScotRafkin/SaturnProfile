@@ -5,14 +5,9 @@ namelist for M anchors, `load_run_inputs` in transfer mode, the anchor as it arr
 propagation hook. Every check prints its measured value; a check beyond the specification is
 labeled so.
 
-**The relaxation.** This step changes input files, so the products under `occul_data/` and
-`forward/` were rebuilt on this working tree by `rebuild_chain.py` and carry
-`casspian_git_commit` ending in `-dirty`. `forward` refuses a `-dirty` input, so this script
-relaxes the one refusal point, `casspian.lib.control._refuse_dirty_commit`, for its own
-duration and nowhere else, and check 0 shows the refusal firing before the relaxation is put
-in place. Nothing else is patched, no commit string is altered on disk, and every other
-refusal below is exercised in full. The registered products are rebuilt from the clean tree at
-the sweep and their hashes recorded in the report then.
+**SPEC_R1.** Check 0, the `-dirty` refusal and its relaxation, is retired with the refusal.
+Check 6 keeps its own copy of the list of provenance attributes the retired closure comparison
+dropped, since it still sets those aside when it compares a rebuilt product with its swept form.
 
 **The swept copies.** The pre-step products, the form of every file before this step, were
 rebuilt by `build_swept.py` in a git worktree at `5f23a8b` whose tree is clean, so they carry
@@ -102,44 +97,9 @@ if WORK.exists():
 WORK.mkdir()
 
 # ---------------------------------------------------------------------------
-# 0. The -dirty refusal fires on this working tree, and is then relaxed, named
+# 0. Retired by SPEC_R1: the -dirty refusal is gone
 # ---------------------------------------------------------------------------
 NAMELIST = TRANSFER / "lindal_transfer.toml"
-
-# The check's subject is a `-dirty` copy this script writes, not whatever state the working tree
-# happens to be in (SPEC_04 section 12 ruling 4, on finding 4 of REPORT_04_step1). At Step 0 the
-# tree's own products were all `-dirty`, so asking the tree was the same question; the Step 0 sweep
-# then rebuilt them clean, and the check had nothing left to fire on. With its own subject it means
-# "the refusal fires on a `-dirty` input" whatever the tree holds.
-DIRTY = WORK / "dirty"
-DIRTY.mkdir()
-dirty_input = DIRTY / "lindal_transfer_wind.nc"
-shutil.copy(TRANSFER / "inputs/lindal_transfer_wind.nc", dirty_input)
-with netCDF4.Dataset(dirty_input, "a") as handle:
-    clean_commit = str(handle.getncattr("casspian_git_commit"))
-    handle.setncattr("casspian_git_commit", f"{clean_commit}-dirty")
-with netCDF4.Dataset(dirty_input) as handle:
-    dirty_attrs = {name: handle.getncattr(name) for name in handle.ncattrs()}
-on_dirty_copy = refusal(ctl._refuse_dirty_commit, dirty_input, dirty_attrs, "casspian-forward")
-on_clean_file = refusal(ctl._refuse_dirty_commit, TRANSFER / "inputs/lindal_transfer_wind.nc",
-                        {"casspian_git_commit": clean_commit}, "casspian-forward")
-on_this_tree = refusal(lambda: ctl.load_run_inputs(ctl.read_run_namelist(NAMELIST)))
-
-_original_refuse = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-    attrs.get("casspian_git_commit", ""))
-record(0, "the -dirty refusal fires on a -dirty input and not on a clean one, and is then relaxed "
-          "for this script",
-       on_dirty_copy is not None and "-dirty" in str(on_dirty_copy) and on_clean_file is None,
-       f"subject: {dirty_input}, a copy of the registered transfer wind with its commit rewritten "
-       f"{clean_commit[:12]} -> {clean_commit[:12]}-dirty\n"
-       f"refused on the -dirty copy: {on_dirty_copy}\n"
-       f"refused on the same file clean: {on_clean_file}\n"
-       f"for information, not asserted: loading the run from this working tree gave "
-       f"{on_this_tree}; the tree's products are clean after the Step 0 sweep, so the refusal has "
-       f"nothing to fire on there (SPEC_04 section 12 ruling 4)\n"
-       "RELAXATION: casspian.lib.control._refuse_dirty_commit is replaced for this script only "
-       "(SPEC_03 section 0, in-memory candidate rule). Nothing else is patched.")
 
 WIND_FILES = {
     "reduction": (LINDAL / "lindal_wind.nc", SWEPT / "occul_data/lindal/lindal_wind.nc"),
@@ -337,8 +297,27 @@ def same_values(new, old) -> bool:
 CLOSURE_DROPPED_RECORD = "closure_dropped_wind"
 
 
+#: The provenance attributes the closure comparison dropped before SPEC_R1 retired it, kept here
+#: because this check still sets them aside: every rebuild rewrites them.
+PROVENANCE_ATTRIBUTES = frozenset({
+    "created_by", "created_at", "casspian_git_commit", "casspian_version", "history",
+    "title", "profile_or_run", "role", "composition_role",
+    "input_hashes", "control_file", "raw_bundle", "raw_sources", "master_table",
+    "master_table_hash", "latitude_conversion_inputs", "decomposition_geometry",
+})
+
+
+def same_value(a, b) -> bool:
+    a_arr, b_arr = np.asarray(a), np.asarray(b)
+    if a_arr.shape != b_arr.shape:
+        return False
+    if a_arr.dtype.kind in "fc" and b_arr.dtype.kind in "fc":
+        return bool(np.array_equal(a_arr, b_arr, equal_nan=True))
+    return bool(np.all(a_arr == b_arr))
+
+
 def provenance_attr(name, value):
-    return (name in ctl.CLOSURE_DROPPED_ATTRIBUTES or "sha256:" in str(value)
+    return (name in PROVENANCE_ATTRIBUTES or "sha256:" in str(value)
             or name.startswith("input_sha256_") or name == CLOSURE_DROPPED_RECORD
             # Decision O's prose about the grid, and the history line that names it.
             or name in ("latitude_grid_rule", "closure_dropped_composition"))
@@ -370,7 +349,7 @@ for new_path, old_path in PAIRS:
         for key in sorted(set(a.attrs) & set(b.attrs)):
             if provenance_attr(key, b.attrs[key]):
                 continue
-            if not ctl._same_value(a.attrs[key], b.attrs[key]):
+            if not same_value(a.attrs[key], b.attrs[key]):
                 unexpected.append(f"{group}: attribute {key} changed")
     ok &= not unexpected
     lines.append(f"{new_path.as_posix()}: variables added {sorted(added_all) or 'none'}, "
@@ -379,7 +358,7 @@ for new_path, old_path in PAIRS:
                  f"{unexpected or 'none'}")
     for group in sorted(set(new_tree) & set(old_tree)):
         a, b = new_tree[group], old_tree[group]
-        if CLOSURE_DROPPED_RECORD in a.attrs and not ctl._same_value(
+        if CLOSURE_DROPPED_RECORD in a.attrs and not same_value(
                 a.attrs[CLOSURE_DROPPED_RECORD], b.attrs.get(CLOSURE_DROPPED_RECORD)):
             lines.append(f"    {group}: {CLOSURE_DROPPED_RECORD} was "
                          f"{b.attrs.get(CLOSURE_DROPPED_RECORD)!r}, now "
@@ -622,14 +601,12 @@ closure_namelist = ctl.read_run_namelist(CLOSURE / "lindal_closure.toml")
 closure_inputs = ctl.load_run_inputs(closure_namelist)
 lines = [f"the closure namelist loads: mode {closure_namelist.mode!r}, "
          f"{len(closure_namelist.anchors)} anchor, gauge level "
-         f"{closure_inputs.gauge_level_index}, closure comparisons "
-         f"{[(c.kind, c.identical) for c in closure_inputs.closure]}",
+         f"{closure_inputs.gauge_level_index}",
          f"transfer-only fields are empty in closure mode: target "
          f"{closure_namelist.target_latitude_deg}, grid {dict(closure_namelist.grid)}, "
          f"numerics {dict(closure_namelist.numerics)}, estimation "
          f"{dict(closure_namelist.estimation)}"]
 ok = (closure_namelist.mode == "closure"
-      and all(c.identical for c in closure_inputs.closure)
       and closure_namelist.target_latitude_deg is None)
 completed = subprocess.run(
     [sys.executable, "tests/step03_3/accept_step03_3.py"],
@@ -637,7 +614,7 @@ completed = subprocess.run(
 tail = [line for line in completed.stdout.splitlines() if line.startswith(("[PASS", "[FAIL"))]
 passed = sum(1 for line in tail if line.startswith("[PASS"))
 lines.append(f"tests/step03_3/accept_step03_3.py: {passed} of {len(tail)} pass "
-             f"(exit {completed.returncode}); the thirteen closure refusals are its check 12")
+             f"(exit {completed.returncode}); the eight closure refusals are its check 12")
 ok &= (passed == len(tail) and len(tail) > 0)
 (HERE / "step03_3_rerun.txt").write_text(completed.stdout + completed.stderr, encoding="utf-8")
 record(14, "the closure namelist and the SPEC_03 Step 3 acceptance are unchanged", ok,

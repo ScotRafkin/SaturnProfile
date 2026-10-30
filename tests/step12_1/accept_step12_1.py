@@ -7,8 +7,7 @@ is (SPEC_12 section 1 deliverable 4). Writes under `reports/step12_1/`; the comm
 `occul_data/lindal/voyager2_egress.csv` is read, never written. The run's inputs and product are
 written in the run directory, as a run's are.
 
-**The relaxation.** The tool is uncommitted, so the run's inputs carry `-dirty`; the one refusal
-point, `casspian.lib.control._refuse_dirty_commit`, is replaced for this script's run only.
+SPEC_R1 removed the `-dirty` refusal, and the in-process relaxation went with it.
 
 Run from the repository root.
 """
@@ -160,11 +159,8 @@ record(2, "the traced curves over the scan, for the author to view", overlay.exi
 # ---------------------------------------------------------------------------
 # 3. The comparison: the run rebuilt and rerun at its target
 # ---------------------------------------------------------------------------
-_original = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(attrs.get("casspian_git_commit", ""))
 run_inputs.build(RUN / f"{RUN.name}_build.toml")
 state = forward_transfer.run(RUN / f"{RUN.name}.toml")
-ctl._refuse_dirty_commit = _original
 product = xr.open_datatree(state.product, engine="netcdf4").load()
 product.close()
 root = product.to_dataset(inherit=False)

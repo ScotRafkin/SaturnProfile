@@ -75,10 +75,6 @@ results = json.loads(Path("reports/step05_4/results.json").read_text(encoding="u
 run2 = root(results["shear_r2_uniform"]["5e4"]["product"])
 labels = np.asarray(run2["pressure_label_Pa"].values, dtype="float64")
 
-original = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-    attrs.get("casspian_git_commit", ""))
-print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this process only\n")
 out = {}
 try:
     with warnings.catch_warnings():
@@ -109,5 +105,5 @@ try:
                   + f"; identity {row['identity_largest']:.2e} at level {row['identity_level']}",
                   flush=True)
 finally:
-    ctl._refuse_dirty_commit = original
+    pass
 (Path("reports/step06_1") / "stop_position.json").write_text(json.dumps(out, indent=1), encoding="utf-8")

@@ -5,9 +5,7 @@ case, case (ii) at 110 mbar) and runs it with the transfer driver, to 26.4 S pla
 run's inputs and product are written in the run directory, as a run's are, and are not committed;
 this script writes its figures and numbers under `reports/step11_2/`.
 
-**The relaxation.** The tool and the shear case are uncommitted, so the run's inputs carry `-dirty`,
-and the one refusal point, `casspian.lib.control._refuse_dirty_commit`, is replaced for this script
-only (SPEC_03 section 0, the in-memory candidate rule). Nothing else is patched.
+SPEC_R1 removed the `-dirty` refusal, and the in-process relaxation went with it.
 
 Two conversions, stated here and in the report:
 
@@ -68,9 +66,6 @@ def at_pressure(p, values, targets):
     return np.interp(np.log(targets), np.log(p)[order], np.asarray(values)[order])
 
 
-_original_refuse = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(attrs.get("casspian_git_commit", ""))
-print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this script only\n")
 warnings.simplefilter("ignore")
 
 written = run_inputs.build(RUN / f"{RUN.name}_build.toml")
@@ -80,7 +75,6 @@ root = product.to_dataset(inherit=False)
 anchor_root = product["anchors/lindal"].to_dataset(inherit=False)
 thermo = product["anchors/lindal/inputs/thermo"].to_dataset(inherit=False)
 wind = product["inputs/wind"].to_dataset(inherit=False)
-ctl._refuse_dirty_commit = _original_refuse
 
 p = np.asarray(root["pressure_Pa"].values, dtype="float64")
 T = np.asarray(root["temperature_K"].values, dtype="float64")

@@ -885,7 +885,6 @@ def _transfer_product(namelist, inputs, anchors, state, estimate, target_run, cu
     dataset.attrs = {
         "title": f"{namelist.name} transferred profile, kind profile",
         "profile_or_run": namelist.name,
-        "role": "forward",
         "source": (f"{fp.TOOL} transfer of "
                    f"{', '.join(entry.slug for entry in namelist.anchors)} to {target_deg} "
                    f"degrees under the run {namelist.name}; {namelist.description}"),

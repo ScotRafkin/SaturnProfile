@@ -6,8 +6,8 @@ it returns the geopotential, pressure and temperature. It is pure orchestration 
 (Step 1) and `lib.hydrostatic` (Step 2) on arrays and the run's loaded inputs, with no file access,
 so that SPEC_04 calls it unchanged at a transferred latitude.
 
-`run` is the closure: read the namelist, the anchor and the run's inputs, and check the inputs
-against the anchor's embedded copies (`lib.control`, Step 3); take the boundary pressure by the
+`run` is the closure: read the namelist, the anchor and the run's inputs (`lib.control`, Step 3;
+the content comparison with the anchor's embedded copies retired by SPEC_R1); take the boundary pressure by the
 namelist's rule; produce on the anchor's own levels at its own latitude; write kind `profile` with
 the anchor and the inputs embedded and the closure statistics in `production_record`; render F5 and
 F6 when the namelist asks. The closure is a test of the production, not the model (SPEC_03 decision
@@ -351,7 +351,6 @@ def _resolved_namelist(namelist, inputs, product: Path) -> str:
     lines += [
         "[hydrostatic_boundary]",
         f'p_b_rule = "{namelist.p_b_rule}"',
-        f'p_b_location = "{namelist.p_b_location}"',
         "[isobars]",
         f"gauge_isobar_Pa = {namelist.gauge_isobar_Pa!r}",
         f"gauge_level_index = {inputs.gauge_level_index}",
@@ -383,7 +382,8 @@ def run(namelist_path) -> RunResult:
     and the render result (None when the namelist asks for no figures)."""
     namelist = ctl.read_run_namelist(namelist_path)
     if namelist.mode != "closure":
-        raise ctl.ControlFileError(f"{namelist.path}: mode {namelist.mode!r} is not implemented.")
+        raise ctl.ControlFileError(f"{namelist.path}: mode {namelist.mode!r} is not this driver's; "
+                                  "forward.transfer.run is the transfer.")
     inputs = ctl.load_run_inputs(namelist)
     anchor = inputs.anchor
     anchor_root = anchor.to_dataset(inherit=False)
@@ -516,7 +516,6 @@ def _product_dataset(namelist, inputs, anchor_root, production, p_tab, T_tab, pr
     dataset.attrs = {
         "title": f"{namelist.name} forward profile, kind profile",
         "profile_or_run": namelist.name,
-        "role": "forward",
         "source": (f"{TOOL} closure of the {namelist.anchors[0].slug} anchor under the run "
                    f"{namelist.name}; {namelist.description}"),
         "epoch": namelist.date if namelist.date else PROFILE_EPOCH_WITHOUT_DATE,
@@ -547,25 +546,15 @@ def _production_record(namelist, inputs, anchor, production, statistics) -> dict
         "gauge_isobar_Pa": float(namelist.gauge_isobar_Pa),
         "gauge_level_index": np.int32(production.gauge_level_index),
         "p_b_rule": str(namelist.p_b_rule),
-        "p_b_location": namelist.p_b_location,
         "boundary_pressure_Pa": production.boundary_pressure_Pa,
         "boundary_level_index": np.int32(0),
         "u_at_phi_c_ms": production.u_ms,
         "geopotential_rule": GEOPOTENTIAL_RULE,
         "hydrostatic_rule": HYDROSTATIC_RULE,
-        "closure_comparison_rule": (
-            "each run input compared with the anchor's embedded copy, root and every group, after "
-            f"dropping {sorted(ctl.CLOSURE_DROPPED_ATTRIBUTES)} and any attribute holding sha256: "
-            "(SPEC_03 Step 3 deliverable 2)"),
         "codata_release": CODATA_RELEASE,
         "casspian_version": cio.package_version(),
         "casspian_git_commit": cio.git_commit(),
     }
-    for comparison in inputs.closure:
-        record[f"closure_comparison_{comparison.kind}"] = "identical" if comparison.identical else \
-            "; ".join(comparison.differences)
-        record[f"closure_dropped_{comparison.kind}"] = "; ".join(
-            f"{group}: {', '.join(names)}" for group, names in comparison.dropped.items())
     for key in ("radius_projection_rule", "radius_projection_residual_m", "latitude_drift_neglected_deg",
                 "radius_projection_note"):
         if key in anchor_record:

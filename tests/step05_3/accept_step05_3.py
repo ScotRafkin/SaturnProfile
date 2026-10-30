@@ -4,10 +4,9 @@ Everything here runs in a copy, `reports/step05_3/tree/`, in the repository's ow
 `data_static/`, the registered Lindal reduction (`occul_data/lindal/`, which this step does not
 reach, copied as it is) and the two runs' migrated control files. The runs' inputs and products
 are rebuilt there from the working tree, and compared by value with the registered ones; nothing
-under `occul_data/` or `forward/` is written. The working tree is not clean, so every file built
-here carries `-dirty`, and the one refusal point, `casspian.lib.control._refuse_dirty_commit`, is
-relaxed for this script only, as SPEC_05 §2a's candidates were. The registered files themselves
-are rebuilt by `tests/step04_0/sweep.py --runs` after the acceptance commit.
+under `occul_data/` or `forward/` is written. The registered files themselves are rebuilt by
+`tests/step04_0/sweep.py --runs` after the acceptance commit. SPEC_R1 retired check 3, the closure
+content comparison, and the `-dirty` relaxation went with the refusal.
 
 Run from the repository root.
 """
@@ -90,9 +89,6 @@ def build_and_run(directory, mode):
 
 
 copy_tree()
-_original_refuse = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(attrs.get("casspian_git_commit", ""))
-print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this script only\n")
 warnings.simplefilter("ignore")
 
 # ---------------------------------------------------------------------------
@@ -134,25 +130,6 @@ record(2, "casspian-run-inputs on both migrated build files writes both wind fil
           "file array-equal to _wind_source.nc in every variable", ok, "\n".join(lines))
 
 # ---------------------------------------------------------------------------
-# 3. The closure run's content comparison against the anchor's embedded copies
-# ---------------------------------------------------------------------------
-loaded = {}
-for kind in ("composition", "gravity", "rotation", "wind"):
-    handle = cio.read(CLOSURE / "inputs" / f"lindal_closure_{kind}.nc", kind)
-    loaded[kind] = handle.load()
-    handle.close()
-anchor = cio.read(TREE / "occul_data/lindal/lindal_refractivity.nc", "refractivity")
-anchor_tree = anchor.load()
-anchor.close()
-comparison = ctl.check_closure_inputs(loaded, anchor_tree)
-record(3, "the closure run's content comparison against the anchor's embedded copies passes",
-       all(c.identical for c in comparison),
-       "\n".join(f"{c.kind}: identical {c.identical}"
-                 + (f"; {list(c.differences)}" if c.differences else "")
-                 + (f"; dropped {list(c.dropped.get('/', ()))}" if c.dropped else "")
-                 for c in comparison))
-
-# ---------------------------------------------------------------------------
 # 4. The closure product equals the registered product (step04_5 check 11's comparison)
 # ---------------------------------------------------------------------------
 closure_product = Path(forward_production.run(CLOSURE / "lindal_closure.toml").product)
@@ -187,8 +164,8 @@ for old_name, new_name in (("lindal_transfer_build.toml", "step05_3_new_build.to
 try:
     new_run.new_run("step05_3_new", TRANSFER)
     second = None
-except ControlFileError as exc:
-    second = str(exc)
+except FileExistsError as exc:      # SPEC_R1 section 2 ruling 3.5: mkdir refuses, not the tool
+    second = f"{type(exc).__name__}: {exc}"
 _, new_product = build_and_run(made, "transfer")
 same6 = compare(new_product, REGISTERED_TRANSFER, TRANSFER_COMPARED)
 record(6, "casspian-new-run makes a directory whose two files differ from the source only in the name "
@@ -230,7 +207,6 @@ for label, product, expect_zero in (("migrated transfer", transfer_product, Fals
 record(7, "F9's left panel carries both lines, for the migrated transfer run (coincident) and for a "
           "uniform, c = 0 run (the total on zero)", ok, "\n".join(lines))
 
-ctl._refuse_dirty_commit = _original_refuse
 failed = [r for r in results if not r[2]]
 summary = f"{len(results) - len(failed)} of {len(results)} checks pass"
 print(summary)

@@ -64,10 +64,6 @@ def delivered(product):
 
 
 def main():
-    original = ctl._refuse_dirty_commit
-    ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-        attrs.get("casspian_git_commit", ""))
-    print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this process only\n")
     out = {}
     try:
         with warnings.catch_warnings():
@@ -79,7 +75,7 @@ def main():
             for p_s in ("1.05e5", "1.3e5"):
                 out[f"r8 p_s {p_s} at 5e4"] = rx.attempt(f"r8 p_s {p_s} at 5e4", lambda: kink_copy(p_s))
     finally:
-        ctl._refuse_dirty_commit = original
+        pass
 
     runs = json.loads((HERE / "results.json").read_text(encoding="utf-8"))
     run2 = delivered(runs["shear_r2_uniform"]["5e4"]["product"])

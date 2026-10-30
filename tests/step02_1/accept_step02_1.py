@@ -1,9 +1,7 @@
 """Acceptance checks for SPEC_02 v0.2 Step 1, `lib.control` manifest reading and input loading.
 
 Every check reports its measured value. The refusal cases run on copies of the manifest and its
-six inputs under this directory, because SPEC_00 section 8 refuses a manifest that points outside
-its own directory, so a tampered manifest has to sit beside the files it names. Nothing under
-`occul_data/` is written.
+six inputs under this directory. Nothing under `occul_data/` is written.
 """
 
 import importlib
@@ -112,18 +110,7 @@ record(1, "lindal_reduction.toml loads with all six inputs and the recorded hash
        f"composition loaded as {type(inputs.composition).__name__}, the other five as "
        f"{sorted({type(getattr(inputs, k)).__name__ for k in ctl.INPUT_KINDS if k != 'composition'})}")
 
-# ---------------------------------------------------------------------------
-# 2. A manifest naming a -dirty product is refused, with the file named
-# ---------------------------------------------------------------------------
-case = copy_case("case_dirty")
-with netCDF4.Dataset(case / "lindal_wind.nc", "a") as handle:
-    handle.setncattr("casspian_git_commit", handle.getncattr("casspian_git_commit") + "-dirty")
-refused, message = refusal(lambda: ctl.load_reduction_inputs(
-    ctl.read_reduction_manifest(case / MANIFEST.name)))
-record(2, "a manifest naming a -dirty product is refused with the file named",
-       refused and "lindal_wind.nc" in message and "-dirty" in message,
-       f"lindal_wind.nc in the copy carries casspian_git_commit ending in -dirty\n"
-       f"refused: {refused}\n  {message}")
+# Check 2, a -dirty input refused, is retired by SPEC_R1.
 
 # ---------------------------------------------------------------------------
 # 3. pressure_Pa = 9000 is refused on both counts
@@ -157,21 +144,16 @@ case = copy_case("case_unknown")
 edit_manifest(case, r"^\[geoid\]\s*$", '[geoid]\nnote_to_self = "remember this"')
 unknown_refused, unknown_message = refusal(
     lambda: ctl.read_reduction_manifest(case / MANIFEST.name))
-case = copy_case("case_outside")
-edit_manifest(case, r'^(wind\s*=\s*)"lindal_wind\.nc"', r'\g<1>"../lindal_wind.nc"')
-outside_refused, outside_message = refusal(
-    lambda: ctl.read_reduction_manifest(case / MANIFEST.name))
 case = copy_case("case_rule")
 edit_manifest(case, r'^(anchor_rule\s*=\s*)"[^"]+"', r'\g<1>"latitude"')
 rule_refused, rule_message = refusal(lambda: ctl.read_reduction_manifest(case / MANIFEST.name))
-record(5, "beyond the specification: an unknown key, a path outside the directory, and an "
-       "inexpressible anchor rule are each refused by name",
+# SPEC_R1: a path outside the manifest's directory is no longer refused; that case is retired.
+record(5, "beyond the specification: an unknown key and an inexpressible anchor rule are each "
+       "refused by name",
        unknown_refused and "unknown key" in unknown_message and "physical" not in unknown_message
-       and outside_refused and "outside" in outside_message
        and rule_refused and "latitude" in rule_message,
        f"unknown text key: {unknown_refused}, and named as unknown rather than physical\n"
        f"  {unknown_message}\n"
-       f"wind = \"../lindal_wind.nc\": {outside_refused}\n  {outside_message}\n"
        f"anchor_rule = \"latitude\": {rule_refused}\n  {rule_message}")
 
 # ---------------------------------------------------------------------------

@@ -190,7 +190,6 @@ def build_product(manifest_path) -> Path:
     dataset.attrs.update({
         "title": f"{manifest.slug} registered refractivity, kind N",
         "profile_or_run": manifest.slug,
-        "role": "reduction",
         "source": (f"{TOOL} reduction of the {manifest.slug} profile under "
                    f"{manifest.path.name}; source profile: {thermo.attrs.get('source', '')}"),
         # SPEC_02 v0.11 Step 4: kind N carries the season of its thermo file.

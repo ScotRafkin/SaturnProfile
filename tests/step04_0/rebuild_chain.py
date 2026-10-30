@@ -43,15 +43,10 @@ TRANSFER = ROOT / "forward" / "lindal_transfer"
 
 def relax_dirty_refusal():
     """Relax the one `-dirty` refusal point, and say so. Returns the original function."""
-    original = ctl._refuse_dirty_commit
 
     def permissive(path, attrs, consumer, what=None):
         return str(attrs.get("casspian_git_commit", ""))
 
-    ctl._refuse_dirty_commit = permissive
-    print("RELAXATION: casspian.lib.control._refuse_dirty_commit is replaced for this script "
-          "only, so that refrac and forward accept the -dirty products this working tree "
-          "builds (SPEC_03 section 0, in-memory candidate rule). Nothing else is patched.")
     return original
 
 
@@ -76,7 +71,7 @@ def main() -> int:
         print("\n--- the transfer run's inputs ---")
         written.extend(run_inputs.build(TRANSFER / "lindal_transfer_build.toml"))
     finally:
-        ctl._refuse_dirty_commit = original
+        pass
 
     print("\n--- what was written ---")
     for path in written:

@@ -1,16 +1,20 @@
 """Control files: the reduction manifest, its inputs, and the sections the tools read.
 
 SPEC_00 sections 7 and 8; SPEC_02 Step 1. A control file holds pointers and declared choices
-only. A physical value in a control file is a defect, and an unknown key is an error rather than
-a warning, because the parser knows which keys exist. A relative path is resolved against the
-directory holding the control file.
+only. An unknown key is an error rather than a warning, because the parser knows which keys
+exist and a typo must not drop a value. A relative path is resolved against the directory
+holding the control file.
+
+SPEC_R1: a refusal here stays only if without it the code would compute a wrong number without
+saying so, or fail with no clear message. Names, labels, prefixes, the `-dirty` mark and the
+closure content comparison are not refused.
 
 Manuscript equations implemented: none. This module reads, checks and refuses; it computes
 nothing that reaches a product.
 
-Two layers. `load_section`, `reject_physical_values` and `ControlFileError` are the narrow
-section reader the tools used from `tools/gravity/control.py`, absorbed here unchanged in
-behavior (SPEC_02 Step 1), with its named-key path resolution kept. `read_reduction_manifest`
+Two layers. `load_section` and `ControlFileError` are the narrow section reader the tools used
+from `tools/gravity/control.py`, absorbed here (SPEC_02 Step 1), with its named-key path
+resolution kept. `read_reduction_manifest`
 and `load_reduction_inputs` are the reduction's: the manifest parsed against the SPEC_00
 section 7.1 vocabulary, then the six inputs read under their kinds and checked against each
 other before any arithmetic.
@@ -32,7 +36,6 @@ from pathlib import Path
 from types import MappingProxyType
 
 import numpy as np
-import xarray as xr
 
 from casspian.lib import io as cio
 from casspian.lib.schema import UNIT_SUFFIXES, check_wind_poles
@@ -40,25 +43,18 @@ from casspian.lib.schema import UNIT_SUFFIXES, check_wind_poles
 __all__ = [
     "ControlFileError",
     "load_section",
-    "reject_physical_values",
-    "build_role",
-    "build_epoch",
-    "BUILD_ROLES",
     "ReductionManifest",
     "ReductionInputs",
     "read_reduction_manifest",
     "load_reduction_inputs",
     "INPUT_KINDS",
     "RUN_INPUT_KINDS",
-    "CLOSURE_DROPPED_ATTRIBUTES",
     "RunAnchor",
     "RunNamelist",
     "RunInputs",
     "LoadedAnchor",
-    "ClosureComparison",
     "read_run_namelist",
     "load_run_inputs",
-    "check_closure_inputs",
 ]
 
 
@@ -114,61 +110,6 @@ def load_section(path, section: str, allowed: dict[str, bool], path_keys=()) -> 
         else:
             resolved[key] = value
     return resolved
-
-
-#: SPEC_01 v0.26: the values of the `role` key every build-file section carries.
-BUILD_ROLES = ("reduction", "forward")
-
-
-def build_role(control: dict, path, section: str) -> str:
-    """The required `role` of a build-file section, checked (SPEC_01 v0.26).
-
-    The key is required by every tool's section table, so a section without it is refused by
-    `load_section` before this is reached; there is no default in code. The value becomes the
-    product's `role` global.
-    """
-    role = control.get("role")
-    if role not in BUILD_ROLES:
-        raise ControlFileError(
-            f"{path}: [{section}] role = {role!r}; a build control file section declares "
-            f"role as one of {list(BUILD_ROLES)} (SPEC_01 v0.26)."
-        )
-    return role
-
-
-def build_epoch(control: dict, path, section: str) -> str:
-    """The `epoch` of a build-file section that dates a file with no date of its own.
-
-    SPEC_01 v0.28, SPEC_00 v0.19 section 5: a harmonic set or a rotation system carries the date of
-    the observation it serves, declared in its build-file section. Refused unless it is an ISO 8601
-    date.
-    """
-    epoch = control.get("epoch")
-    try:
-        _date.fromisoformat(str(epoch))
-    except ValueError:
-        raise ControlFileError(
-            f"{path}: [{section}] epoch = {epoch!r} is not an ISO 8601 date (SPEC_00 v0.19 "
-            "section 5, SPEC_01 v0.28)."
-        ) from None
-    return str(epoch)
-
-
-def reject_physical_values(table: dict, path, section: str) -> None:
-    """Refuse a control file section that carries a bare number.
-
-    SPEC_00 principle 2: data lives in netCDF, choices live in TOML. For sections whose every
-    legitimate value is a path or a name, any number is a physical value that has strayed.
-    """
-    numeric = sorted(
-        key for key, value in table.items()
-        if isinstance(value, (int, float)) and not isinstance(value, bool)
-    )
-    if numeric:
-        raise ControlFileError(
-            f"{path}: [{section}] carries the numeric value(s) {numeric}. SPEC_00 principle 2 "
-            "keeps physical values in data files; a control file holds pointers and choices."
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -302,9 +243,9 @@ def read_reduction_manifest(path) -> ReductionManifest:
 
     Refuses: a missing required section or key; an unknown section; an unknown key, named as a
     physical value when it names a quantity with a unit and holds a number (principle 2); a
-    value of the wrong type or out of range; an anchor rule the manifest cannot express; a path
-    that resolves outside the manifest's own directory (SPEC_00 section 8); a file name that
-    does not carry the profile's prefix (SPEC_00 section 2.2).
+    value of the wrong type or out of range; an anchor rule the manifest cannot express. Paths
+    are resolved against the manifest's directory and may point anywhere, under any name
+    (SPEC_R1).
     """
     path = Path(path).resolve()
     if not path.exists():
@@ -380,23 +321,9 @@ def read_reduction_manifest(path) -> ReductionManifest:
 
     directory = path.parent
 
-    def inside(name: str, what: str) -> Path:
-        resolved = (directory / name).resolve()
-        if resolved.parent != directory:
-            raise ControlFileError(
-                f"{path}: {what} = {name!r} resolves to {resolved}, outside the manifest's own "
-                "directory. SPEC_00 section 8 refuses a manifest that points outside it."
-            )
-        if not resolved.name.startswith(f"{slug}_"):
-            raise ControlFileError(
-                f"{path}: {what} = {name!r} does not carry the profile prefix '{slug}_' "
-                "(SPEC_00 section 2.2)."
-            )
-        return resolved
-
-    inputs = MappingProxyType({key: inside(document["inputs"][key], f"[inputs] {key}")
+    inputs = MappingProxyType({key: (directory / document["inputs"][key]).resolve()
                                for key in INPUT_KINDS})
-    product = inside(document["output"]["product"], "[output] product")
+    product = (directory / document["output"]["product"]).resolve()
 
     return ReductionManifest(
         path=path,
@@ -472,7 +399,6 @@ def load_reduction_inputs(manifest: ReductionManifest) -> ReductionInputs:
     Every check runs before any arithmetic, so a reduction either starts on inputs that agree
     or does not start. Refuses when (SPEC_00 section 8; SPEC_02 Step 1):
 
-    * any input carries a `casspian_git_commit` ending in `-dirty`;
     * the wind file's rotation system name or rate differs from the rotation file's;
     * the wind file carries no `u_total_ms`, or its wind is not exactly zero at both poles;
     * the wind file's `reference_level_pressure_Pa` is not a node of its pressure grid;
@@ -490,7 +416,7 @@ def load_reduction_inputs(manifest: ReductionManifest) -> ReductionInputs:
             raise ControlFileError(f"{manifest.path}: [inputs] {key} names {path.name}, which "
                                    "does not exist.")
         dataset = _load_into_memory(path, kind)
-        commit = _refuse_dirty_commit(path, dataset.attrs, "refrac")
+        commit = str(dataset.attrs.get("casspian_git_commit", ""))
         loaded[key], hashes[key], commits[key] = dataset, cio.sha256(path), commit
 
     wind, rotation = loaded["wind"], loaded["rotation"]
@@ -571,12 +497,9 @@ RUN_INPUT_KINDS = MappingProxyType({
     "wind": "wind",
 })
 
-#: The modes of SPEC_00 section 7.2 and the ones implemented: closure by SPEC_03 Step 3,
-#: transfer by SPEC_04 Step 0.
+#: The modes of SPEC_00 section 7.2: closure by SPEC_03 Step 3, transfer by SPEC_04 Step 0.
 _RUN_MODES = ("closure", "transfer")
-_RUN_MODES_IMPLEMENTED = ("closure", "transfer")
 _P_B_RULES = ("anchor_profile_top",)
-_P_B_LOCATIONS = ("top_of_anchor_profile",)
 
 #: SPEC_00 section 7.2 sections and keys that belong to a later specification in closure mode,
 #: refused as not implemented rather than as unknown, so that a namelist written for one mode
@@ -636,7 +559,6 @@ _RUN_VOCABULARY = {
     "hydrostatic_boundary": (True, {
         "p_b_rule": (_TEXT, False),
         "p_b_Pa": (_NUMBER, False),
-        "p_b_location": (_TEXT, True),
     }),
     "isobars": (True, {"gauge_isobar_Pa": (_NUMBER, True)}),
     "output": (True, {"directory": (_TEXT, True), "product": (_TEXT, True)}),
@@ -652,18 +574,6 @@ _ANCHOR_KEYS = {
     "weight": (_NUMBER, True),
     "measurement_uncertainty_scale": (_NUMBER, True),
 }
-
-#: SPEC_03 v0.10 Step 3 deliverable 2 (section 8 ruling 2): what the closure comparison drops
-#: before comparing. The writer globals, the naming and role attributes, and every provenance
-#: attribute that carries a path or a hash of another file; any other attribute whose value
-#: contains `sha256:` is dropped as well.
-CLOSURE_DROPPED_ATTRIBUTES = frozenset({
-    "created_by", "created_at", "casspian_git_commit", "casspian_version", "history",
-    "title", "profile_or_run", "role", "composition_role",
-    "input_hashes", "control_file", "raw_bundle", "raw_sources", "master_table",
-    "master_table_hash", "latitude_conversion_inputs", "decomposition_geometry",
-})
-
 
 @dataclass(frozen=True)
 class RunAnchor:
@@ -702,7 +612,6 @@ class RunNamelist:
     inputs: MappingProxyType
     p_b_rule: object
     p_b_Pa: object
-    p_b_location: str
     gauge_isobar_Pa: float
     output_directory: Path
     product: Path
@@ -809,18 +718,17 @@ def read_run_namelist(path) -> RunNamelist:
     """Parse and check `<run>.toml` against SPEC_00 section 7.2 in the mode it declares.
 
     SPEC_03 Step 3 deliverable 2 and SPEC_04 Step 0 deliverable 4. Refuses: invalid TOML; a
-    mode that is not one of SPEC_00 section 7.2's or is not implemented; in closure mode
-    `[grid]`, `[numerics]`, `[estimation]`, `datum_isobar_Pa` or `[target]`; in transfer mode a
-    `[numerics]` table that is unknown, missing, or names a rule SPEC_03 closed, and a scheme
-    that is not implemented; an unknown section or key, as a physical value where it names a
-    quantity with a unit; a geodesy key; a missing required section or key; other than exactly
-    one `[[anchors]]` entry in closure mode; an anchor `weight` that is neither 1 nor 0; not
-    exactly one of `p_b_rule` and `p_b_Pa`, `p_b_Pa` in closure mode, or a rule or location
-    other than the accepted ones; a gauge latitude rule that is not implemented; a grid spacing
-    that is not positive or a range that is not two increasing values; an input path outside
-    `inputs/` of the run directory or without the run prefix; an output directory outside the
-    run directory or a product without the prefix; a namelist file not named for its run; a
-    season outside [0, 360) degrees; a date that is not an ISO 8601 date.
+    mode that is not one of SPEC_00 section 7.2's; in closure mode `[grid]`, `[numerics]`,
+    `[estimation]`, `datum_isobar_Pa` or `[target]`; in transfer mode a `[numerics]` table that
+    is unknown, missing, or names a rule SPEC_03 closed, and a scheme that is not implemented;
+    an unknown section or key, as a physical value where it names a quantity with a unit; a
+    geodesy key; a missing required section or key; other than exactly one `[[anchors]]` entry
+    in closure mode; an anchor `weight` that is neither 1 nor 0; not exactly one of `p_b_rule`
+    and `p_b_Pa`, `p_b_Pa` in closure mode, or a rule other than the accepted ones; a gauge
+    latitude rule that is not implemented; a grid spacing that is not positive; an output
+    directory or product outside the run directory, since a run writes only inside its own
+    directory (SPEC_R1 section 2); a season outside [0, 360) degrees; a date that is not an ISO
+    8601 date. Input paths may point anywhere, under any name (SPEC_R1).
     """
     path = Path(path).resolve()
     if not path.exists():
@@ -839,11 +747,6 @@ def read_run_namelist(path) -> RunNamelist:
     if mode not in _RUN_MODES:
         raise ControlFileError(
             f"{path}: [run] mode = {mode!r}; SPEC_00 section 7.2 defines {list(_RUN_MODES)}."
-        )
-    if mode not in _RUN_MODES_IMPLEMENTED:
-        raise ControlFileError(
-            f"{path}: [run] mode = {mode!r} is not implemented in this specification (SPEC_03 "
-            "implements closure; SPEC_04 adds transfer)."
         )
     transfer = mode == "transfer"
     if not transfer:
@@ -914,11 +817,6 @@ def read_run_namelist(path) -> RunNamelist:
             )
 
     name = run["name"]
-    if path.stem != name:
-        raise ControlFileError(
-            f"{path}: the namelist of run {name!r} is {name}.toml (SPEC_00 section 7.2); this "
-            f"file is {path.name}."
-        )
     season = float(run["solar_longitude_deg"])
     if not 0.0 <= season < 360.0:
         raise ControlFileError(
@@ -954,11 +852,6 @@ def read_run_namelist(path) -> RunNamelist:
         )
     if has_value:
         _check_positive(path, "hydrostatic_boundary", "p_b_Pa", boundary["p_b_Pa"])
-    if boundary["p_b_location"] not in _P_B_LOCATIONS:
-        raise ControlFileError(
-            f"{path}: [hydrostatic_boundary] p_b_location = {boundary['p_b_location']!r}; the "
-            f"only value accepted is {_P_B_LOCATIONS[0]!r} (SPEC_00 section 7.2)."
-        )
     gauge = document["isobars"]["gauge_isobar_Pa"]
     _check_positive(path, "isobars", "gauge_isobar_Pa", gauge)
 
@@ -1010,25 +903,8 @@ def read_run_namelist(path) -> RunNamelist:
     diagnostics = _check_optional_sections(path, document)
 
     run_directory = path.parent
-    inputs_directory = run_directory / "inputs"
-
-    def run_input(key: str) -> Path:
-        value = document["inputs"][key]
-        resolved = (run_directory / value).resolve()
-        if resolved.parent != inputs_directory:
-            raise ControlFileError(
-                f"{path}: [inputs] {key} = {value!r} resolves to {resolved}, not a file in the "
-                "run's inputs/ directory. SPEC_00 section 8 refuses a namelist pointing outside "
-                "its own directory to anything but a kind N file."
-            )
-        if not resolved.name.startswith(f"{name}_"):
-            raise ControlFileError(
-                f"{path}: [inputs] {key} = {value!r} does not carry the run prefix '{name}_' "
-                "(SPEC_00 section 8)."
-            )
-        return resolved
-
-    inputs = MappingProxyType({key: run_input(key) for key in RUN_INPUT_KINDS})
+    inputs = MappingProxyType({key: (run_directory / document["inputs"][key]).resolve()
+                               for key in RUN_INPUT_KINDS})
     anchors = tuple(
         RunAnchor(slug=e["slug"], path=(run_directory / e["path"]).resolve(),
                   weight=float(e["weight"]),
@@ -1044,10 +920,10 @@ def read_run_namelist(path) -> RunNamelist:
         )
     product_name = document["output"]["product"]
     product = (output_directory / product_name).resolve()
-    if product.parent != output_directory or not product.name.startswith(f"{name}_"):
+    if product.parent != output_directory:
         raise ControlFileError(
             f"{path}: [output] product = {product_name!r} must be a file name in the output "
-            f"directory carrying the run prefix '{name}_' (SPEC_00 section 8)."
+            "directory; a run writes only inside its own run directory (SPEC_R1 section 2)."
         )
 
     return RunNamelist(
@@ -1064,7 +940,6 @@ def read_run_namelist(path) -> RunNamelist:
         inputs=inputs,
         p_b_rule=boundary.get("p_b_rule"),
         p_b_Pa=float(boundary["p_b_Pa"]) if has_value else None,
-        p_b_location=boundary["p_b_location"],
         gauge_isobar_Pa=float(gauge),
         output_directory=output_directory,
         product=product,
@@ -1078,18 +953,8 @@ def read_run_namelist(path) -> RunNamelist:
 
 
 # ---------------------------------------------------------------------------
-# The run's inputs and the closure comparison, SPEC_03 Step 3 deliverable 2
+# The run's inputs, SPEC_03 Step 3 deliverable 2
 # ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class ClosureComparison:
-    """One run input against the anchor's embedded copy of the same kind."""
-
-    kind: str
-    identical: bool
-    differences: tuple
-    dropped: MappingProxyType
 
 
 @dataclass(frozen=True)
@@ -1148,7 +1013,6 @@ class RunInputs:
     sha256: MappingProxyType
     commits: MappingProxyType
     gauge_level_index: int
-    closure: tuple
     #: SPEC_04 Step 0 deliverable 6: one `LoadedAnchor` per `[[anchors]]` entry, in the
     #: namelist's order. Empty in closure mode, which reads the anchor through `anchor`.
     anchors: tuple = ()
@@ -1157,146 +1021,22 @@ class RunInputs:
     seasons: MappingProxyType = MappingProxyType({})
 
 
-def _nodes(obj) -> dict:
-    """`{group path relative to obj: Dataset}` for a Dataset, a DataTree, or a subtree."""
-    if isinstance(obj, xr.DataTree):
-        base = obj.path.rstrip("/")
-        out = {}
-        for node in obj.subtree:
-            relative = node.path[len(base):] if base else node.path
-            out[relative or "/"] = node.to_dataset(inherit=False)
-        return out
-    return {"/": obj}
-
-
-def _dropped_names(attrs) -> list:
-    return sorted(k for k, v in attrs.items()
-                  if k in CLOSURE_DROPPED_ATTRIBUTES or "sha256:" in str(v))
-
-
-def _strip(dataset):
-    """A copy without the dropped attributes, on the group and its variables, and the names."""
-    dropped = _dropped_names(dataset.attrs)
-    out = dataset.copy()
-    out.attrs = {k: v for k, v in dataset.attrs.items() if k not in dropped}
-    for name in list(out.variables):
-        removed = _dropped_names(out[name].attrs)
-        if removed:
-            dropped.extend(f"{name}.{k}" for k in removed)
-            out[name].attrs = {k: v for k, v in out[name].attrs.items() if k not in removed}
-    return out, tuple(dropped)
-
-
-def _same_value(a, b) -> bool:
-    a_arr, b_arr = np.asarray(a), np.asarray(b)
-    if a_arr.shape != b_arr.shape:
-        return False
-    if a_arr.dtype.kind in "fc" and b_arr.dtype.kind in "fc":
-        return bool(np.array_equal(a_arr, b_arr, equal_nan=True))
-    return bool(np.all(a_arr == b_arr))
-
-
-def _differences(run, anchor, where: str) -> list:
-    out = []
-    run_vars, anchor_vars = set(run.variables), set(anchor.variables)
-    if run_vars != anchor_vars:
-        out.append(f"{where}: variables only in the run's file {sorted(run_vars - anchor_vars)}, "
-                   f"only in the anchor's copy {sorted(anchor_vars - run_vars)}")
-    for name in sorted(run_vars & anchor_vars):
-        x, y = run[name], anchor[name]
-        if x.dims != y.dims or not _same_value(x.values, y.values):
-            out.append(f"{where}: variable {name} differs in its values")
-            continue
-        keys = set(x.attrs) | set(y.attrs)
-        bad = sorted(k for k in keys if k not in x.attrs or k not in y.attrs
-                     or not _same_value(x.attrs[k], y.attrs[k]))
-        if bad:
-            out.append(f"{where}: variable {name} differs in the attributes {bad}")
-    keys = set(run.attrs) | set(anchor.attrs)
-    bad = sorted(k for k in keys if k not in run.attrs or k not in anchor.attrs
-                 or not _same_value(run.attrs[k], anchor.attrs[k]))
-    if bad:
-        out.append(f"{where}: the attributes {bad} differ")
-    return out
-
-
-def check_closure_inputs(inputs: dict, anchor_tree) -> tuple:
-    """Compare each run input with the anchor's embedded copy of its kind, root and every group.
-
-    SPEC_03 v0.10 Step 3 deliverable 2. Both sides lose `CLOSURE_DROPPED_ATTRIBUTES` and any
-    attribute whose value contains `sha256:`, on the group and on its variables; what is left must
-    be identical (`xarray.Dataset.identical`). Returns one `ClosureComparison` per kind, carrying
-    every difference found and the attributes dropped from the run's file, per group.
-    """
-    results = []
-    for key in RUN_INPUT_KINDS:
-        run_nodes = _nodes(inputs[key])
-        anchor_nodes = _nodes(anchor_tree[f"inputs/{key}"])
-        differences, dropped = [], {}
-        if set(run_nodes) != set(anchor_nodes):
-            differences.append(
-                f"{key}: groups only in the run's file {sorted(set(run_nodes) - set(anchor_nodes))}, "
-                f"only in the anchor's copy {sorted(set(anchor_nodes) - set(run_nodes))}")
-        for group in sorted(set(run_nodes) & set(anchor_nodes)):
-            run_ds, run_dropped = _strip(run_nodes[group])
-            anchor_ds, _ = _strip(anchor_nodes[group])
-            dropped[group] = run_dropped
-            if not run_ds.identical(anchor_ds):
-                found = _differences(run_ds, anchor_ds, f"{key} {group}")
-                differences.extend(found or [f"{key} {group}: not identical"])
-        results.append(ClosureComparison(kind=key, identical=not differences,
-                                         differences=tuple(differences),
-                                         dropped=MappingProxyType(dropped)))
-    return tuple(results)
-
-
-def _refuse_dirty_commit(path: Path, attrs, consumer: str, what: str | None = None) -> str:
-    """Refuse a file whose `casspian_git_commit` ends in `-dirty`, and return the commit.
-
-    SPEC_00 section 8. The one place `refrac` and `forward` make this refusal, so that a step
-    that must rebuild an input file on a working tree has one point to relax, inside its
-    acceptance script and named in its output (SPEC_03 section 0, the author's ruling of 14
-    September 2026). The two message forms are unchanged: `forward` names the role the file
-    plays in the run, `refrac` names the file alone.
-    """
-    commit = str(attrs.get("casspian_git_commit", ""))
-    if commit.endswith("-dirty"):
-        where = path.name if what is None else f"{path.name} ({what})"
-        raise ControlFileError(
-            f"{where} carries casspian_git_commit = {commit!r}. SPEC_00 section 8: a file "
-            f"offered as an input to {consumer} may not carry -dirty. Rebuild it from a "
-            "committed tree."
-        )
-    return commit
-
-
-def _refuse_dirty(path: Path, attrs, what: str) -> str:
-    return _refuse_dirty_commit(path, attrs, "forward", what)
-
-
 def load_run_inputs(namelist: RunNamelist) -> RunInputs:
     """Read the anchor and the four inputs of a run under their kinds, and check them.
 
     SPEC_03 Step 3 deliverable 2 and SPEC_04 Step 0 deliverable 5. Every check runs before any
-    arithmetic. Refuses when: a file does not exist or is not of its kind; an anchor or an input
-    carries `-dirty`; an anchor's `profile_or_run` is not its `[[anchors]]` slug; an input does
-    not carry the run name in `profile_or_run`, or `role = "forward"`, or (kind C)
-    `composition_role = "forward"`; the wind's rotation system or rate differs from the run's
-    kind R; the wind carries no `u_total_ms` or its poles are not zero; the wind's
-    coverage does not span the anchors' levels and latitudes. In closure mode, also when: the
-    run's season differs from the anchor's; the composition's levels are not the anchor's; the
-    gauge isobar is not a tabulated level of the anchor (the nearest level named); an input
-    differs from the anchor's embedded copy. In transfer mode, also when: the wind's latitude
-    coverage excludes the target; the composition does not cover every anchor and the target;
-    the wind or the composition carries neither the run's season nor `uniform`; an anchor does
-    not carry `radius_m` as its coordinate; the gauge isobar is not a tabulated level of every
-    anchor. A season mismatch between an anchor and the run is recorded, not refused
-    (SPEC_04 decision I).
+    arithmetic. Refuses when: a file does not exist or is not of its kind; the wind's rotation
+    system or rate differs from the run's kind R; the wind carries no `u_total_ms` or its poles
+    are not zero. In closure mode, also when: the wind's coverage does not span the anchor's
+    levels and latitude; the composition's levels are not the anchor's; the gauge isobar is not a
+    tabulated level of the anchor (the nearest level named). In transfer mode, also when: the
+    gauge isobar is not a tabulated level of every anchor. Coverage in transfer mode is the
+    interpolants' to refuse. A season mismatch between an anchor and the run is recorded, not
+    refused (SPEC_04 decision I). Names, labels, the `-dirty` mark, the closure season and the
+    inputs' content against the anchor's embedded copies are not checked (SPEC_R1).
     """
     if namelist.mode == "transfer":
         return _load_transfer_inputs(namelist)
-    if namelist.mode != "closure":
-        raise ControlFileError(f"{namelist.path}: mode {namelist.mode!r} is not implemented.")
     hashes, commits = {}, {}
     entry = namelist.anchors[0]
     if not entry.path.exists():
@@ -1304,42 +1044,9 @@ def load_run_inputs(namelist: RunNamelist) -> RunInputs:
             f"{namelist.path}: [[anchors]] path names {entry.path}, which does not exist."
         )
     anchor = _load_into_memory(entry.path, "refractivity")
-    commits["anchor"] = _refuse_dirty(entry.path, anchor.attrs, "anchor")
+    commits["anchor"] = str(anchor.attrs.get("casspian_git_commit", ""))
     hashes["anchor"] = cio.sha256(entry.path)
-    slug = str(anchor.attrs.get("profile_or_run", ""))
-    if slug != entry.slug:
-        raise ControlFileError(
-            f"{namelist.path}: [[anchors]] slug = {entry.slug!r} but {entry.path.name} carries "
-            f"profile_or_run = {slug!r} (SPEC_00 section 7.2)."
-        )
-
-    loaded = {}
-    for key, kind in RUN_INPUT_KINDS.items():
-        path = namelist.inputs[key]
-        if not path.exists():
-            raise ControlFileError(
-                f"{namelist.path}: [inputs] {key} names {path.name}, which does not exist."
-            )
-        dataset = _load_into_memory(path, kind)
-        commits[key] = _refuse_dirty(path, dataset.attrs, f"run input {key}")
-        hashes[key] = cio.sha256(path)
-        attrs = dataset.attrs
-        if str(attrs.get("profile_or_run")) != namelist.name:
-            raise ControlFileError(
-                f"{path.name} carries profile_or_run = {attrs.get('profile_or_run')!r}; a run's "
-                f"input carries the run prefix {namelist.name!r} (SPEC_00 section 8)."
-            )
-        if attrs.get("role") != "forward":
-            raise ControlFileError(
-                f"{path.name} carries role = {attrs.get('role')!r}; a run's input is role "
-                "'forward' (SPEC_03 Step 3 deliverable 2)."
-            )
-        if kind == "composition" and attrs.get("composition_role") != "forward":
-            raise ControlFileError(
-                f"{path.name} carries composition_role = {attrs.get('composition_role')!r}; a "
-                "run's composition is 'forward' (SPEC_00 section 6.2)."
-            )
-        loaded[key] = dataset
+    loaded = _load_run_input_files(namelist, hashes, commits)
 
     wind, rotation = loaded["wind"], loaded["rotation"]
     wind_name = str(wind.attrs["rotation_system_name"])
@@ -1371,14 +1078,6 @@ def load_run_inputs(namelist: RunNamelist) -> RunInputs:
             f"the anchor's phi_c = {phi_c!r} deg (SPEC_00 section 6.6)."
         )
 
-    anchor_season = anchor.attrs.get("solar_longitude_deg")
-    if anchor_season is None or float(anchor_season) != namelist.solar_longitude_deg:
-        raise ControlFileError(
-            f"{namelist.path.name}: [run] solar_longitude_deg = {namelist.solar_longitude_deg!r} "
-            f"but the anchor {entry.path.name} is at {anchor_season!r}; not a closure. In closure "
-            "mode the run's season equals the anchor's exactly: a closure at another season is "
-            "not a closure (SPEC_00 section 7.2 v0.17)."
-        )
     composition_levels = np.asarray(loaded["composition"].dataset["pressure_Pa"].values,
                                     dtype="float64")
     if not np.array_equal(composition_levels, levels):
@@ -1396,25 +1095,29 @@ def load_run_inputs(namelist: RunNamelist) -> RunInputs:
             "(SPEC_03 Step 1)."
         )
 
-    closure = check_closure_inputs(loaded, anchor)
-    failing = [c for c in closure if not c.identical]
-    if failing:
-        first = failing[0]
-        raise ControlFileError(
-            f"the run's {first.kind} input is not content-identical to the anchor's embedded "
-            f"copy, so this is not a closure (SPEC_03 Step 3 deliverable 2). First difference: "
-            f"{first.differences[0]}. All differences: {'; '.join(first.differences)}."
-        )
-
     return RunInputs(
         namelist=namelist,
         anchor=anchor,
         sha256=MappingProxyType(hashes),
         commits=MappingProxyType(commits),
         gauge_level_index=int(match[0]),
-        closure=closure,
         **loaded,
     )
+
+
+def _load_run_input_files(namelist: RunNamelist, hashes: dict, commits: dict) -> dict:
+    """The four run inputs read under their kinds, with their hashes and commits recorded."""
+    loaded = {}
+    for key, kind in RUN_INPUT_KINDS.items():
+        path = namelist.inputs[key]
+        if not path.exists():
+            raise ControlFileError(
+                f"{namelist.path}: [inputs] {key} names {path.name}, which does not exist."
+            )
+        loaded[key] = _load_into_memory(path, kind)
+        commits[key] = str(loaded[key].attrs.get("casspian_git_commit", ""))
+        hashes[key] = cio.sha256(path)
+    return loaded
 
 
 # ---------------------------------------------------------------------------
@@ -1503,44 +1206,11 @@ def _load_transfer_inputs(namelist: RunNamelist) -> RunInputs:
                 f"{namelist.path}: [[anchors]] path names {entry.path}, which does not exist."
             )
         tree = _load_into_memory(entry.path, "refractivity")
-        commits[f"anchor:{entry.slug}"] = _refuse_dirty(entry.path, tree.attrs,
-                                                        f"anchor {entry.slug}")
+        commits[f"anchor:{entry.slug}"] = str(tree.attrs.get("casspian_git_commit", ""))
         hashes[f"anchor:{entry.slug}"] = cio.sha256(entry.path)
-        slug = str(tree.attrs.get("profile_or_run", ""))
-        if slug != entry.slug:
-            raise ControlFileError(
-                f"{namelist.path}: [[anchors]] slug = {entry.slug!r} but {entry.path.name} "
-                f"carries profile_or_run = {slug!r} (SPEC_00 section 7.2)."
-            )
         anchors.append(_load_anchor_object(entry, namelist, tree))
 
-    loaded = {}
-    for key, kind in RUN_INPUT_KINDS.items():
-        path = namelist.inputs[key]
-        if not path.exists():
-            raise ControlFileError(
-                f"{namelist.path}: [inputs] {key} names {path.name}, which does not exist."
-            )
-        dataset = _load_into_memory(path, kind)
-        commits[key] = _refuse_dirty(path, dataset.attrs, f"run input {key}")
-        hashes[key] = cio.sha256(path)
-        attrs = dataset.attrs
-        if str(attrs.get("profile_or_run")) != namelist.name:
-            raise ControlFileError(
-                f"{path.name} carries profile_or_run = {attrs.get('profile_or_run')!r}; a run's "
-                f"input carries the run prefix {namelist.name!r} (SPEC_00 section 8)."
-            )
-        if attrs.get("role") != "forward":
-            raise ControlFileError(
-                f"{path.name} carries role = {attrs.get('role')!r}; a run's input is role "
-                "'forward' (SPEC_03 Step 3 deliverable 2)."
-            )
-        if kind == "composition" and attrs.get("composition_role") != "forward":
-            raise ControlFileError(
-                f"{path.name} carries composition_role = {attrs.get('composition_role')!r}; a "
-                "run's composition is 'forward' (SPEC_00 section 6.2)."
-            )
-        loaded[key] = dataset
+    loaded = _load_run_input_files(namelist, hashes, commits)
 
     wind, rotation = loaded["wind"], loaded["rotation"]
     wind_name = str(wind.attrs["rotation_system_name"])
@@ -1574,7 +1244,6 @@ def _load_transfer_inputs(namelist: RunNamelist) -> RunInputs:
         sha256=MappingProxyType(hashes),
         commits=MappingProxyType(commits),
         gauge_level_index=anchors[0].gauge_level_index,
-        closure=(),
         anchors=tuple(anchors),
         seasons=MappingProxyType(seasons),
         **loaded,

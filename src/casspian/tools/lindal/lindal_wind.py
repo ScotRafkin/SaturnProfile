@@ -314,8 +314,6 @@ def _dataset(cloud, u, u_ref, pressure, levels, above, gradient="slope", window=
         "source": f"{cloud.attrs.get('source', '')}; shear from Conrath, B. J., and Pirraglia, J. A. "
                   "1983, Icarus 53, 286, Fig. 1, digitized (SPEC_09) and fitted (SPEC_10)",
         "observation_level_Pa": REFERENCE_PRESSURE_Pa,
-        "observation_level_justification": "the cloud wind is assigned to 398 mbar, where the "
-                                           "IRIS-derived shear is taken to be zero (SPEC_11 Step 1)",
         "coverage_pressure_Pa": np.array([pressure.min(), pressure.max()]),
     })
     return out

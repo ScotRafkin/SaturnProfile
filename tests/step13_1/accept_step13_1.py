@@ -39,10 +39,12 @@ def record(number, description, passed, detail):
         print(f"        {line}")
 
 
-#: The attributes a wind no longer carries (SPEC_13 v0.5 section 2a item 3, SPEC_00 v0.24): present in
-#: a file built before, absent from one built now, and allowed to be.
+#: The attributes a wind no longer carries (SPEC_13 v0.5 section 2a item 3, SPEC_00 v0.24; SPEC_R1
+#: section 2 for `profile_or_run` and `role`): present in a file built before, absent from one built
+#: now, and allowed to be.
 DROPPED = {"epoch_note", "observation_level_justification", "solar_longitude_source",
-           "source_latitude_convention_source", "reference_level_pressure_Pa.value_source"}
+           "source_latitude_convention_source", "reference_level_pressure_Pa.value_source",
+           "profile_or_run", "role"}
 
 
 def identical(a, b, global_attributes=True, dropped=frozenset()):

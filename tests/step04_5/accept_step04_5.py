@@ -18,11 +18,8 @@ product's**, not with the anchor's tabulated column: the closure residual is 3.3
 and the interim report section 3, accepted at section 17). The registered closure product is read,
 never rewritten; check 11 rebuilds it in a run directory of its own.
 
-**What is relaxed.** The synthetic 60 N anchor of run 5 is written by this script on a working tree
-that is not clean, so its `casspian_git_commit` ends in `-dirty` and `lib.control` refuses it. The
-refusal is relaxed in this process only, at the one point `_refuse_dirty_commit`, and the
-relaxation is named in run 5's output. Nothing in the code changes and no registered input is
-touched.
+**The synthetic 60 N anchor** of run 5 is written by this script; its commit is named in run 5's
+output. SPEC_R1 removed the `-dirty` refusal, and the in-process relaxation went with it. No registered input is touched.
 
 **The spacings.** This suite is pinned to 0.05 degrees by 50,000 m2/s2, the spacings SPEC_04
 section 7's expected values are stated at, and asserts that the production namelist still carries
@@ -595,9 +592,6 @@ else:
            + "\n".join(identity_lines(produced4)))
 
 # Run 5's state: the synthetic 60 N anchor written on the M = 2 run's own mesh (ruling 1)
-_original_refuse = ctl._refuse_dirty_commit
-ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-    attrs.get("casspian_git_commit", ""))
 
 M2_NAMELIST = """# Written by the SPEC_04 Step 5 acceptance. The transfer namelist with a second
 # anchor, the synthetic 60 N profile the closure-wind run produced (decision M), carried through
@@ -630,7 +624,6 @@ wind        = "inputs/lindal_transfer_wind.nc"
 
 [hydrostatic_boundary]
 p_b_rule     = "anchor_profile_top"
-p_b_location = "top_of_anchor_profile"
 
 [isobars]
 gauge_isobar_Pa = 1.0e4
@@ -799,8 +792,8 @@ record(6, "run 5, the M = 2 run of Step 4 carried through production: its produc
        (d_N5 <= 1e-5 and d_p5 <= 1e-5 and d_T5 <= 1e-5 and d_alt5 <= 5.0
         and anchor_groups5 == ["lindal", "synthetic60"] and len(differences5) == 1),
        f"the two anchors are the Lindal profile and a synthetic 60 N anchor written from this "
-       f"run's own mesh (section 15 ruling 1), read back through the kind N reader with the "
-       f"-dirty refusal relaxed in this process only: its commit is {synthetic_commit}\n"
+       f"run's own mesh (section 15 ruling 1), read back through the kind N reader: its commit "
+       f"is {synthetic_commit}\n"
        f"at {spacings()}, mesh {run5.state.mesh.shape[0]} by {run5.state.mesh.shape[1]} built "
        f"before anything was traced, gauge latitude {math.degrees(phi_r2):.6f} degrees, outer loop "
        f"{run5.state.record['passes']} passes, residual "
@@ -1032,7 +1025,6 @@ else:
            + f"\nthis is the safety property of the step and it should be checked again after any "
            f"change to forward/production.py")
 
-ctl._refuse_dirty_commit = _original_refuse
 write_output()
 passed = sum(1 for _, _, ok, _ in results if ok)
 print(f"\n{passed} of {len(results)} checks pass. "

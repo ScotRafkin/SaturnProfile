@@ -5,9 +5,12 @@ and F6, and the input_hashes warning for every derived kind.
 Every check prints its measured value; checks beyond the specification are labeled so. The chain
 was rebuilt in the working tree and the candidate kind N built in memory by `rebuild.sh` and
 `build_candidate.py` (SPEC_03 v0.6 section 0); the run's inputs were written by
-`casspian-run-inputs`. The `-dirty` refusal is relaxed in this process by `relaxed.py` and named in
-the output; the one case that tests the refusal itself turns the relaxation off. Nothing under
-`occul_data/` or `forward/` is written by this script.
+`casspian-run-inputs`. Nothing under `occul_data/` or `forward/` is written by this script.
+
+SPEC_R1 retired checks 2 (the season present and the epoch an ISO date), 5 (role), 9 (the closure
+content comparison), five of the thirteen refusal cases of check 12 (slug, -dirty, run prefix, the
+composition edit the comparison caught, the closure season), the companion case of check 13 and
+the role case of check 10; `relaxed.py` went with the -dirty refusal.
 """
 
 import math
@@ -18,9 +21,6 @@ import subprocess
 import sys
 import warnings
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import relaxed  # noqa: E402
 
 import netCDF4  # noqa: E402
 import numpy as np  # noqa: E402
@@ -72,7 +72,6 @@ FILES = ([(D / n, k) for n, k in REDUCTION] + [(CANDIDATE, "refractivity")]
          + [(RUN / n, k) for n, k in RUN_INPUTS])
 EXPECT_SEASON = {"raw": 18.2, "thermo": 18.2, "geodesy": 18.2, "wind": 18.2, "refractivity": 18.2,
                  "gravity": "uniform", "rotation": "uniform", "composition": "uniform"}
-print(f"relaxation: -dirty refusal relaxed in this process ({relaxed.MARK})\n")
 
 # ---------------------------------------------------------------------------
 # 1. Every product and every run input validates with the season attributes
@@ -100,34 +99,6 @@ record(1, "every product of the rebuilt chain, the candidate kind N and every ru
           "with the season attributes, every one dated 1981-08-26 (SPEC_03 v0.12)", ok, "\n".join(lines))
 
 # ---------------------------------------------------------------------------
-# 2. Neither and both are refused
-# ---------------------------------------------------------------------------
-cases = fresh(HERE / "season_cases")
-neither, both = cases / "lindal_rotation_neither.nc", cases / "lindal_rotation_both.nc"
-shutil.copy2(D / "lindal_rotation.nc", neither)
-shutil.copy2(D / "lindal_rotation.nc", both)
-with netCDF4.Dataset(neither, "a") as h:
-    h.delncattr("season_absent_meaning")
-with netCDF4.Dataset(both, "a") as h:
-    h.setncattr("solar_longitude_deg", 18.2)
-    h.setncattr("solar_longitude_source", "acceptance edit")
-prose = cases / "lindal_rotation_prose_epoch.nc"
-shutil.copy2(D / "lindal_rotation.nc", prose)
-with netCDF4.Dataset(prose, "a") as h:
-    h.setncattr("epoch", "Voyager 1 and 2, 1980 to 1981")
-lines, ok = [], True
-for label, path in (("neither", neither), ("both", both),
-                    ("an epoch that is not an ISO date (SPEC_03 v0.11)", prose)):
-    try:
-        cio.read(path, "rotation").close()
-        ok = False
-        lines.append(f"{label}: not refused")
-    except CasspianSchemaError as exc:
-        lines.append(f"{label}: {exc}")
-record(2, "a copy with neither solar_longitude_deg nor season_absent_meaning, a copy with both, and "
-          "a copy whose epoch is not an ISO date are each refused", ok, "\n".join(lines))
-
-# ---------------------------------------------------------------------------
 # 3. Kind N's season equals kind T's; 4. the transcribed pair satisfies sin(d) = sin(e) sin(Ls)
 # ---------------------------------------------------------------------------
 t = cio.read(D / "lindal_thermo.nc", "thermo")
@@ -151,34 +122,6 @@ record(4, "the transcribed pair satisfies sin(delta_s) = sin(26.73 deg) sin(Ls) 
        f"{float(source['solar_longitude_deg'])}, {float(source['subsolar_latitude_deg'])})\n"
        f"asin(sin 26.73 sin {ls}) = {implied:.4f} deg; difference {implied - delta:+.4f} deg\n"
        f"epoch {source['observation_date']!r}; source {str(source['solar_longitude_source'])[:120]}...")
-
-# ---------------------------------------------------------------------------
-# 5. role from the build file: reduction products, forward inputs, a section without role refused
-# ---------------------------------------------------------------------------
-lines, ok = [], True
-for path, kind in FILES:
-    handle = cio.read(path, kind)
-    role, crole = handle.attrs.get("role"), handle.attrs.get("composition_role")
-    handle.close()
-    want = "forward" if "forward" in path.as_posix() else "reduction"
-    good = role == want and (crole is None or crole == want)
-    ok = ok and good
-    lines.append(f"{path.name:36s} role {role!r}" + (f", composition_role {crole!r}" if crole else "")
-                 + ("" if good else f"  <-- expected {want!r}"))
-no_role = fresh(HERE / "role_case") / "lindal_build.toml"
-text = (D / "lindal_build.toml").read_text(encoding="utf-8")
-assert text.count('role   = "reduction"   # SPEC_01 v0.26: required in every section\n') == 1
-no_role.write_text(text.replace('role   = "reduction"   # SPEC_01 v0.26: required in every section\n', ""),
-                   encoding="utf-8")
-try:
-    build_gravity.build(no_role, "gravity")
-    ok = False
-    lines.append("a [gravity] section without role: not refused")
-except ctl.ControlFileError as exc:
-    ok = ok and "role" in str(exc)
-    lines.append(f"a [gravity] section without role: {exc}")
-record(5, "beyond the specification: role written from the build file, and a section without role "
-          "refused (section 8 ruling 1)", ok, "\n".join(lines))
 
 # ---------------------------------------------------------------------------
 # 6. Every path-bearing attribute is relative: no drive letter, no leading slash
@@ -255,15 +198,19 @@ def warnings_on_read(path):
 
 w_beside, w_alone = warnings_on_read(edited), warnings_on_read(alone)
 w_clean = warnings_on_read(D / "lindal_thermo.nc")
+# SPEC_R1 section 2 ruling 2 took `role` out of lindal_build.toml, whose hash the registered kind T
+# records; the in-place T warns for that entry, as the rule means it to, and for nothing else.
+w_other = [w for w in w_clean if "input_hashes entry lindal_build.toml " not in w]
 record(7, "a kind T copy whose recorded raw bundle hash is edited warns with the bundle beside it at "
           "the recorded relative path, and reads silently alone",
-       len(w_beside) == 1 and not w_alone and not w_clean,
+       len(w_beside) == 1 and not w_alone and not w_other,
        f"beside ({beside.as_posix()}, raw/ holding the bundle): {w_beside}\n"
        f"alone ({alone.parent.as_posix()}): {w_alone or 'silent'}\n"
-       f"beyond the specification, the unedited kind T in place: {w_clean or 'silent'}")
+       f"beyond the specification, the unedited kind T in place: {w_clean or 'silent'}; "
+       f"other than the build file SPEC_R1 edited: {w_other or 'silent'}")
 
 # ---------------------------------------------------------------------------
-# 8. The run's four inputs; 9. content-identical to the anchor's embedded copies
+# 8. The run's four inputs
 # ---------------------------------------------------------------------------
 lines, ok = [], True
 loaded = {}
@@ -275,44 +222,28 @@ for name, kind in RUN_INPUTS:
     handle.close()
     reduction = D / name.replace("inputs/", "").replace("lindal_closure_", "lindal_")
     h_run, h_red = cio.sha256(path), cio.sha256(reduction)
-    good = (attrs["profile_or_run"] == "lindal_closure" and attrs["role"] == "forward"
-            and path.name.startswith("lindal_closure_") and h_run != h_red
-            and (kind != "composition" or attrs["composition_role"] == "forward"))
+    good = h_run != h_red
     ok = ok and good
-    lines.append(f"{path.name:36s} kind {kind:11s} profile_or_run {attrs['profile_or_run']!r}, role "
-                 f"{attrs['role']!r}; sha256 {h_run[:16]}... against the reduction's {reduction.name} "
-                 f"{h_red[:16]}... differ {h_run != h_red}")
-record(8, "casspian-run-inputs wrote the four inputs, each validating under its kind with the run "
-          "prefix and role forward, their hashes differing from the reduction's", ok,
+    lines.append(f"{path.name:36s} kind {kind:11s}; sha256 {h_run[:16]}... against the reduction's "
+                 f"{reduction.name} {h_red[:16]}... differ {h_run != h_red}")
+record(8, "casspian-run-inputs wrote the four inputs, each validating under its kind, their hashes "
+          "differing from the reduction's", ok,
        "\n".join(lines) + "\n" + "\n".join(l for l in (FIXTURES / "rebuild.txt").read_text(
            encoding="utf-8").splitlines() if "lindal_closure" in l))
-
-anchor = cio.read(CANDIDATE, "refractivity")
-anchor_mem = anchor.load()
-anchor.close()
-comparison = ctl.check_closure_inputs(loaded, anchor_mem)
-lines, ok = [], True
-for c in comparison:
-    ok = ok and c.identical
-    lines.append(f"{c.kind}: identical {c.identical}" + (f"; differences {list(c.differences)}"
-                                                         if c.differences else ""))
-    for group, names in c.dropped.items():
-        lines.append(f"  dropped from {group}: {list(names)}")
-record(9, "each run input is content-identical to the candidate kind N's embedded copy under the "
-          "comparison of deliverable 2 (root and every group), attributes dropped listed per file",
-       ok, "\n".join(lines))
 
 # ---------------------------------------------------------------------------
 # 10. Beyond the specification: the driver's own refusals
 # ---------------------------------------------------------------------------
+anchor = cio.read(CANDIDATE, "refractivity")
+anchor_mem = anchor.load()
+anchor.close()
 build_text = (RUN / "lindal_closure_build.toml").read_text(encoding="utf-8")
 lines, ok = [], True
 for label, mutate in (
         ("a [stage_two] section", lambda s: s + '\n[stage_two]\nrole = "forward"\n'),
-        ("a section with role = reduction", lambda s: s.replace('prefix = "lindal_closure"\nrole   = "forward"',
-                                                             'prefix = "lindal_closure"\nrole   = "reduction"', 1)),
-        ("an output outside inputs/", lambda s: s.replace('output = "inputs/lindal_closure_gravity.nc"',
-                                                        'output = "lindal_closure_gravity.nc"'))):
+        ("an output outside the run directory (SPEC_R1 section 2)",
+         lambda s: s.replace('output = "inputs/lindal_closure_gravity.nc"',
+                             'output = "../lindal_closure_gravity.nc"'))):
     case = fresh(HERE / "driver_case") / "lindal_closure_build.toml"
     mutated = mutate(build_text)
     assert mutated != build_text, label
@@ -335,16 +266,12 @@ ANCHOR_LINE = 'path   = "../../occul_data/lindal/lindal_refractivity.nc"'
 assert base_text.count(ANCHOR_LINE) == 1
 
 
-def run_case(name, text, composition_edit=None, extra_inputs=()):
+def run_case(name, text):
     """A run directory named lindal_closure under cases/<name>, inputs copied, anchor at the candidate."""
     directory = fresh(HERE / "cases" / name / "lindal_closure")
     (directory / "inputs").mkdir()
     for input_name, _ in RUN_INPUTS:
         shutil.copy2(RUN / input_name, directory / input_name)
-    for source, target in extra_inputs:
-        shutil.copy2(source, directory / target)
-    if composition_edit:
-        composition_edit(directory / "inputs/lindal_closure_composition.nc")
     relative = Path(os.path.relpath(CANDIDATE, directory.resolve()))
     namelist = directory / "lindal_closure.toml"
     namelist.write_text(text.replace(ANCHOR_LINE, f'path   = "{relative.as_posix()}"'), encoding="utf-8")
@@ -356,26 +283,17 @@ parsed = ctl.read_run_namelist(good_case)
 inputs = ctl.load_run_inputs(parsed)
 record(11, "the Lindal closure namelist loads and resolves, and the run's inputs load against the "
            "candidate anchor",
-       committed.mode == "closure" and inputs.gauge_level_index == 29
-       and all(c.identical for c in inputs.closure),
+       committed.mode == "closure" and inputs.gauge_level_index == 29,
        f"committed namelist: run {committed.name!r}, mode {committed.mode!r}, Ls "
        f"{committed.solar_longitude_deg}, p_b_rule {committed.p_b_rule!r}, gauge "
        f"{committed.gauge_isobar_Pa} Pa, anchor {committed.anchors[0].path}\n"
        f"  inputs {[p.name for p in committed.inputs.values()]}; product {committed.product}\n"
-       f"case with the anchor at the candidate: gauge level {inputs.gauge_level_index}; closure "
-       f"{[(c.kind, c.identical) for c in inputs.closure]}\n"
+       f"case with the anchor at the candidate: gauge level {inputs.gauge_level_index}\n"
        f"commits {dict(inputs.commits)}")
 
 # ---------------------------------------------------------------------------
-# 12. The thirteen refusal cases
+# 12. The eight refusal cases
 # ---------------------------------------------------------------------------
-
-
-def edit_composition(path):
-    with netCDF4.Dataset(path, "a") as h:
-        he, h2 = h.variables["x_He"], h.variables["x_H2"]
-        he[:] = he[:] + 0.01
-        h2[:] = h2[:] - 0.01
 
 
 def refused(label, needle, action):
@@ -391,11 +309,6 @@ def load(namelist):
     return ctl.load_run_inputs(ctl.read_run_namelist(namelist))
 
 
-def loading_without_relaxation(namelist):
-    with relaxed.disabled():
-        return load(namelist)
-
-
 CASES = [
     ("inputs_missing", "[inputs] missing", "[inputs] is missing",
      lambda s: re.sub(r"\[inputs\].*?\n\n", "", s, count=1, flags=re.S), load),
@@ -408,40 +321,26 @@ CASES = [
     ("second_anchor", "a second [[anchors]] entry", "exactly one [[anchors]] entry",
      lambda s: s.replace("[inputs]", '[[anchors]]\nslug = "lindal"\npath = "x.nc"\nweight = 0.0\n'
                                      'measurement_uncertainty_scale = 1.0\n\n[inputs]', 1), load),
-    ("slug", "a slug that does not match", "profile_or_run",
-     lambda s: s.replace('slug   = "lindal"', 'slug   = "cassini"'), load),
     ("p_b_both", "p_b_Pa alongside p_b_rule", "exactly one",
-     lambda s: s.replace('p_b_location = "top_of_anchor_profile"',
-                         'p_b_Pa       = 20.0\np_b_location = "top_of_anchor_profile"'), load),
+     lambda s: s.replace('p_b_rule     = "anchor_profile_top"',
+                         'p_b_Pa       = 20.0\np_b_rule     = "anchor_profile_top"'), load),
     ("gauge_9000", "a gauge isobar of 9,000 Pa", "not a tabulated level",
      lambda s: s.replace("gauge_isobar_Pa = 1.0e4", "gauge_isobar_Pa = 9.0e3"), load),
-    ("dirty_anchor", "a -dirty anchor", "-dirty",
-     lambda s: s, loading_without_relaxation),
-    ("unprefixed_input", "an input without the run prefix", "run prefix",
-     lambda s: s.replace('wind        = "inputs/lindal_closure_wind.nc"',
-                         'wind        = "inputs/lindal_wind.nc"'), load),
     ("geodesy", "a namelist that names a geodesy file", "geodesy",
      lambda s: s.replace('wind        = "inputs/lindal_closure_wind.nc"',
                          'wind        = "inputs/lindal_closure_wind.nc"\n'
                          'geodesy     = "inputs/lindal_closure_geodesy.nc"'), load),
-    ("composition_x_He", "a composition copy with x_He raised and x_H2 lowered by 0.01", "x_He",
-     lambda s: s, load),
-    ("season", "a namelist whose solar_longitude_deg differs from the anchor's", "not a closure",
-     lambda s: s.replace("solar_longitude_deg = 18.2", "solar_longitude_deg = 18.3"), load),
 ]
 lines, ok = [], True
 for name, label, needle, mutate, action in CASES:
     mutated = mutate(base_text)
-    if name not in ("dirty_anchor", "composition_x_He"):
-        assert mutated != base_text, name
-    extra = ((RUN / "inputs/lindal_closure_wind.nc", "inputs/lindal_wind.nc"),) if name == "unprefixed_input" else ()
-    namelist = run_case(name, mutated, edit_composition if name == "composition_x_He" else None, extra)
+    assert mutated != base_text, name
+    namelist = run_case(name, mutated)
     good, text_line = refused(label, needle, lambda: action(namelist))
     ok = ok and good
     lines.append(text_line)
-record(12, "thirteen refusal cases, each refused with the right message (the composition case needed "
-           "only the x_He and x_H2 edits: the kind C reader holds no closure-declaration check)",
-       ok and len(CASES) == 13, "\n".join(lines))
+record(12, "eight refusal cases, each refused with the right message",
+       ok and len(CASES) == 8, "\n".join(lines))
 
 # ---------------------------------------------------------------------------
 # 13. A synthetic kind profile validates and reads back; its three refusals
@@ -556,7 +455,6 @@ variants = []
 v = profile_dataset(); v = v.drop_vars("temperature_tabulated_K"); variants.append(("pressure_tabulated_Pa without temperature_tabulated_K", v, "temperature_tabulated_K"))
 v = profile_dataset(); values = v["geopotential_m2s2"].values.copy(); values[5], values[6] = values[6], values[5]
 v = v.assign_coords(geopotential_m2s2=(("level",), values, v["geopotential_m2s2"].attrs)); variants.append(("a coordinate that is not monotonic", v, "monotonic"))
-v = profile_dataset(); v = v.drop_vars("pressure_uncertainty_Pa"); variants.append(("a modeled variable without its NaN companion", v, "companion"))
 for label, variant, needle in variants:
     variant.attrs["input_hashes"] = ds.attrs["input_hashes"]
     try:
@@ -568,7 +466,7 @@ for label, variant, needle in variants:
         ok = ok and needle in str(exc)
         lines.append(f"{label}: {exc}")
 record(13, "a synthetic kind profile validates and reads back as a DataTree, and is refused without "
-           "temperature_tabulated_K, with a non-monotonic coordinate, or without a NaN companion",
+           "temperature_tabulated_K or with a non-monotonic coordinate",
        ok, f"written {synthetic.as_posix()}; read back as {'DataTree' if is_tree else 'NOT a DataTree'}; "
            f"{len(back_groups)} groups, first {back_groups[:3]}\n" + "\n".join(lines))
 

@@ -28,17 +28,14 @@ from casspian.lib import io as cio
 from casspian.lib.schema import HARMONIC_CONVENTION
 from casspian.lib.control import (
     ControlFileError,
-    build_epoch,
-    build_role,
     load_section,
-    reject_physical_values,
 )
 
 TOOL = "casspian-gravity-file"
 
-#: SPEC_01 v0.26: `role` is required in every build-file section, with no default. SPEC_01 v0.28:
-#: `epoch` too, the date of the observation the harmonic set serves.
-SECTION_KEYS = {"source": True, "output": True, "prefix": True, "role": True, "epoch": True,
+#: SPEC_01 v0.28: `epoch` is required, the date of the observation the harmonic set serves. `role`
+#: is retired (SPEC_R1).
+SECTION_KEYS = {"source": True, "output": True, "prefix": True, "epoch": True,
                 "title": False}
 
 #: SPEC_00 section 6.4. CF style flag pair for `J_status`.
@@ -62,14 +59,10 @@ def build(control_path, section: str = "gravity") -> Path:
     """Build a kind G file from the control file's named section."""
     control = load_section(control_path, section, SECTION_KEYS,
                            path_keys=("source", "output"))
-    reject_physical_values(
-        {k: v for k, v in control.items() if not isinstance(v, Path)}, control_path, section
-    )
     source_path = Path(control["source"])
     output = Path(control["output"])
     prefix = control["prefix"]
-    role = build_role(control, control_path, section)
-    epoch = build_epoch(control, control_path, section)
+    epoch = str(control["epoch"])
 
     if not source_path.exists():
         raise ControlFileError(f"{source_path}: the static transcription does not exist")
@@ -161,8 +154,6 @@ def build(control_path, section: str = "gravity") -> Path:
 
     globals_ = {
         "title": control.get("title", f"{prefix} gravity harmonic set"),
-        "profile_or_run": prefix,
-        "role": role,
         "source": meta.get("citation", str(source_path.name)),
         "GM_scope": gm.get("scope", "unstated"),
         # SPEC_01 v0.28: the date of the observation the set serves, from the build file; the

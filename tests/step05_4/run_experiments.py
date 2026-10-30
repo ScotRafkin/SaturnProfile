@@ -105,10 +105,6 @@ def half_spacing(run: str) -> Path:
 
 def main(runs=RUNS) -> dict:
     HERE.mkdir(parents=True, exist_ok=True)
-    original = ctl._refuse_dirty_commit
-    ctl._refuse_dirty_commit = lambda path, attrs, consumer, what=None: str(
-        attrs.get("casspian_git_commit", ""))
-    print("RELAXATION: casspian.lib.control._refuse_dirty_commit replaced for this process only\n")
     results = {}
     try:
         with warnings.catch_warnings():
@@ -127,7 +123,7 @@ def main(runs=RUNS) -> dict:
                             half_spacing(run)).product)
                 results[run] = entry
     finally:
-        ctl._refuse_dirty_commit = original
+        pass
     # Runs named on the command line replace their own entries; the others are kept.
     path = HERE / "results.json"
     merged = json.loads(path.read_text(encoding="utf-8")) if path.exists() and runs != RUNS else {}

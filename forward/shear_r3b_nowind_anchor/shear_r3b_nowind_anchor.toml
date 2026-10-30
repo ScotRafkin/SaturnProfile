@@ -25,7 +25,6 @@ wind        = "inputs/shear_r3b_nowind_anchor_wind.nc"
 
 [hydrostatic_boundary]
 p_b_rule     = "anchor_profile_top"
-p_b_location = "top_of_anchor_profile"
 
 [isobars]
 gauge_isobar_Pa = 1.0e4

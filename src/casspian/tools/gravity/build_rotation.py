@@ -21,22 +21,18 @@ import xarray as xr
 from casspian.lib import io as cio
 from casspian.lib.control import (
     ControlFileError,
-    build_epoch,
-    build_role,
     load_section,
-    reject_physical_values,
 )
 
 TOOL = "casspian-rotation-file"
 
-#: SPEC_01 v0.26: `role` is required in every build-file section, with no default. SPEC_01 v0.28:
-#: `epoch` too, the date of the observation the rotation system serves.
+#: SPEC_01 v0.28: `epoch` is required, the date of the observation the rotation system serves. `role`
+#: is retired (SPEC_R1).
 SECTION_KEYS = {
     "source": True,
     "entry": True,
     "output": True,
     "prefix": True,
-    "role": True,
     "epoch": True,
     "title": False,
 }
@@ -46,15 +42,11 @@ def build(control_path, section: str = "rotation") -> Path:
     """Build a kind R file from the control file's named section."""
     control = load_section(control_path, section, SECTION_KEYS,
                            path_keys=("source", "output"))
-    reject_physical_values(
-        {k: v for k, v in control.items() if not isinstance(v, Path)}, control_path, section
-    )
     source_path = Path(control["source"])
     output = Path(control["output"])
     prefix = control["prefix"]
     entry_name = control["entry"]
-    role = build_role(control, control_path, section)
-    epoch = build_epoch(control, control_path, section)
+    epoch = str(control["epoch"])
 
     if not source_path.exists():
         raise ControlFileError(f"{source_path}: the static transcription does not exist")
@@ -92,8 +84,6 @@ def build(control_path, section: str = "rotation") -> Path:
         },
         attrs={
             "title": control.get("title", f"{prefix} rotation system"),
-            "profile_or_run": prefix,
-            "role": role,
             "source": entry.get("citation", source_path.name),
             "system_name": entry.get("name", entry_name),
             # SPEC_01 v0.28: the date of the observation the system serves, from the build

@@ -39,9 +39,8 @@ def new_run(name: str, source_directory) -> Path:
         raise ControlFileError(f"{source}: a run directory holds {old}_build.toml and {old}.toml; "
                                f"missing {missing}.")
     target = source.parent / name
-    if target.exists():
-        raise ControlFileError(f"{target} exists; casspian-new-run makes a new run and never "
-                               "writes over one.")
+    # Without exist_ok, so that an existing run is never written over: mkdir raises
+    # FileExistsError (SPEC_R1 section 2).
     target.mkdir()
     for path in files:
         text = path.read_bytes().decode("utf-8")
