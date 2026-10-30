@@ -147,3 +147,11 @@ SPEC_14 accepted by the author at v0.2 on 22 October 2026 (§2 ruled: f held abo
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | case (iii) `above_top = "reversed"` in `tools/lindal/lindal_wind.py`; the run `lindal_iris_v_sl_iii_110` from `lindal_iris_v_sl_ii_110` | accepted (`cfe8030`; 3 of 3 under REVIEW_14_step1, check 1 to within the construction's tolerance (v0.3); delivered minus egress +0.20, -0.77, -2.17, +2.88 K at 10, 4.5, 1, 0.3 mbar, inside sigma_T; no regression. SPEC_14 closed) | `reports/REPORT_14_step1.md`, `reports/REVIEW_14_step1.md` | 2026-10-30 |
+
+## SPEC_15, three more radio profiles, and the two hypotheses at four targets
+
+SPEC_15 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: Lindal's labels planetographic, Kliore et al. 1980 planetocentric; epochs in comments only; the drawn error bars and Kliore's tabulated ranges). Pioneer 11 from Kliore et al. (1980) Table 1, rescaled to the anchor's composition by Lindal's rule. **Closed** at Step 1's acceptance on 30 October 2026 (REVIEW_15_step1). Next: the refractivity comparison at 11.9 S and the Kliore self-check, then the Kliore reduction as a validation anchor.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | `tools/lindal/radio_profiles.py`, Lindal Figs. 5 and 6 traced; Kliore Table 1 transcribed; three data files; six runs, both hypotheses at 74.2 S, 3.0 S and 11.9 S; the comparison at four targets | reported (5 of 5; calibration traces RMS 0.95 and 1.51 K, the excess at depth Fig. 5's own; Pioneer 11 trace minus Kliore rescaled +0.16 K mean, as published -3.31 K; neither hypothesis fits the new profiles above 30 mbar) | `reports/REPORT_15_step1.md` | 2026-10-30 |

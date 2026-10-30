@@ -5,10 +5,11 @@ comparison are in that note and are unchanged; this note records what has happen
 
 ## Where things stand
 
-- **Closed:** SPEC_00 to SPEC_14 and SPEC_R1 (both 30 October; REVIEW_R1_step1, REVIEW_14_step1). SPEC_00 is at v0.25:
-  its §8 is now the whole of what readers enforce.
-- **SPEC_R1** is committed at `15965af`. SPEC_14's acceptance commit is next.
-- **Next:** more radio targets (below).
+- **Closed:** SPEC_00 to SPEC_15 and SPEC_R1. SPEC_R1, SPEC_14 and SPEC_15 closed on 30 October
+  (REVIEW_R1_step1, REVIEW_14_step1, REVIEW_15_step1). SPEC_00 is at v0.25: its §8 is now the
+  whole of what readers enforce.
+- **Committed:** SPEC_R1 at `15965af`, SPEC_14 at `cfe8030`. SPEC_15's acceptance commit is next.
+- **Next:** Kliore et al. as a second profile (below).
 - **The coding agent is new.** It works from `docs/CASSPIAN_CodingAgent_Handoff_2026-10-22.md`
   and `docs/CASSPIAN_CodingAgent_Brief_2026-10-22.md`.
 
@@ -91,15 +92,76 @@ The registered kind T now warns once on reading, because its `input_hashes` name
 - **Check 1** was ruled to the construction's tolerance: the wind below 110 mbar differs from the
   base's by 4.5e-3 m/s, from the stopping rule, which is immaterial.
 
+## SPEC_15, three more radio profiles
+
+- **Data.** Lindal Figs. 5 and 6 traced along hand-placed guides: Voyager 1 ingress at 74.2 S and
+  egress at 3.0 S (`occul_data/lindal/`). Pioneer 11 from Kliore et al. (1980, JGR) Table 1,
+  transcribed as published (`occul_data/kliore1980/`), rescaled from 90/10 to 94/6 by Lindal's
+  rule where compared. Lindal's own Fig. 6 curve agrees with the rescaled table to 0.16 K, so he
+  rescaled it the same way. Epochs are in file comments: Voyager 1 on 13 November 1980, Pioneer 11
+  on 1 September 1979.
+- **A figure bias.** From 600 to 1200 mbar, Lindal's Fig. 5 is drawn 1.5 to 3 K warmer than his
+  Table I. The 74.2 S profile probably carries it. It is recorded as observation error, not
+  corrected.
+- **Result.** Delivered minus observed (K):
+
+  | Target | Profile | 730 | 290 | 110 | 10 | 4.5 | 1 | 0.3 mbar |
+  |---|---|---|---|---|---|---|---|---|
+  | 74.2 S | hypothesis 1 | +2.52 | +0.12 | +0.40 | -8.10 | -6.30 | +4.21 | +10.76 |
+  | | hypothesis 2 | +2.52 | +0.11 | +0.50 | -5.88 | -7.26 | -3.70 | -2.29 |
+  | | anchor | +5.56 | -0.23 | -4.78 | -10.12 | -7.54 | +3.66 | +10.33 |
+  | 3.0 S | hypothesis 1 | +0.08 | +2.21 | +0.76 | -10.30 | +6.84 | +16.48 | |
+  | | hypothesis 2 | +0.08 | +2.20 | +0.84 | -8.27 | +6.32 | +10.04 | |
+  | | anchor | +5.29 | +3.26 | -2.27 | -10.97 | +6.99 | +17.29 | |
+  | 11.9 S | hypothesis 1 | | | +2.38 | +16.86 | +27.36 | | |
+  | | hypothesis 2 | | | +2.52 | +20.06 | +26.09 | | |
+  | | anchor | | | -4.15 | +15.10 | +26.80 | | |
+
+- **What it shows.**
+  - Below about 30 mbar the transfer works at every target: it removes the anchor's 4 to 6 K warm
+    bias at 730 mbar and is within about 2.5 K at 110 mbar, except at 31.2 S.
+  - Above about 30 mbar near the equator, the observed profiles carry warm layers of 10 to 30 K,
+    which Lindal reads as waves. No balanced zonal wind of this form makes them, and the epochs
+    differ. They are representativeness error and time, not a wind the transfer could carry.
+  - Hypothesis 2 improves 74.2 S aloft and is 1 to 3 K worse near the equator from 20 to 80 mbar,
+    where it holds the bridged shear to 15 mbar.
+  - At 74.2 S both are 6 to 8 K cold from 3 to 15 mbar; a pattern times f(p) cannot reorder the
+    profiles with height.
+
+## Direction (author and reviewing agent, 30 October)
+
+- **The goal.** The model gives the best answer for a given input, using every observation that
+  constrains its physics. Every observation incorporated pulls the answer toward itself at its
+  time and place, within its error. Away from observations, the framework and the observations
+  together give the minimum-error answer, with uncertainty growing with distance in space and time.
+- **The wind is the whole wind:** the shear, from temperatures, and the reference wind, from cloud
+  tracking or anything that measures a wind at a level. The reference level is itself uncertain
+  and is a Monte Carlo variable.
+- **A misfit is mostly wind error, but not only.** Observation error and bias, the missing time
+  step, and the model's own approximations take their share first.
+- **Order: improve the wind, then blend.** A fitted wind (adjusted within its uncertainty to fit
+  the observations) carries corrections everywhere. Optimal interpolation then handles what a
+  balanced wind cannot, with honest weights, on a background already close.
+- **Hold profiles out.** Each profile used to build the wind stops being an independent test;
+  leave-one-out gives the honest error.
+- **Not yet in the model:** cloud tracking beyond Voyager, and transport in time (the seasonal
+  propagator, CIRS seasonal fields).
+
 ## Next
 
-1. SPEC_14's acceptance commit and push.
-2. **More radio targets, in one digitizing step:** Lindal Fig. 6 (Voyager 1 egress near 3.0 S, in
-   the equatorial band; Pioneer 11 near 11.9 S) and the 74.2 S profile of Fig. 5. Then compare the
-   hypotheses at several targets. Lindal rates the Voyager 1 profiles less reliable.
-3. **Hypothesis 3:** shear from a CIRS cross-section of the same season (Aug 2009 to Nov 2010,
-   before the storm), used outside about +/-15 to 20 deg.
-4. **Later**, unchanged from the 8 October note: the IRIS profile catalog; stratospheric IRIS near
+1. SPEC_15's acceptance commit and push.
+2. **Kliore et al. against the Lindal anchor, by refractivity.** Kliore's N(r) against the
+   delivered N(r) at 11.9 S, which needs no composition but allows for a radius offset. And the
+   self-check: Kliore's T and p through the reduction with his 90/10 mixture should return his N.
+3. **Kliore as a validation anchor** (weight 0) beside Lindal: a second reduction, with the
+   profile tools generalized. Its discrepancy with Lindal scores each wind hypothesis.
+4. **A fitted wind at the Voyager epoch** from IRIS and the radio profiles, with leave-one-out.
+   It needs a ruling first on the 110 mbar radio and IRIS disagreement. The equatorial profiles
+   above 30 mbar enter with a large representativeness error or not at all.
+5. **Time:** the seasonal propagator, CIRS seasonal fields and Cassini cloud tracking. The CIRS
+   shear hypothesis of the earlier queue comes here. Steps 4 and 5 may swap.
+6. **The combination step:** Kliore and others as construction anchors, and optimal interpolation.
+7. **Later**, unchanged from the 8 October note: the IRIS profile catalog; stratospheric IRIS near
    1 mbar; the dry adiabat for normal hydrogen in lapse-rate plots; how NaN uncertainties are used;
    the Monte Carlo; convective adjustment mixing entropy, momentum and composition; cylinders at
    depth; a seasonal wind prior; the assimilation pulling hypothesis 1 toward the radio egress.
