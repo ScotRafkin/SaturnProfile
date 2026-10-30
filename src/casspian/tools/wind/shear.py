@@ -60,7 +60,7 @@ TOOL = "casspian-wind-shear"
 PARAMETER_KEYS = (
     "shear_reference_pressure_Pa", "scale", "shape", "stop_pressure_Pa", "stop_fraction",
     "uncertainty_ms", "temperatures", "composition", "gravity", "rotation", "top_level_Pa",
-    "above_top", "gradient", "window",
+    "above_top", "gradient", "window", "hold_Pa", "cross_Pa",
 )
 
 SECTION_KEYS = {"source": True, "output": True, "case": True,
@@ -160,7 +160,8 @@ def case_lindal_iris(source, parameters):
         source, parameters["temperatures"], parameters["composition"], parameters["gravity"],
         parameters["rotation"], float(parameters["top_level_Pa"]), parameters["above_top"],
         gradient=parameters.get("gradient", "slope"),
-        window=parameters.get("window", "adaptive")).dataset
+        window=parameters.get("window", "adaptive"),
+        hold_Pa=parameters.get("hold_Pa"), cross_Pa=parameters.get("cross_Pa")).dataset
 
 
 RAMP_PARAMETERS = ("shear_reference_pressure_Pa", "shape", "stop_pressure_Pa", "stop_fraction")
@@ -170,7 +171,7 @@ CASES = {
     "uniform": Case(case_uniform, ("shear_reference_pressure_Pa",), ("scale", "uncertainty_ms")),
     "decay_above": Case(case_ramp, RAMP_PARAMETERS, ("uncertainty_ms",), stop_side=-1),
     "increase_below": Case(case_ramp, RAMP_PARAMETERS, ("uncertainty_ms",), stop_side=+1),
-    "lindal_iris": Case(case_lindal_iris, (*INPUT_KEYS, "top_level_Pa", "above_top"), ("gradient", "window"),
+    "lindal_iris": Case(case_lindal_iris, (*INPUT_KEYS, "top_level_Pa", "above_top"), ("gradient", "window", "hold_Pa", "cross_Pa"),
                         whole=True),
 }
 

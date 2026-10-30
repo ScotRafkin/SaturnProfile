@@ -37,10 +37,14 @@ level the geometry is the model's own: `r(phi)` the Eq. B3 surface under that le
 normalization radius), `g` the effective radial gravity and `Omega_abs` the absolute rate under that
 wind (`lib.gravity`), `T` the IRIS fit's value, and `m_bar` the run's composition at the level.
 
-**In the vertical**, between the three levels linear in `ln p`; above the top level held at its
-value or relaxed as `s_top exp(-x / ABOVE_SCALE_HEIGHTS)`, `x = ln(p_top / p)`; below the bottom
-level relaxed as `s_bottom exp(-y / BELOW_SCALE_HEIGHTS)`, `y = ln(p / p_bottom)`. The wind is the
-reference wind plus the shear integrated in `ln p` from the reference level, in closed form.
+**In the vertical**, between the three levels linear in `ln p`; below the bottom level relaxed as
+`s_bottom exp(-y / BELOW_SCALE_HEIGHTS)`, `y = ln(p / p_bottom)`. Above the top level, by case:
+held at its value (i); relaxed as `s_top exp(-x / ABOVE_SCALE_HEIGHTS)`, `x = ln(p_top / p)` (ii);
+or reversed (iii, SPEC_14): `s_top f(p)` with `f = 1` from the top level up to `hold_Pa`, then
+`f = 1 - X / X_c`, `X = ln(hold_Pa / p)`, `X_c = ln(hold_Pa / cross_Pa)`, through zero at
+`cross_Pa`, up to `REVERSED_TOP_Pa` (0.2 mbar, the anchor's top), and held at its value there above.
+The wind is the reference wind plus the shear integrated in `ln p` from the reference level, in
+closed form.
 
 **In latitude**, the shear is computed where the fit is defined (between the level's northernmost
 and southernmost dots) and poleward of `EQUATORIAL_BAND_DEG` planetocentric. Across the band it is
@@ -77,9 +81,11 @@ LOWER_LEVELS_Pa = {290: 29000.0, 730: 73000.0}
 TOP_LEVEL_MBAR = 110
 NODES_PER_DECADE = 20
 GRID_DECADES = (0, 6)
-ABOVE_CASES = ("held", "relaxed")
+ABOVE_CASES = ("held", "relaxed", "reversed")
 GRADIENTS = ("slope", "value")
 ABOVE_SCALE_HEIGHTS = 2.0
+#: Case (iii): the level above which f is held at its value (SPEC_14 section 2 ruling 1).
+REVERSED_TOP_Pa = 20.0
 BELOW_SCALE_HEIGHTS = 1.0
 EQUATORIAL_BAND_DEG = 5.0
 TOLERANCE_MS = 0.1
@@ -126,11 +132,18 @@ def mean_molar_mass(composition, pressure_Pa, latitude_deg) -> np.ndarray:
     return np.stack([np.interp(latitude_deg, lat[north], row) for row in on_levels])
 
 
-def integrated_shear(shear, levels_Pa, pressure_Pa, above):
+def reversed_factor(pressure_Pa, hold_Pa, cross_Pa) -> np.ndarray:
+    """Case (iii)'s `f(p)`: 1 at and below `hold_Pa`, linear in `ln p` through zero at `cross_Pa`,
+    held at its `REVERSED_TOP_Pa` value above that (module docstring)."""
+    x = np.log(hold_Pa / np.maximum(np.asarray(pressure_Pa, dtype="float64"), REVERSED_TOP_Pa))
+    return 1.0 - np.maximum(x, 0.0) / np.log(hold_Pa / cross_Pa)
+
+
+def integrated_shear(shear, levels_Pa, pressure_Pa, above, hold_Pa=None, cross_Pa=None):
     """`int s dln p` from the reference level, closed form, shape `(latitude, pressure)`.
 
     `shear` is `(3, latitude)` at `levels_Pa` (top first). Linear in `ln p` between the levels,
-    held or relaxed above the top, relaxed below the bottom (module docstring)."""
+    held, relaxed or reversed above the top, relaxed below the bottom (module docstring)."""
     x1, x2, x3 = np.log(levels_Pa)
     s1, s2, s3 = (shear[i][:, None] for i in range(3))
 
@@ -140,8 +153,17 @@ def integrated_shear(shear, levels_Pa, pressure_Pa, above):
         f3 = f2 + 0.5 * (s2 + s3) * (x3 - x2)
         if above == "held":
             top = s1 * (x - x1)
-        else:
+        elif above == "relaxed":
             top = -s1 * ABOVE_SCALE_HEIGHTS * (1.0 - np.exp(-(x1 - x) / ABOVE_SCALE_HEIGHTS))
+        else:
+            # f = 1 down to x_h = ln hold_Pa, then 1 - (x_h - x) / x_c down to x_t, then constant.
+            x_h, x_t = np.log(hold_Pa), np.log(REVERSED_TOP_Pa)
+            x_c = np.log(hold_Pa / cross_Pa)
+            depth = x_h - np.maximum(x, x_t)                   # X, at most X_t = x_h - x_t
+            ramp = s1 * (x_h - x1) - s1 * (depth - depth ** 2 / (2.0 * x_c))
+            f_t = 1.0 - (x_h - x_t) / x_c
+            beyond = ramp + s1 * f_t * np.minimum(x - x_t, 0.0)
+            top = np.where(x >= x_h, s1 * (x - x1), beyond)
         upper = s1 * (x - x1) + (s2 - s1) * (x - x1) ** 2 / (2.0 * (x2 - x1))
         lower = f2 + s2 * (x - x2) + (s3 - s2) * (x - x2) ** 2 / (2.0 * (x3 - x2))
         bottom = f3 + s3 * BELOW_SCALE_HEIGHTS * (1.0 - np.exp(-(x - x3) / BELOW_SCALE_HEIGHTS))
@@ -194,12 +216,26 @@ def derivative_of_value(value_K, latitude_g_deg) -> np.ndarray:
 
 
 def construct(cloud, table, composition, gravity, rotation, top_level_Pa, above,
-              equatorial_radius_m=None, gradient="slope", window="adaptive") -> Construction:
+              equatorial_radius_m=None, gradient="slope", window="adaptive",
+              hold_Pa=None, cross_Pa=None) -> Construction:
     """The wind for one case, from in-memory inputs. No file is read or written.
 
-    `table` is the IRIS CSV as a structured array (`numpy.genfromtxt(..., names=True)`)."""
+    `table` is the IRIS CSV as a structured array (`numpy.genfromtxt(..., names=True)`).
+    `hold_Pa` and `cross_Pa` are case (iii)'s, required by it and refused by the others."""
     if above not in ABOVE_CASES:
         raise ControlFileError(f"above_top = {above!r}; the cases are {list(ABOVE_CASES)}")
+    reversal = (hold_Pa, cross_Pa)
+    if above == "reversed":
+        if None in reversal:
+            raise ControlFileError("above_top = 'reversed' requires hold_Pa and cross_Pa")
+        hold_Pa, cross_Pa = float(hold_Pa), float(cross_Pa)
+        if not float(top_level_Pa) >= hold_Pa > cross_Pa > REVERSED_TOP_Pa:
+            raise ControlFileError(
+                f"above_top = 'reversed' needs top_level_Pa >= hold_Pa > cross_Pa > "
+                f"{REVERSED_TOP_Pa:g} Pa; given {float(top_level_Pa):g}, {hold_Pa:g} and {cross_Pa:g}")
+    elif reversal != (None, None):
+        raise ControlFileError(f"hold_Pa and cross_Pa are case (iii)'s; above_top = {above!r} "
+                               "does not use them")
     if gradient not in GRADIENTS:
         raise ControlFileError(f"gradient = {gradient!r}; the choices are {list(GRADIENTS)}")
     if window not in iris.WINDOWS:
@@ -257,23 +293,25 @@ def construct(cloud, table, composition, gravity, rotation, top_level_Pa, above,
                          / d)
             computed[k] = np.where(computed_mask[k], value, np.nan)
             shear[k] = shape_in_latitude(computed[k], lat_c)
-        u_new = u_ref[:, None] + integrated_shear(shear, levels, pressure, above)
+        u_new = u_ref[:, None] + integrated_shear(shear, levels, pressure, above, hold_Pa, cross_Pa)
         change = float(np.max(np.abs(u_new - u)))
         changes.append(change)
         u = u_new
-        u_levels = u_ref[None, :] + integrated_shear(shear, levels, levels, above).T
+        u_levels = u_ref[None, :] + integrated_shear(shear, levels, levels, above, hold_Pa, cross_Pa).T
         if change < TOLERANCE_MS:
             break
     else:
         raise ValueError(f"the wind did not settle in {MAX_ITERATIONS} iterations: the last "
                          f"changes {changes[-3:]} m/s against a tolerance of {TOLERANCE_MS} m/s")
-    dataset = _dataset(cloud, u, u_ref, pressure, levels, above, gradient_choice, window)
+    dataset = _dataset(cloud, u, u_ref, pressure, levels, above, gradient_choice, window,
+                       hold_Pa, cross_Pa)
     return Construction(dataset=dataset, level_Pa=levels, shear_ms=shear, shear_computed_ms=computed,
                         temperature_K=temperature, gradient_K_per_rad=gradient,
                         iterations=iteration, changes_ms=changes)
 
 
-def _dataset(cloud, u, u_ref, pressure, levels, above, gradient="slope", window="adaptive") -> xr.Dataset:
+def _dataset(cloud, u, u_ref, pressure, levels, above, gradient="slope", window="adaptive",
+             hold_Pa=None, cross_Pa=None) -> xr.Dataset:
     """The output kind W dataset, the cloud wind's attributes and auxiliaries replaced where false."""
     lat_dim, p_dim = "latitude_planetocentric", "pressure"
     reference_column = int(np.flatnonzero(pressure == REFERENCE_PRESSURE_Pa)[0])
@@ -299,9 +337,16 @@ def _dataset(cloud, u, u_ref, pressure, levels, above, gradient="slope", window=
     out["reference_level_pressure_Pa"] = ((), REFERENCE_PRESSURE_Pa, {
         "units": "Pa", "long_name": "level the cloud top wind is assigned to, where the IRIS shear "
         "is zero", "provenance": "assumed"})
+    above_text = {
+        "held": "held at its top level value",
+        "relaxed": f"relaxed over {ABOVE_SCALE_HEIGHTS:g} scale heights",
+        "reversed": (f"reversed (case iii, SPEC_14): held to {(hold_Pa or 0) / 100:g} mbar, then "
+                     f"linear in ln p through zero at {(cross_Pa or 0) / 100:g} mbar, held above "
+                     f"{REVERSED_TOP_Pa / 100:g} mbar; hold_Pa and cross_Pa tuned to the Voyager 2 "
+                     "egress, which then checks consistency, not independence"),
+    }[above]
     structure = (f"IRIS thermal wind shear (SPEC_11): the top level at {top_mbar:g} mbar, the shear "
-                 f"{'held at its top level value' if above == 'held' else f'relaxed over {ABOVE_SCALE_HEIGHTS:g} scale heights'} "
-                 f"above it and relaxed over {BELOW_SCALE_HEIGHTS:g} below 730 mbar")
+                 f"{above_text} above it and relaxed over {BELOW_SCALE_HEIGHTS:g} below 730 mbar")
     out.attrs.update({
         "title": f"{cloud.attrs.get('title', 'cloud top zonal wind')}, with the IRIS thermal wind "
                  "shear (SPEC_11)",

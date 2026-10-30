@@ -1,7 +1,7 @@
 # SPEC 14. Hypothesis 2: the shear reversed aloft
 
-Version 0.2, 22 October 2026. Author of record: S. Rafkin. **Status: accepted by the author, §2
-ruled.**
+Version 0.3, 30 October 2026. Author of record: S. Rafkin. **Status: closed, Step 1 accepted
+(REVIEW_14_step1).**
 Depends on SPEC_13 and SPEC_R1.
 
 ## 0. Purpose
@@ -37,9 +37,9 @@ Protocol as SPEC_04 §0. No regression: a new case in the wind tool, and no chan
 
 **Acceptance (`tests/step14_1/accept_step14_1.py`, under `reports/step14_1/`).**
 
-1. **Below the top level the wind is the base's,** value for value, and so is the shear at the three
-   levels. The largest change in the delivered temperature at and below 110 mbar is reported;
-   over 0.1 K is explained.
+1. **Below the top level the wind is the base's,** and so is the shear at the three levels, to
+   within the construction's tolerance (v0.3). The largest change in the delivered temperature at
+   and below 110 mbar is reported; over 0.1 K is explained.
 2. **The pressure identity** of the run, in kelvins, level by level.
 3. **For the author:**
    - f(p) and the shear at the anchor's and the target's latitudes against pressure, both cases;
@@ -65,3 +65,5 @@ Protocol as SPEC_04 §0. No regression: a new case in the wind tool, and no chan
 
 - v0.1, 22 October 2026: first draft.
 - v0.2, 22 October 2026: accepted; §2 ruled (f held above 0.2 mbar, the first guesses).
+- v0.3, 30 October 2026: closed; check 1 to within the construction's tolerance (author, on
+  REPORT_14_step1 §6).

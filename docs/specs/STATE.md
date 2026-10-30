@@ -142,8 +142,8 @@ SPEC_R1 accepted by the author at v0.3 on 22 October 2026 (now v0.4, §2 ruling 
 
 ## SPEC_14, hypothesis 2: the shear reversed aloft
 
-SPEC_14 accepted by the author at v0.2 on 22 October 2026 (§2 ruled: f held above 0.2 mbar, the first guesses `hold_Pa = 1500`, `cross_Pa = 450`). Starts after SPEC_R1 is accepted and pushed. Tuned to the Voyager 2 egress.
+SPEC_14 accepted by the author at v0.2 on 22 October 2026 (§2 ruled: f held above 0.2 mbar, the first guesses `hold_Pa = 1500`, `cross_Pa = 450`). Tuned to the Voyager 2 egress. v0.3: check 1 to within the construction's tolerance (author, 30 October). **Closed** at Step 1's acceptance on 30 October 2026 (REVIEW_14_step1). Next: more radio targets (Lindal Figs. 5 and 6).
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 1 | case (iii) `above_top = "reversed"` in `tools/lindal/lindal_wind.py`; the run `lindal_iris_v_sl_iii_110` from `lindal_iris_v_sl_ii_110` | not started | | |
+| 1 | case (iii) `above_top = "reversed"` in `tools/lindal/lindal_wind.py`; the run `lindal_iris_v_sl_iii_110` from `lindal_iris_v_sl_ii_110` | reported (2 of 3: check 1 misses "value for value" by 4.5e-3 m/s, the construction's stopping rule, ruling asked; delivered minus egress +0.20, -0.77, -2.17, +2.88 K at 10, 4.5, 1, 0.3 mbar) | `reports/REPORT_14_step1.md` | 2026-10-30 |

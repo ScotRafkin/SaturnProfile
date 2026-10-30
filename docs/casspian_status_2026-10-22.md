@@ -5,12 +5,10 @@ comparison are in that note and are unchanged; this note records what has happen
 
 ## Where things stand
 
-- **Closed:** SPEC_00 to SPEC_13, and SPEC_R1 (30 October, REVIEW_R1_step1). SPEC_00 is at v0.25:
+- **Closed:** SPEC_00 to SPEC_14 and SPEC_R1 (both 30 October; REVIEW_R1_step1, REVIEW_14_step1). SPEC_00 is at v0.25:
   its §8 is now the whole of what readers enforce.
-- **`main`** is at `8adc7b5`. SPEC_R1's acceptance commit, with the specification files, this
-  note, the brief and the reference documents, is next.
-- **SPEC_R1's regression:** 38 of 38 suites at their amended counts; no computed value changed.
-- **Next: SPEC_14 v0.2,** hypothesis 2, after SPEC_R1 is pushed.
+- **SPEC_R1** is committed at `15965af`. SPEC_14's acceptance commit is next.
+- **Next:** more radio targets (below).
 - **The coding agent is new.** It works from `docs/CASSPIAN_CodingAgent_Handoff_2026-10-22.md`
   and `docs/CASSPIAN_CodingAgent_Brief_2026-10-22.md`.
 
@@ -79,20 +77,29 @@ The registered kind T now warns once on reading, because its `input_hashes` name
 - **Ruled (author, 22 October).** The equatorial wind above 0.2 mbar, about 940 m/s at 1 Pa
   against 270 m/s in the base, is accepted: this hypothesis exists to work the pipeline with an
   input wind, and later hypotheses bring physical boundary conditions. The first guesses stand.
-- **Expected.** Scaled from the +4.7 K the base carries at 110 mbar, delivered minus egress near
-  -0.6, -1.0 and +4.1 K at 10, 1 and 0.3 mbar. A line in ln p cannot fit both 1 and 0.3 mbar:
-  the radio's reversal steepens above 1 mbar.
+- **Result (REPORT_14_step1, accepted 30 October).** Delivered minus egress at 31.2 S:
+
+  | Level (mbar) | 730 | 290 | 110 | 10 | 4.5 | 1 | 0.3 |
+  |---|---|---|---|---|---|---|---|
+  | Hypothesis 1 base (K) | +0.40 | +2.32 | +5.00 | -1.90 | +0.10 | +5.24 | +15.10 |
+  | Hypothesis 2 (K) | +0.40 | +2.30 | +5.09 | +0.20 | -0.77 | -2.17 | +2.88 |
+  | Egress sigma_T (K) | 2.73 | 2.29 | 2.27 | 2.88 | 3.47 | 5.42 | 8.74 |
+
+  Aloft, every value is inside sigma_T; density at 0.3 mbar moves from -10.0 to -1.8 percent. At
+  110 mbar the radio and IRIS disagreement remains, about 5 K. The equatorial wind reaches 472 m/s
+  at 0.2 mbar and 1052 m/s at 0.01 mbar, as accepted. The lapse rate stays stable.
+- **Check 1** was ruled to the construction's tolerance: the wind below 110 mbar differs from the
+  base's by 4.5e-3 m/s, from the stopping rule, which is immaterial.
 
 ## Next
 
-1. SPEC_R1's acceptance commit and push.
-2. SPEC_14, Step 1.
-3. **More radio targets, in one digitizing step:** Lindal Fig. 6 (Voyager 1 egress near 3.0 S, in
+1. SPEC_14's acceptance commit and push.
+2. **More radio targets, in one digitizing step:** Lindal Fig. 6 (Voyager 1 egress near 3.0 S, in
    the equatorial band; Pioneer 11 near 11.9 S) and the 74.2 S profile of Fig. 5. Then compare the
    hypotheses at several targets. Lindal rates the Voyager 1 profiles less reliable.
-4. **Hypothesis 3:** shear from a CIRS cross-section of the same season (Aug 2009 to Nov 2010,
+3. **Hypothesis 3:** shear from a CIRS cross-section of the same season (Aug 2009 to Nov 2010,
    before the storm), used outside about +/-15 to 20 deg.
-5. **Later**, unchanged from the 8 October note: the IRIS profile catalog; stratospheric IRIS near
+4. **Later**, unchanged from the 8 October note: the IRIS profile catalog; stratospheric IRIS near
    1 mbar; the dry adiabat for normal hydrogen in lapse-rate plots; how NaN uncertainties are used;
    the Monte Carlo; convective adjustment mixing entropy, momentum and composition; cylinders at
    depth; a seasonal wind prior; the assimilation pulling hypothesis 1 toward the radio egress.
