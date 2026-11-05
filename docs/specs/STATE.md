@@ -163,3 +163,20 @@ SPEC_16 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: both readi
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
 | 1 | the self-check of our refractivity against Kliore's; his N against the delivered N at 11.9 S, by radius with a fitted offset and by pressure rescaled to the anchor's mixture | accepted (`f128202`; 2 of 2 under REVIEW_16_step1; self-check RMS 0.034 n-units, implied mean refractivity 125.87 against 125.90; planetocentric reading ruled, offset +9.2 km, residual 2.3 % RMS from 10 to 182 mbar, above 10 mbar the layering of SPEC_15; the pressure comparison restates SPEC_15's in temperature; Kliore's 17.1 mbar misprint corrected to 17.5; no regression. SPEC_16 closed) | `reports/REPORT_16_step1.md`, `reports/REVIEW_16_step1.md` | 2026-10-30 |
+
+## SPEC_17, what the Voyager-epoch observations require of the wind
+
+SPEC_17 accepted by the author at v0.2 on 30 October 2026. The Voyager 1 profiles near-epoch with the Voyager 2 anchor; Pioneer 11 for reference only. Measures only; fits nothing. **Closed** at Step 1's acceptance on 5 November 2026 (REVIEW_17_step1): the anchor's 100 mbar surface to 0.8 km, the southern points 7 to 8 km high; the operator good to 1 percent; segment 2 asks -7 m/s per unit ln p at 110 mbar.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 1 | Part A: Lindal Fig. 9's 100 mbar altitudes digitized, against the delivered 100 mbar surface at the anchor and three Voyager targets. Part B: the linearized balance weight w(φ, p) beside `construct`; the segment constraints for 30.8 N to 2.4 S, 2.4 S to 26.1 S and 26.1 S to 71.1 S; the linearization tested at two amplitudes in a copy | not started | | |
+
+## SPEC_18, Kliore et al. (1980) as a second registered profile
+
+SPEC_18 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: one interpolated level at 100 mbar in Kliore's kind T). Three layers: source-specific ingest, general tools from the standard kinds on, the model unchanged. Lindal's answer unchanged is the test; with it, no full regression. Not used against the Voyager-epoch wind; ready for time propagation.
+
+| Step | Deliverable | Status | Report | Date |
+|---|---|---|---|---|
+| 0 | pre-execution report: the line tool by tool, Kliore's preprocessing, the Lindal rebuild in a copy | not started | | |
+| 1 | Kliore's preprocessing; the general tools as ruled; `occul_data/kliore1980/` through kind N; the closure run `kliore1980_closure` | not started | | |

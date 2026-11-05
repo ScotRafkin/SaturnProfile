@@ -1,0 +1,23 @@
+# Altitude of the 100 mbar isobaric surface above Lindal's reference geoid, against planetocentric
+# latitude. Lindal, G. F., Sweetnam, D. N., and Eshleman, V. R. 1985, Astron. J. 90, 1136, Fig. 9,
+# right panel (journal page 1142), digitized by tests/step17_1/digitize_fig9.py (SPEC_17 Step 1
+# item 1): rendered at 600 dpi, calibrated by the ticks, each point the centroid of its dot. The
+# ticks are drafted unevenly, by up to 0.5 deg in latitude; the calibration RMS is in the report.
+# The reference geoid (Fig. 9 caption and Appendix Eqs. 12 to 14): the level surface through a polar
+# radius of 54,438 km of the external gravity field and a uniform rotation at the System III period,
+# 10 h 39 m 22.4 s, with no wind. Lindal gives no error bars on the points; the geoids he fits to
+# the isobaric surfaces fit them to 3 to 4 km (p. 1141).
+# The points and their epochs:
+#   voyager2   Voyager 2 ingress, 36.3 N planetographic, the anchor, 26 August 1981
+#   voyager1   Voyager 1 egress, 3.0 S planetographic, 13 November 1980
+#   pioneer11  Pioneer 11, from radio tracking, not occultation (p. 1141), September 1979; for
+#              reference only, two years from the anchor (SPEC_17 section 0)
+#   voyager2   Voyager 2 egress, 31.2 S planetographic, 26 August 1981
+#   voyager1   Voyager 1 ingress, 74.2 S planetographic, 13 November 1980
+# Latitudes are planetocentric, as Lindal plots them.
+latitude_planetocentric_deg,altitude_km,observation
+30.82,61.0,voyager2
+-2.96,121.3,voyager1
+-9.54,103.3,pioneer11
+-26.20,59.7,voyager2
+-71.84,13.3,voyager1

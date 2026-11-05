@@ -310,6 +310,46 @@ def construct(cloud, table, composition, gravity, rotation, top_level_Pa, above,
                         iterations=iteration, changes_ms=changes)
 
 
+def balance_weight(wind, composition, gravity, rotation, pressure_Pa, temperature_K,
+                   equatorial_radius_m=None) -> np.ndarray:
+    """The balance `construct` solves, linearized in the shear with the wind held fixed (SPEC_17
+    Step 1 item 3): on each isobar `Delta(d ln T / dphi)_p = w Delta s`, with
+
+        w = -2 Omega_abs r D / g = 2 Omega_abs r m_bar (sin(phi) - (cos(phi) / r)(dr/dphi)_p) / (R T)
+
+    and `D` as in the module docstring. The geometry at each pressure is `construct`'s: the Eq. B3
+    surface under that level's wind, `g` and `Omega_abs` under it. Held fixed, the wind's own terms
+    (`(du/dphi)_p`, and the wind in `g`, `Omega_abs` and the surface) do not enter `w`.
+
+    `wind` is a kind W dataset, read at `pressure_Pa` linearly in `ln p`; `temperature_K` is
+    `(pressure, latitude)` on the wind's planetocentric grid, NaN where unknown. Returns `w` in
+    s m-1 rad-1, `(pressure, latitude)`, which changes sign at the equator with `D`."""
+    lat_c = np.asarray(wind["latitude_planetocentric_deg"].values, dtype="float64")
+    phi = np.radians(lat_c)
+    grid = np.asarray(wind["pressure_Pa"].values, dtype="float64")
+    u_grid = np.asarray(wind["u_total_ms"].values, dtype="float64")
+    pressure_Pa = np.atleast_1d(np.asarray(pressure_Pa, dtype="float64"))
+    temperature_K = np.asarray(temperature_K, dtype="float64").reshape(pressure_Pa.size, lat_c.size)
+    rising = np.argsort(np.log(grid))
+    Omega = float(rotation["angular_rate_rad_s"])
+    GM = float(gravity["GM_m3s2"])
+    J = np.asarray(gravity["J"].values, dtype="float64")
+    degrees = np.asarray(gravity["degree"].values)
+    R_norm = float(gravity["normalization_radius_m"])
+    r_eq = R_norm if equatorial_radius_m is None else float(equatorial_radius_m)
+    m_bar = mean_molar_mass(composition, pressure_Pa, lat_c)
+    w = np.full((pressure_Pa.size, lat_c.size), np.nan)
+    for k, level in enumerate(pressure_Pa):
+        u_k = np.array([np.interp(np.log(level), np.log(grid[rising]), row[rising]) for row in u_grid])
+        r = np.asarray(gd.wind_geoid(phi, r_eq, "equatorial_radius",
+                                     lambda x, u_k=u_k: np.interp(x, phi, u_k),
+                                     Omega, GM, J, degrees, R_norm).radius, dtype="float64")
+        rate = omega_abs(u_k, r, phi, Omega)
+        w[k] = (2.0 * rate * r * m_bar[k] * (np.sin(phi) - np.cos(phi) / r * np.gradient(r, phi))
+                / (MOLAR_GAS_CONSTANT * temperature_K[k]))
+    return w
+
+
 def _dataset(cloud, u, u_ref, pressure, levels, above, gradient="slope", window="adaptive",
              hold_Pa=None, cross_Pa=None) -> xr.Dataset:
     """The output kind W dataset, the cloud wind's attributes and auxiliaries replaced where false."""

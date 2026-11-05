@@ -5,11 +5,11 @@ comparison are in that note and are unchanged; this note records what has happen
 
 ## Where things stand
 
-- **Closed:** SPEC_00 to SPEC_15 and SPEC_R1. SPEC_R1, SPEC_14 and SPEC_15 closed on 30 October
-  (REVIEW_R1_step1, REVIEW_14_step1, REVIEW_15_step1). SPEC_00 is at v0.25: its §8 is now the
-  whole of what readers enforce.
-- **Committed:** SPEC_R1 at `15965af`, SPEC_14 at `cfe8030`. SPEC_15's acceptance commit is next.
-- **Next:** Kliore et al. as a second profile (below).
+- **Closed:** SPEC_00 to SPEC_16 and SPEC_R1. SPEC_R1, SPEC_14, SPEC_15 and SPEC_16 closed on 30
+  October. SPEC_00 is at v0.25: its §8 is now the whole of what readers enforce.
+- **Committed:** SPEC_R1 at `15965af`, SPEC_14 at `cfe8030`.
+- **In progress:** SPEC_17, the Voyager-epoch constraints on the wind.
+- **Accepted, waiting:** SPEC_18, Kliore et al. (1980) as a second registered profile.
 - **The coding agent is new.** It works from `docs/CASSPIAN_CodingAgent_Handoff_2026-10-22.md`
   and `docs/CASSPIAN_CodingAgent_Brief_2026-10-22.md`.
 
@@ -128,6 +128,35 @@ The registered kind T now warns once on reading, because its `input_hashes` name
   - At 74.2 S both are 6 to 8 K cold from 3 to 15 mbar; a pattern times f(p) cannot reorder the
     profiles with height.
 
+## SPEC_16, Pioneer 11 refractivity
+
+- **The self-check agrees.** Kliore's temperatures and pressures through our refractivity
+  arithmetic return his measured column; the implied mean refractivity matches ours to 0.02
+  percent. The 17.1 mbar row is a misprint for 17.5, corrected.
+- **The geometry agrees.** On the planetocentric reading of his radius mapping, Pioneer 11's
+  100 mbar level is 7 km from the surface the model delivers at 9.51 S from the Lindal anchor.
+- **The profile does not, above 10 mbar.** From 10 to 182 mbar the refractivity matches to 2.3
+  percent; above, the observed column is colder and more compact, the layering SPEC_15 found.
+- **Kliore is Pioneer 11, September 1979,** two years before the anchor and across the equinox.
+  It is not used to correct the Voyager-epoch wind, which would mix time into a spatial
+  correction (author, 30 October). It becomes a second anchor and a cross-validation once time
+  propagation exists.
+
+## SPEC_17 and SPEC_18 (accepted 30 October)
+
+- **SPEC_17** measures what the Voyager-epoch observations ask of the wind, and fits nothing.
+  - The Voyager 1 profiles are near-epoch with the Voyager 2 anchor; as distinct times later.
+  - Part A: Lindal's Fig. 9 100 mbar altitudes against the delivered 100 mbar surface, the
+    reference wind's test.
+  - Part B: the linearized balance weight, the observation operator; every path starts at the
+    anchor, so the three Voyager targets split the shear constraint into three latitude
+    segments; the linearization tested at two amplitudes.
+- **SPEC_18** reduces Kliore to a kind N with a closure run. Three layers: source-specific ingest,
+  general tools from the standard kinds on, the model unchanged. Kliore's table has no 100 mbar
+  level, so his kind T gets one interpolated level (about 0.01 K). Lindal's answer must not
+  change: every changed tool in his chain rebuilds his files in a copy, equal in value, and with
+  that no full regression is run.
+
 ## Direction (author and reviewing agent, 30 October)
 
 - **The goal.** The model gives the best answer for a given input, using every observation that
@@ -149,19 +178,14 @@ The registered kind T now warns once on reading, because its `input_hashes` name
 
 ## Next
 
-1. SPEC_15's acceptance commit and push.
-2. **Kliore et al. against the Lindal anchor, by refractivity.** Kliore's N(r) against the
-   delivered N(r) at 11.9 S, which needs no composition but allows for a radius offset. And the
-   self-check: Kliore's T and p through the reduction with his 90/10 mixture should return his N.
-3. **Kliore as a validation anchor** (weight 0) beside Lindal: a second reduction, with the
-   profile tools generalized. Its discrepancy with Lindal scores each wind hypothesis.
-4. **A fitted wind at the Voyager epoch** from IRIS and the radio profiles, with leave-one-out.
-   It needs a ruling first on the 110 mbar radio and IRIS disagreement. The equatorial profiles
-   above 30 mbar enter with a large representativeness error or not at all.
-5. **Time:** the seasonal propagator, CIRS seasonal fields and Cassini cloud tracking. The CIRS
-   shear hypothesis of the earlier queue comes here. Steps 4 and 5 may swap.
-6. **The combination step:** Kliore and others as construction anchors, and optimal interpolation.
-7. **Later**, unchanged from the 8 October note: the IRIS profile catalog; stratospheric IRIS near
+1. SPEC_17, then SPEC_18.
+2. **A fitted wind at the Voyager epoch** from IRIS, the Voyager radio profiles and the 100 mbar
+   geometry, on SPEC_17's operator, with leave-one-out. It needs a ruling first on the 110 mbar
+   radio and IRIS disagreement. The equatorial profiles above 30 mbar enter with a large error.
+3. **Time:** the seasonal propagator, CIRS seasonal fields and Cassini cloud tracking. The CIRS
+   shear hypothesis of the earlier queue comes here. Steps 2 and 3 may swap. Kliore then enters as an anchor at its own time.
+4. **The combination step:** Kliore and others as construction anchors, and optimal interpolation.
+5. **Later**, unchanged from the 8 October note: the IRIS profile catalog; stratospheric IRIS near
    1 mbar; the dry adiabat for normal hydrogen in lapse-rate plots; how NaN uncertainties are used;
    the Monte Carlo; convective adjustment mixing entropy, momentum and composition; cylinders at
    depth; a seasonal wind prior; the assimilation pulling hypothesis 1 toward the radio egress.
