@@ -178,5 +178,5 @@ SPEC_18 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: one interp
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 0 | pre-execution report: the line tool by tool, Kliore's preprocessing, the Lindal rebuild in a copy | reported | `reports/REPORT_18_preexecution.md` | 2026-11-05 |
-| 1 | Kliore's preprocessing; the general tools as ruled; `occul_data/kliore1980/` through kind N; the closure run `kliore1980_closure` | reported | `reports/REPORT_18_step1.md` | 2026-11-05 |
+| 0 | pre-execution report: the line tool by tool, Kliore's preprocessing, the Lindal rebuild in a copy | accepted (ruled on in SPEC_18 v0.3 section 5; the tool split, the label latitude and the height as proposed) | `reports/REPORT_18_preexecution.md` | 2026-11-05 |
+| 1 | Kliore's preprocessing; the general tools as ruled; `occul_data/kliore1980/` through kind N; the closure run `kliore1980_closure` | accepted (`91b9691`; 6 of 6 under REVIEW_18_step1; Lindal's kinds C, T, D and the kind C of 23 runs rebuilt in a copy differ in no value, the manifest byte-equal; refractivity RMS 0.031 n-units; radius +1.27 km with no spread; the closure's drift a constant 0.6 percent in molar mass times gravity plus about -10 Pa from the top, 2.2 amu recorded as an inference; Kliore's products rebuilt clean at `91b9691`, no value changed; the closure's inputs and product not committed; no regression. SPEC_18 closed) | `reports/REPORT_18_step1.md`, `reports/REVIEW_18_step1.md` | 2026-11-05 |
