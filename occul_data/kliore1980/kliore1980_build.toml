@@ -1,0 +1,105 @@
+# CASSPIAN build control file for the Kliore profile (SPEC_18). Pointers and declared choices only;
+# every physical value lives in the files this points at.
+#
+# Kliore et al. (1980) Table 1, Pioneer 11 exit, 1 September 1979, 9.5 S planetocentric (11.9 S
+# planetographic), 1.8 to 182 mbar; nothing is extrapolated. Not used against the Voyager-epoch wind.
+# The raw bundle and kind T carry one level Table 1 does not print, at exactly 100 mbar, the anchor
+# isobar, linear in ln p between 99.6 and 101.9 mbar (SPEC_18 section 2). It is identified by its
+# pressure.
+#
+# Built in this order: casspian-kliore-raw, then [gravity], [rotation], [wind], [composition] by their
+# tools, then [stage_two] by casspian-kliore-inputs, then casspian-refrac on the manifest.
+
+[gravity]
+# Null et al. (1981), the Pioneer 11 solution, as Lindal's reduction.
+source = "../../data_static/harmonics/null1981.toml"
+output = "kliore1980_gravity.nc"
+prefix = "kliore1980"
+epoch  = "1979-09-01"
+title  = "Null et al. (1981) harmonic set, as used in the Kliore reduction"
+
+[rotation]
+source = "../../data_static/rotation/system_iii.toml"
+entry  = "system_iii"
+output = "kliore1980_rotation.nc"
+prefix = "kliore1980"
+epoch  = "1979-09-01"
+title  = "System III rotation, as used in the Kliore reduction"
+
+[wind]
+# Lindal's: the Ingersoll and Pollard (1982) cloud wind, altitude independent. This is a Voyager wind
+# used two years later (SPEC_18 section 1 item 6), so the file keeps the wind's own date, 1981-08-26.
+# Same choices as occul_data/lindal/lindal_build.toml.
+wind_source_kind = "curve"
+curve_source     = "../../data_static/winds/ingersoll_pollard1982_fig5_curve.csv"
+points_source    = "../../data_static/winds/smith1982_fig4_points.csv"
+data_properties  = "../../data_static/winds/smith1982_fig4.toml"
+gravity_file     = "kliore1980_gravity.nc"
+rotation_file    = "kliore1980_rotation.nc"
+raw_bundle       = "raw/kliore1980_raw.nc"          # for the reference geoid polar radius
+output           = "kliore1980_wind.nc"
+prefix           = "kliore1980"
+title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as used in the Kliore reduction"
+
+bin_width_deg     = 2.0
+min_count_per_bin = 3
+
+gap_rule        = "reflect_north"
+polar_rule      = "pchip_to_zero"
+join_window_deg = [-10.9, -15.0]
+
+latitude_grid_step_deg = 0.5
+vertical_structure     = "altitude independent"
+
+pressure_grid_Pa = [
+  1, 1.25893, 1.58489, 1.99526, 2.51189, 3.16228, 3.98107, 5.01187, 6.30957, 7.94328,
+  10, 12.5893, 15.8489, 19.9526, 25.1189, 31.6228, 39.8107, 50.1187, 63.0957, 79.4328,
+  100, 125.893, 158.489, 199.526, 251.189, 316.228, 398.107, 501.187, 630.957, 794.328,
+  1000, 1258.93, 1584.89, 1995.26, 2511.89, 3162.28, 3981.07, 5011.87, 6309.57, 7943.28,
+  10000, 12589.3, 15848.9, 19952.6, 25118.9, 31622.8, 39810.7, 50118.7, 63095.7, 79432.8,
+  100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
+  1e+06
+]
+
+[composition]
+# Kliore's own mixture, 90 percent hydrogen and 10 percent helium by number, no ammonia. The set
+# lindal1985 holds H2 136 and He 35, which reproduce his refractivity (SPEC_16's self-check).
+raw_bundle     = "raw/kliore1980_raw.nc"
+species_master = "../../data_static/species_master.toml"
+species_set    = "lindal1985"
+output         = "kliore1980_composition.nc"
+prefix         = "kliore1980"
+title          = "Kliore et al. (1980) reduction composition, 90 percent H2 and 10 percent He"
+
+h2_fraction_of_remainder = 0.90
+he_fraction_of_remainder = 0.10
+
+vertical_coordinate = "pressure_Pa"
+latitude_grid_deg   = [-90.0, 90.0, 1.0]
+
+[stage_two]
+raw_bundle       = "raw/kliore1980_raw.nc"
+prefix           = "kliore1980"
+description      = "Pioneer 11 exit, Kliore et al. 1980, Table 1"
+thermo_output    = "kliore1980_thermo.nc"
+geodesy_output   = "kliore1980_geodesy.nc"
+manifest         = "kliore1980_reduction.toml"
+product          = "kliore1980_refractivity.nc"
+
+gravity_file     = "kliore1980_gravity.nc"
+rotation_file    = "kliore1980_rotation.nc"
+wind_file        = "kliore1980_wind.nc"
+composition_file = "kliore1980_composition.nc"
+
+# Lindal's anchor isobar, surface and rule (SPEC_18 section 1 item 7).
+anchor_isobar_Pa          = 1.0e4
+fixed_point_tolerance_deg = 1.0e-6
+max_iterations            = 20
+geoid_anchor_surface_Pa   = 1.0e4
+geoid_anchor_quantity     = "radius_equatorial_m"
+geoid_anchor_rule         = "equatorial_radius"
+geoid_convergence_m       = 1.0
+
+diagnostics_figures       = true
+diagnostics_format        = "png"
+diagnostics_dpi           = 150

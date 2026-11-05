@@ -1,15 +1,15 @@
-# CASSPIAN status, 22 October 2026 (updated 30 October)
+# CASSPIAN status, 22 October 2026 (updated 5 November)
 
 Reviewing agent. Supersedes `casspian_status_2026-10-08.md`. The results of SPEC_13 and the first
 comparison are in that note and are unchanged; this note records what has happened since.
 
 ## Where things stand
 
-- **Closed:** SPEC_00 to SPEC_16 and SPEC_R1. SPEC_R1, SPEC_14, SPEC_15 and SPEC_16 closed on 30
-  October. SPEC_00 is at v0.25: its §8 is now the whole of what readers enforce.
-- **Committed:** SPEC_R1 at `15965af`, SPEC_14 at `cfe8030`.
-- **In progress:** SPEC_17, the Voyager-epoch constraints on the wind.
-- **Accepted, waiting:** SPEC_18, Kliore et al. (1980) as a second registered profile.
+- **Closed:** SPEC_00 to SPEC_18 and SPEC_R1. SPEC_17 and SPEC_18 closed on 5 November. SPEC_00 is
+  at v0.25: its §8 is now the whole of what readers enforce.
+- **Accepted:** `docs/CASSPIAN_Wind_Estimation_Design_Note_2026-11-05.md` v0.4, the plan for the
+  best-guess wind (below).
+- **Next:** SPEC_19, hypothesis 3, the Voyager-epoch shear blend.
 - **The coding agent is new.** It works from `docs/CASSPIAN_CodingAgent_Handoff_2026-10-22.md`
   and `docs/CASSPIAN_CodingAgent_Brief_2026-10-22.md`.
 
@@ -157,6 +157,38 @@ The registered kind T now warns once on reading, because its `input_hashes` name
   change: every changed tool in his chain rebuilds his files in a copy, equal in value, and with
   that no full regression is run.
 
+## SPEC_17 and SPEC_18, results (5 November)
+
+- **SPEC_17.** The anchor's 100 mbar surface matches Lindal's Fig. 9 to 0.8 km; south of the equator
+  the delivered surface is 7 to 8 km high, a constraint on the reference wind and the shear below
+  100 mbar. The operator (`balance_weight`) is linear to about 1 percent. The segments ask little of
+  26 to 71 S; segment 1 (30.8 N to 2.4 S) is weakly constrained; above 30 mbar near the equator the
+  requests swing with the wave layering; and 2.4 to 26 S at 110 mbar asks -7 m/s per unit ln p,
+  the radio and IRIS disagreement located in latitude.
+- **SPEC_18.** Kliore is a working kind N with a closure run, and Lindal's answer is unchanged. The
+  profile tools are split into source-specific ingest and shared writers. The closure's drift is
+  Kliore's own: his molar mass times gravity is 0.6 percent below ours, likely 2.2 amu. When Kliore
+  becomes an anchor, re-deriving his T and p from his refractivity with the exact mass is to be
+  considered.
+
+## The best-guess wind (design note v0.4, accepted 5 November)
+
+- **One weighted least-squares fit,** outside the model, using the model as the operator: a prior
+  wind and its covariance, and one term per observation type (data, operator, error model). Adding
+  data adds a term.
+- **Every radio profile is an anchor.** Same-epoch anchor pairs constrain the shear integral between
+  them, once per pair. The model does not correct the wind; its combination keeps Eq. A30 only.
+- **IRIS shapes the shear in latitude; the radio sets the long integrals.** The fit weighs them by
+  their errors, including how those errors correlate in latitude. IRIS errors are random by default;
+  the consistency check finds any bias.
+- **A best-guess wind per epoch,** all epochs estimated together, coupled by a time correlation set
+  by the radiative time constant. Near epochs that pull the winds far apart are flagged.
+- **The Monte Carlo samples jointly:** each member perturbs every observation and rebuilds its own
+  wind. `p_ref` is one of its parameters.
+- **Later data:** Cassini radio occultations (1.5 bar to 0.1 mbar) as anchors, with same-day
+  ingress and egress pairs; CIRS nadir and limb as gradient observations, limb giving the shear
+  aloft; both need the time machinery.
+
 ## Direction (author and reviewing agent, 30 October)
 
 - **The goal.** The model gives the best answer for a given input, using every observation that
@@ -178,17 +210,19 @@ The registered kind T now warns once on reading, because its `input_hashes` name
 
 ## Next
 
-1. SPEC_17, then SPEC_18.
-2. **A fitted wind at the Voyager epoch** from IRIS, the Voyager radio profiles and the 100 mbar
-   geometry, on SPEC_17's operator, with leave-one-out. It needs a ruling first on the 110 mbar
-   radio and IRIS disagreement. The equatorial profiles above 30 mbar enter with a large error.
-3. **Time:** the seasonal propagator, CIRS seasonal fields and Cassini cloud tracking. The CIRS
-   shear hypothesis of the earlier queue comes here. Steps 2 and 3 may swap. Kliore then enters as an anchor at its own time.
-4. **The combination step:** Kliore and others as construction anchors, and optimal interpolation.
-5. **Later**, unchanged from the 8 October note: the IRIS profile catalog; stratospheric IRIS near
-   1 mbar; the dry adiabat for normal hydrogen in lapse-rate plots; how NaN uncertainties are used;
-   the Monte Carlo; convective adjustment mixing entropy, momentum and composition; cylinders at
-   depth; a seasonal wind prior; the assimilation pulling hypothesis 1 toward the radio egress.
+The design note's path (§10):
+1. **SPEC_19, hypothesis 3:** the Voyager-epoch shear blend from IRIS and the radio targets, the
+   reference wind held, with the error budget ruled first.
+2. **The reference wind:** the cloud winds and the 100 mbar geometry; `p_ref` sampled.
+3. **More Voyager anchors:** the Voyager 2 egress and Voyager 1 profiles reduced to kind N, entering
+   as anchor pairs; the model's combination reduced to Eq. A30.
+4. **Time:** the seasonal propagator, the joint estimate across epochs, Kliore at 1979, CIRS nadir and
+   limb, Cassini radio occultations and cloud winds.
+5. **The Monte Carlo,** each member rebuilding its own wind.
+
+**Later**, unchanged from the 8 October note: the IRIS profile catalog; the dry adiabat for normal
+hydrogen in lapse-rate plots; convective adjustment mixing entropy, momentum and composition;
+cylinders at depth.
 
 ## Parked
 

@@ -1,0 +1,36 @@
+# Reduction manifest for the kliore1980 profile (SPEC_00 section 7.1).
+# Written by casspian-kliore-inputs. Pointers and declared choices only; every number the reduction
+# consumes is in the files named below.
+
+[profile]
+slug        = "kliore1980"
+description = "Pioneer 11 exit, Kliore et al. 1980, Table 1"
+
+[inputs]
+thermo      = "kliore1980_thermo.nc"
+composition = "kliore1980_composition.nc"
+geodesy     = "kliore1980_geodesy.nc"
+gravity     = "kliore1980_gravity.nc"
+rotation    = "kliore1980_rotation.nc"
+wind        = "kliore1980_wind.nc"
+
+[anchor_isobar]
+pressure_Pa = 10000
+
+[anchor_latitude]
+fixed_point_tolerance_deg = 1e-06
+max_iterations            = 20
+
+[geoid]
+anchor_surface_Pa = 10000
+anchor_quantity   = "radius_equatorial_m"
+anchor_rule       = "equatorial_radius"   # SPEC_01 v0.16: how the one constant of Eq. B3 is fixed
+convergence_m     = 1
+
+[output]
+product = "kliore1980_refractivity.nc"
+
+[diagnostics]
+figures = true
+format  = "png"
+dpi     = 150

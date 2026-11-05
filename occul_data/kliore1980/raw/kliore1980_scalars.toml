@@ -1,0 +1,78 @@
+# CASSPIAN raw transcription: the scalars the reduction of the Pioneer 11 exit profile needs (SPEC_18
+# section 1). Each value names where it was read. The tabulated profile is ../pioneer11_exit.csv.
+
+[source]
+citation         = "Kliore, A. J., Patel, I. R., Lindal, G. F., Sweetnam, D. N., Hotz, H. B., Waite, J. H., McDonough, T. R. 1980, JGR 85, 5857"
+spacecraft       = "Pioneer 11"
+event            = "exit"
+observation_date = "1979-09-01"
+observation_date_source = "Table 1 and Fig. 5 ('Time, UTC, Sept 1, 1979')"
+# The season (SPEC_18 section 5 ruling 7), by the method of lindal_scalars.toml, which gives 18.17 and
+# 8.06 for Lindal's date against his recorded 18.2 and 8.06.
+solar_longitude_deg    = 353.7
+subsolar_latitude_deg  = -2.85
+solar_longitude_source = "computed for 1979-09-01 from the JPL approximate Keplerian elements of Saturn and the IAU pole (RA 40.589 deg, Dec 83.537 deg), the method of lindal_scalars.toml (SPEC_18 section 5 ruling 7); not stated by the source; to be replaced by the ephemeris value when the season tool exists"
+table1_footnote  = "Table 1, 'Saturn Atmosphere Structure From Exit Measurement (Latitude, 9.5 S; SZA, 90.9)'. Computed for a helium fraction by number of 10 percent."
+
+[latitude]
+# Planetocentric (SPEC_15 section 2 ruling 1). There is no planetographic label here: refrac needs
+# one, and stage two computes it on refrac's own geoid (SPEC_18 section 5 ruling 1).
+planetocentric_deg = -9.5
+value_source       = "Table 1 title: 'Latitude, 9.5 S'"
+convention_source  = "Table 1 title, read as planetocentric (SPEC_15 section 2 ruling 1); Lindal et al. (1985) label the same profile 11.9 S planetographic"
+
+[radius_mapping]
+# Table 1's radius is an equatorial radius, mapped from the local one on an ellipse.
+oblateness = 0.096
+source     = "p. 5861, 'a constant oblateness value based on an ellipsoidal approximation'; p. 5857, 0.096 at the 100 mbar level; the planetocentric reading of the mapping is SPEC_16's"
+
+[composition]
+# Kliore's own mixture, so that the reduction reproduces his refractivity (SPEC_18 section 1 item 2).
+# No ammonia. His +/-3 K for composition is not a mole fraction uncertainty, so none is stated.
+#
+# An inference, not a statement of the source: Kliore's own integration likely used a mean molecular
+# mass of 2.2 amu, the 90/10 mixture with whole-number masses, against 2.2146 from the exact ones
+# used here. Neither Kliore paper states the number. Basis (REPORT_18_step1 section 5,
+# REVIEW_18_step1): Table 1 implies a product of molar mass and gravity 0.63 percent below ours, which
+# the table alone cannot split; read as a mass with our gravity it is 2.2007 amu, and 2.2 amu brings
+# 110 of the 112 levels from 10 mbar down inside the printed precision with no fitted value (the
+# -10 Pa offset from the top removed). So his printed temperatures and pressures carry that constant,
+# not his measurement. When Kliore becomes an anchor, consider re-deriving them from his refractivity
+# with the exact molar mass (REVIEW_18_step1).
+h2_fraction    = 0.90
+h2_uncertainty = nan
+h2_source      = "p. 5867 (Fig. 12 caption) and p. 5869: the best fit to the infrared temperatures is a helium fraction by number of 10 percent; Table 1 is computed for it"
+
+# Kliore fitted no surfaces. These are Lindal's (SPEC_18 section 1 item 7), transcribed so that this
+# build reads none of Lindal's files (section 5 ruling 4) and checked equal to Lindal's kind D by
+# tests/step18_1. Lindal's fit used Pioneer 11 tracking among its points. The anchor rule is his.
+[geodesy]
+citation                  = "Lindal, G. F., Sweetnam, D. N., Eshleman, V. R. 1985, AJ 90, 1136"
+fit_method                = "Least-squares fit of a computed geoid to the five observed 100 mbar radii (four Voyager occultations, one Pioneer 11); p. 1141 and Fig. 9 caption"
+fit_residual_km           = [3.0, 4.0]
+fit_residual_source       = "p. 1141: 'the standard deviations of these fits range from 3 to 4 km'"
+fit_inputs                = "External gravity field (Null et al. 1981; Campbell 1984 pers. comm.), zonal winds at the cloud tops (Smith et al. 1982; Ingersoll and Pollard 1982; Garneau 1984 is also cited in the Fig. 9 caption), assumed independent of altitude (p. 1141, Appendix p. 1144), pole vector (Kozai 1957; Null et al. 1981; Simpson et al. 1983), System III rotation"
+fit_latitude_convention   = "planetocentric (Fig. 9 abscissa; Appendix: 'r and phi denote the distance to the center of mass and the planetocentric latitude')"
+reference_geoid_polar_radius_km = 54438.0
+reference_geoid_source    = "Lindal et al. 1985, Appendix Eq. 12 and Fig. 9 caption"
+
+[geodesy.surface_100mbar]
+pressure_Pa               = 1.0e4
+radius_equatorial_km      = 60367.0
+radius_equatorial_unc_km  = 4.0
+radius_polar_mean_km      = 54438.0
+radius_polar_mean_unc_km  = 10.0
+oblateness                = 0.09822
+oblateness_unc            = 0.00018
+value_source              = "Lindal et al. 1985, p. 1141, abstract and Fig. 9 caption"
+polar_asymmetry_note      = "Lindal et al. 1985, Fig. 9 caption: south-polar radius may be of order 10 km greater than the north-polar radius, possibly seasonal."
+
+[geodesy.surface_1bar]
+pressure_Pa               = 1.0e5
+radius_equatorial_km      = 60268.0
+radius_equatorial_unc_km  = 4.0
+radius_polar_mean_km      = 54364.0
+radius_polar_mean_unc_km  = 10.0
+oblateness                = 0.09796
+oblateness_unc            = 0.00018
+value_source              = "Lindal et al. 1985, p. 1141 and Table II p. 1143"

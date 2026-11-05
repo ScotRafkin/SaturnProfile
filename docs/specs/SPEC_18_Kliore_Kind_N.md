@@ -1,7 +1,7 @@
 # SPEC 18. Kliore et al. (1980) as a second registered profile
 
-Version 0.2, 30 October 2026. Author of record: S. Rafkin. **Status: accepted by the author, §2
-ruled.**
+Version 0.4, 5 November 2026. Author of record: S. Rafkin. **Status: closed, Step 1 accepted
+(REVIEW_18_step1).**
 Depends on SPEC_16.
 
 ## 0. Purpose
@@ -95,11 +95,42 @@ The author and reviewing agent rule on it before Step 1.
    excluded, and reported.
 3. **Kliore's radius.** Kind N's radius against Kliore's local radius (§1 item 4): the mean
    offset and its spread, against SPEC_16's +9.2 km.
-4. **The closure.** The closure product reproduces the anchor's temperature and pressure, with the
-   same measures SPEC_03 Step 4 used for Lindal. Pressure identity reported.
+4. **The closure.** The closure product's residuals in temperature and pressure, with the same
+   measures and bins SPEC_03 Step 4 used for Lindal, against the envelope of Kliore's printed
+   precision (computed in the acceptance script; F6 is not changed). Lindal's bounds do not apply:
+   they come from Lindal's table. Pressure identity reported.
+5. **Kliore's table, hydrostatically.** His temperatures integrated down in radius with our gravity
+   at 9.5 S and his 90/10 composition, against his printed pressures. The drift the dry run found
+   below 10 mbar (up to 0.9 percent, mean +5.5e-3 below 100 mbar) is explained before Step 1
+   closes: if this integration reproduces it, it is Kliore's gravity against ours, a property of
+   the source; if not, the report says what was tried next.
 
-## 5. Revision history
+## 5. Ruled on the pre-execution report (author, 5 November 2026)
+
+The tool-by-tool line of its §1 stands: `build_composition` and `build_inputs` are split, the
+general parts of `build_inputs` going to `tools/profile_inputs.py`; every other tool is unchanged.
+Kliore's preprocessing is `tools/kliore/`, as its §2 proposes. Then:
+
+1. **The label latitude** is computed by stage two as `phi_c + psi(phi_c)` on the geoid `refrac`
+   marches, from 9.5 S planetocentric: about 11.89 S planetographic, and `refrac` returns 9.5 S.
+2. **Height** is `(r_local - r_local at 100 mbar) / cos psi`, so kind N's radii keep Kliore's spacing.
+3. **Uncertainties** are NaN in kind T, with Kliore's ranges kept in the raw bundle. How they become
+   an anchor error is ruled when Kliore becomes an anchor.
+4. **Kind D's source:** Lindal's two surfaces and reference polar radius transcribed into
+   `kliore1980_scalars.toml`, cited, and checked equal to Lindal's kind D. Kliore's build reads
+   none of Lindal's files.
+5. **No `inserted_level` variable.** The inserted level is identified by its pressure, 100 mbar
+   exactly, and documented in comments.
+6. **The closure** is measured against Kliore's printed precision (Step 1 acceptance 4), and its
+   drift is explained by the hydrostatic check of Step 1 acceptance 5 before Step 1 closes.
+7. **Season:** Ls 353.7 for 1 September 1979, by the method that reproduces Lindal's, in comments.
+
+## 6. Revision history
 
 - v0.1, 30 October 2026: first draft.
 - v0.2, 30 October 2026: accepted; the three layers; Lindal's answer unchanged as the test, with
   no full regression; the inserted 100 mbar level ruled.
+- v0.3, 5 November 2026: §5 rules on the pre-execution report; acceptance 4 restated against
+  Kliore's precision; acceptance 5, the hydrostatic check, added.
+- v0.4, 5 November 2026: closed; the drift is Kliore's molar mass times gravity, 0.6 percent below
+  ours, likely 2.2 amu.

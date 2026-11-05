@@ -174,9 +174,9 @@ SPEC_17 accepted by the author at v0.2 on 30 October 2026. The Voyager 1 profile
 
 ## SPEC_18, Kliore et al. (1980) as a second registered profile
 
-SPEC_18 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: one interpolated level at 100 mbar in Kliore's kind T). Three layers: source-specific ingest, general tools from the standard kinds on, the model unchanged. Lindal's answer unchanged is the test; with it, no full regression. Not used against the Voyager-epoch wind; ready for time propagation.
+SPEC_18 accepted by the author at v0.2 on 30 October 2026 (§2 ruled: one interpolated level at 100 mbar in Kliore's kind T). Three layers: source-specific ingest, general tools from the standard kinds on, the model unchanged. Lindal's answer unchanged is the test; with it, no full regression. Not used against the Voyager-epoch wind; ready for time propagation. v0.3 (5 November 2026) rules on the pre-execution report: the tool split as proposed, the label latitude and height as proposed, uncertainties NaN for now, kind D transcribed, no flag variable, and the closure's drift explained by a hydrostatic check of Kliore's table before Step 1 closes. **Closed** at Step 1's acceptance on 5 November 2026 (REVIEW_18_step1): Lindal's answer unchanged; Kliore's kind N and closure working; the drift is Kliore's molar mass times gravity, 0.6 percent below ours, likely 2.2 amu.
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 0 | pre-execution report: the line tool by tool, Kliore's preprocessing, the Lindal rebuild in a copy | not started | | |
-| 1 | Kliore's preprocessing; the general tools as ruled; `occul_data/kliore1980/` through kind N; the closure run `kliore1980_closure` | not started | | |
+| 0 | pre-execution report: the line tool by tool, Kliore's preprocessing, the Lindal rebuild in a copy | reported | `reports/REPORT_18_preexecution.md` | 2026-11-05 |
+| 1 | Kliore's preprocessing; the general tools as ruled; `occul_data/kliore1980/` through kind N; the closure run `kliore1980_closure` | reported | `reports/REPORT_18_step1.md` | 2026-11-05 |

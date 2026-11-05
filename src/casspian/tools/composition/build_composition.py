@@ -1,16 +1,19 @@
-"""Build the Lindal reduction composition, kind C.
+"""Build a profile's composition, kind C.
 
-SPEC_01 Step 8, SPEC_00 section 6.2. The composition Lindal assumed, so that the reduction
-reproduces his refractivity to number density conversion: 94 percent H2 with the remainder He
-and NH3, with the ammonia column of Table I filled under a declared rule.
+SPEC_01 Step 8, SPEC_00 section 6.2. The composition the source assumed, so that the reduction
+reproduces its refractivity to number density conversion. General (SPEC_18 v0.3 section 5): the
+levels and the source's H2 fraction come from any raw bundle, and H2 and He split what remains. When
+the raw table carries an ammonia column, as Lindal's does (94 percent H2 with the remainder He and
+NH3), ammonia is assigned first under a declared rule, from `tools/lindal/ammonia.py`. The tool
+keeps the name `casspian-composition-lindal` it was first given.
 
 Manuscript equations implemented: none directly. The mean molar mass and the mean molecular
 refractivity this file feeds are formed in `lib.thermo` (Eq. A9) at the reduction, not here;
 this tool writes the mole fractions and the per species properties they are formed from.
 
 No physical value appears in this module. The species properties come from
-`data_static/species_master.toml`, the ammonia column and the source's own stated composition
-come from the raw bundle, and the fill rule and the split ratio are declared in the control
+`data_static/species_master.toml`, the source's own stated composition (and an ammonia column
+if there is one) come from the raw bundle, and the fill rule and the split ratio are declared in the control
 file.
 
 **The split ratio is declared and then checked against the source.** SPEC_01 Step 8 has the
@@ -28,11 +31,11 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
-from scipy.interpolate import interp1d
 
 from casspian.lib import io as cio
 from casspian.lib.constants import CODATA_RELEASE, LOSCHMIDT_CONSTANT
 from casspian.lib.control import ControlFileError, load_section
+from casspian.tools.lindal import ammonia
 
 TOOL = "casspian-composition-lindal"
 
@@ -44,7 +47,7 @@ SECTION_KEYS = {
     "prefix": True,
     "h2_fraction_of_remainder": True,
     "he_fraction_of_remainder": True,
-    "nh3_fill_rule": True,
+    "nh3_fill_rule": False,     # required when the raw table carries an ammonia column
     "vertical_coordinate": True,
     # SPEC_04 Step 0 deliverable 2, decision O: `[south, north, step]` in planetocentric
     # degrees, required. Kind C is one structure, a field on (level, latitude), and the
@@ -61,47 +64,6 @@ TEMPERATURE_FLAG_VALUES = np.array([0, 1], dtype="int8")
 TEMPERATURE_FLAG_MEANINGS = "none declared_in_refractivity_temperature_note"
 BOOLEAN_FLAG_VALUES = np.array([0, 1], dtype="int8")
 BOOLEAN_FLAG_MEANINGS = "false true"
-
-
-def fill_ammonia(pressure, nh3):
-    """Fill the ammonia column under the declared rule, returning values and provenance.
-
-    SPEC_01 v0.17 Step 8, in three parts, because the three regions are known in three
-    different ways:
-
-    * **Between the tabulated levels**, linear in pressure: `measured` where Table I gives a
-      value, `interpolated` at the one interior gap.
-    * **Below the deepest tabulated level**, linear extrapolation from the last two:
-      `extrapolated`.
-    * **Above the highest tabulated level**, exactly zero: `assumed`. Table I is blank there,
-      and blank means not measured, not zero. What justifies zero is physics rather than the
-      table, and the reason is written into the file as `nh3_aloft_assumption`.
-
-    The v0.5 wording of the rule extrapolated upward and clamped at zero, which put 0.2 ppm at
-    794.33 mbar and made the clamp level a puzzle (REPORT_01_step8, finding 1). There is no
-    upward extrapolation and no clamp here: a value nobody measured is an assumption, and it is
-    labelled as one.
-    """
-    pressure = np.asarray(pressure, dtype="float64")
-    nh3 = np.asarray(nh3, dtype="float64")
-    tabulated = np.isfinite(nh3)
-    if tabulated.sum() < 2:
-        raise ControlFileError("the ammonia column needs at least two tabulated values")
-
-    lo, hi = float(pressure[tabulated].min()), float(pressure[tabulated].max())
-    rule = interp1d(pressure[tabulated], nh3[tabulated], kind="linear",
-                    bounds_error=False, fill_value="extrapolate")
-
-    filled = np.asarray(rule(pressure), dtype="float64")
-    aloft = pressure < lo
-    filled[aloft] = 0.0
-
-    provenance = np.where(
-        aloft, "assumed",
-        np.where(tabulated, "measured",
-                 np.where(pressure <= hi, "interpolated", "extrapolated")),
-    )
-    return filled, provenance, lo, hi
 
 
 def latitude_grid(declared):
@@ -152,7 +114,9 @@ def build(control_path, section: str = "composition") -> Path:
     try:
         table1 = raw["table1"].dataset
         pressure = np.asarray(table1["pressure_Pa"].values, dtype="float64")
-        nh3_raw = np.asarray(table1["nh3_mole_fraction"].values, dtype="float64")
+        # SPEC_18 v0.3 section 5: an ammonia column is Lindal's; a source without one has none.
+        nh3_raw = (np.asarray(table1["nh3_mole_fraction"].values, dtype="float64")
+                   if "nh3_mole_fraction" in table1.variables else None)
         composition = raw["scalars/composition"].attrs
         latitude_group = raw["scalars/latitude"].attrs
         source_group = raw["scalars/source"].attrs
@@ -160,8 +124,9 @@ def build(control_path, section: str = "composition") -> Path:
         h2_uncertainty = float(composition["h2_uncertainty"])
         footnote = str(source_group["table1_footnote"])
         observation_date = str(source_group["observation_date"])
-        latitude_planetographic = float(latitude_group["planetographic_deg"])
-        latitude_value_source = str(latitude_group["value_source"])
+        # A source whose label is computed at stage two states none here (SPEC_18 section 5).
+        latitude_planetographic = latitude_group.get("planetographic_deg")
+        latitude_value_source = str(latitude_group.get("value_source", ""))
         raw_hash = cio.input_hash_entry(Path(control["raw_bundle"]), output)
     finally:
         raw.close()
@@ -184,12 +149,21 @@ def build(control_path, section: str = "composition") -> Path:
     refractivity_set = master["refractivity"][set_name]
     molar_mass = master["molar_mass"]
 
-    nh3, nh3_provenance, p_lo, p_hi = fill_ammonia(pressure, nh3_raw)
+    has_ammonia = nh3_raw is not None
+    if has_ammonia:
+        if "nh3_fill_rule" not in control:
+            raise ControlFileError(
+                f"{control_path}: [{section}] the raw table carries an ammonia column, so "
+                "nh3_fill_rule is required."
+            )
+        nh3, nh3_provenance, p_lo, p_hi = ammonia.fill_ammonia(pressure, nh3_raw)
+    else:
+        nh3 = np.zeros(pressure.shape)
     x_h2 = h2_share * (1.0 - nh3)
     x_he = he_share * (1.0 - nh3)
 
     # The species carried in this set: those the source's own statement names.
-    species = ["H2", "He", "NH3"]
+    species = ["H2", "He", "NH3"] if has_ammonia else ["H2", "He"]
     fractions = {"H2": x_h2, "He": x_he, "NH3": nh3}
     provenance = {"H2": "assumed", "He": "assumed", "NH3": None}
 
@@ -230,16 +204,18 @@ def build(control_path, section: str = "composition") -> Path:
         ("level",), np.full(pressure.shape, h2_uncertainty),
         attrs("mol/mol", "uncertainty on the H2 mole fraction", "assumed",
               uncertainty_kind="stated",
-              uncertainty_method="the source's stated 94 +/- 3 percent (p. 1137)"),
+              uncertainty_method=(ammonia.H2_UNCERTAINTY_METHOD if has_ammonia
+                                  else "the source states none")),
     )
-    variables["nh3_provenance"] = (
-        ("level",),
-        np.array([{"measured": 0, "interpolated": 1, "assumed": 2, "extrapolated": 3}[p]
-                  for p in nh3_provenance], dtype="int8"),
-        attrs("1", "how the ammonia value at this level was obtained", "index",
-              flag_values=np.array([0, 1, 2, 3], dtype="int8"),
-              flag_meanings="measured interpolated assumed extrapolated"),
-    )
+    if has_ammonia:
+        variables["nh3_provenance"] = (
+            ("level",),
+            np.array([{"measured": 0, "interpolated": 1, "assumed": 2, "extrapolated": 3}[p]
+                      for p in nh3_provenance], dtype="int8"),
+            attrs("1", "how the ammonia value at this level was obtained", "index",
+                  flag_values=np.array([0, 1, 2, 3], dtype="int8"),
+                  flag_meanings="measured interpolated assumed extrapolated"),
+        )
 
     # SPEC_04 Step 0 deliverable 2, decision O: the source's column at every node of the
     # declared grid. `pressure_Pa` is the vertical coordinate and stays one dimensional; every
@@ -271,31 +247,17 @@ def build(control_path, section: str = "composition") -> Path:
         "season_absent_meaning": "uniform",
         "vertical_coordinate": control["vertical_coordinate"],
         "source_statement": footnote,
-        "latitude_planetographic_deg": latitude_planetographic,
-        "latitude_planetographic_deg_value_source": latitude_value_source,
         "species_set": set_name,
         "remainder_split": (
             f"ammonia assigned first from Table I under the declared rule, then the remainder "
-            f"split {h2_share} H2 to {he_share} He"
+            f"split {h2_share} H2 to {he_share} He" if has_ammonia
+            else f"{h2_share} H2 to {he_share} He, no other species"
         ),
         # SPEC_00 section 6.2 v0.13: the closure is declared, so refrac reads it rather than
         # inferring it. Ammonia is assigned first and H2 and He share the remainder, the share
         # species named first.
         "closure_rule": "share_of_remainder",
         "closure_species": "H2 He",
-        "nh3_fill_rule": control["nh3_fill_rule"],
-        "nh3_aloft_assumption": (
-            "Above the highest tabulated level Table I is blank, which is 'not measured', not "
-            "'zero'. Zero is assigned there as an assumption, justified by physics rather than "
-            "by the table: Lindal states the troposphere at these levels is saturated with "
-            "ammonia, and the saturation mixing ratio over NH3 ice on his own temperatures "
-            "falls from a few ppm near 0.8 bar (consistent with the tabulated 2.6 ppm at "
-            "831.76 mbar) to below 1e-7 by 0.5 bar and below 1e-12 at the tropopause. The "
-            "assumption costs under 1e-6 of the mean molar mass and nothing in the "
-            "refractivity, since the lindal1985 set carries NH3 at zero. Levels so filled "
-            "carry nh3_provenance = assumed."
-        ),
-        "nh3_tabulated_range_Pa": np.array([p_lo, p_hi]),
         "codata_release": CODATA_RELEASE,
         "raw_bundle": raw_hash,
         "input_hashes": cio.input_hashes([
@@ -303,13 +265,21 @@ def build(control_path, section: str = "composition") -> Path:
             Path(control_path),
         ], output),
     })
+    if latitude_planetographic is not None:
+        dataset.attrs["latitude_planetographic_deg"] = float(latitude_planetographic)
+        dataset.attrs["latitude_planetographic_deg_value_source"] = latitude_value_source
+    if has_ammonia:
+        dataset.attrs["nh3_fill_rule"] = control["nh3_fill_rule"]
+        dataset.attrs["nh3_aloft_assumption"] = ammonia.NH3_ALOFT_ASSUMPTION
+        dataset.attrs["nh3_tabulated_range_Pa"] = np.array([p_lo, p_hi])
     south, north, step = (float(v) for v in control["latitude_grid_deg"])
     dataset.attrs["latitude_grid_rule"] = (
         f"the source's single column written unchanged at every node of "
         f"[{south:g}, {north:g}] degrees planetocentric at {step:g} degrees, "
-        f"{phi_c_deg.size} nodes: the Lindal composition carried to every latitude as a "
+        f"{phi_c_deg.size} nodes: the {'Lindal' if has_ammonia else 'source'} composition carried "
+        "to every latitude as a "
         "hypothesis (SPEC_04 Step 0 deliverable 2, decision O). The column's own latitude is "
-        "latitude_planetographic_deg."
+        + ("latitude_planetographic_deg." if has_ammonia else "in kind T.")
     )
 
     # ---- the species group, SPEC_00 section 6.2 --------------------------------------
@@ -403,19 +373,15 @@ def build(control_path, section: str = "composition") -> Path:
         "refractivity_temperature_note": str(
             refractivity_set.get("NH3", {}).get("note", "")
         )[:2000],
-        "nh3_note": (
-            "The Lindal set carries NH3 refractivity zero. Lindal et al. (1985) Fig. 3 caption "
-            "states the density was computed assuming 94 percent hydrogen with the remainder "
-            "mostly helium, that is from H2 and He only, so the ammonia contributes no "
-            "refractivity in their reduction. Its mole fraction still enters the mean molar "
-            "mass."
-        ),
     })
+    if has_ammonia:
+        species_group.attrs["nh3_note"] = ammonia.NH3_NOTE
 
+    filled = (f"ammonia column filled from Table I by the declared rule between {p_lo:g} and "
+              f"{p_hi:g} Pa and clamped at zero; " if has_ammonia else "")
     cio.history_append(
         dataset,
-        f"{TOOL}: ammonia column filled from Table I by the declared rule between "
-        f"{p_lo:g} and {p_hi:g} Pa and clamped at zero; remainder split {h2_share} to "
+        f"{TOOL}: {filled}remainder split {h2_share} to "
         f"{he_share}; species properties from the {set_name} set of the master table, "
         f"refractivities converted to m3 per molecule by the Loschmidt constant; the column "
         f"written at {phi_c_deg.size} planetocentric latitude nodes from {phi_c_deg[0]:g} to "
@@ -427,7 +393,7 @@ def build(control_path, section: str = "composition") -> Path:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        prog=TOOL, description="Write the Lindal reduction composition, kind C."
+        prog=TOOL, description="Write a profile's composition, kind C."
     )
     parser.add_argument("control", help="path to the TOML control file")
     parser.add_argument("--section", default="composition", help="section (default composition)")

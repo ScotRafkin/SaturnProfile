@@ -80,6 +80,19 @@ casspian-lindal-inputs     occul_data/lindal/lindal_build.toml       # lindal_th
 casspian-refrac            occul_data/lindal/lindal_reduction.toml   # lindal_refractivity.nc, kind N, and figures/
 ```
 
+Kliore et al. (1980), the second profile (SPEC_18), the same way. The wind and composition tools are
+general; stage one and stage two are Kliore's own. Its closure is `forward/kliore1980_closure/`.
+
+```
+casspian-kliore-raw                                                         # raw/kliore1980_raw.nc from Table 1 and the scalars
+casspian-gravity-file       occul_data/kliore1980/kliore1980_build.toml     # kliore1980_gravity.nc
+casspian-rotation-file      occul_data/kliore1980/kliore1980_build.toml     # kliore1980_rotation.nc
+casspian-wind-from-curve    occul_data/kliore1980/kliore1980_build.toml     # kliore1980_wind.nc
+casspian-composition-lindal occul_data/kliore1980/kliore1980_build.toml     # kliore1980_composition.nc
+casspian-kliore-inputs      occul_data/kliore1980/kliore1980_build.toml     # kinds T and D, the manifest; after G, R and W
+casspian-refrac             occul_data/kliore1980/kliore1980_reduction.toml # kliore1980_refractivity.nc, kind N
+```
+
 ```
 python -c "import netCDF4 as nc; d=nc.Dataset('occul_data/lindal/lindal_refractivity.nc'); N=d['refractivity'][:]; s=d['refractivity_uncertainty'][:]; print(len(N), (s/N).min(), (s/N).max(), float(d['anchor_isobar_radius_m'][:]), float(d['latitude_planetocentric_deg'][:]))"
 ```

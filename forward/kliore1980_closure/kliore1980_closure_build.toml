@@ -1,0 +1,81 @@
+# CASSPIAN build control file for the forward run kliore1980_closure (SPEC_00 section 2.2.2 and 2.3,
+# SPEC_03 Step 3 deliverable 1). Pointers and declared choices only.
+#
+# The same section vocabulary as occul_data/kliore1980/kliore1980_build.toml, minus [stage_two], which has
+# no forward counterpart. Every section points at the source the Kliore reduction used, with the
+# run's prefix, titles and outputs. The files it writes are the run's own inputs: what this run
+# assumes, distinct from the reduction's files, which record what the source assumed. For the
+# closure the two are meant to agree in content.
+# Built by: casspian-run-inputs forward/kliore1980_closure/kliore1980_closure_build.toml
+
+[gravity]
+source = "../../data_static/harmonics/null1981.toml"
+output = "inputs/kliore1980_closure_gravity.nc"
+prefix = "kliore1980_closure"
+epoch  = "1979-09-01"   # the date of the occultation the run closes on
+title  = "Null et al. (1981) harmonic set, as assumed by the kliore1980_closure run"
+
+[rotation]
+source = "../../data_static/rotation/system_iii.toml"
+entry  = "system_iii"
+output = "inputs/kliore1980_closure_rotation.nc"
+prefix = "kliore1980_closure"
+epoch  = "1979-09-01"
+title  = "System III rotation, as assumed by the kliore1980_closure run"
+
+[wind]
+# Lindal's wind, a Voyager wind used two years later (SPEC_18 section 1 item 6). The run's own
+# gravity and rotation files; the raw bundle for the reference geoid polar radius.
+wind_source_kind = "curve"
+curve_source     = "../../data_static/winds/ingersoll_pollard1982_fig5_curve.csv"
+points_source    = "../../data_static/winds/smith1982_fig4_points.csv"
+data_properties  = "../../data_static/winds/smith1982_fig4.toml"
+gravity_file     = "inputs/kliore1980_closure_gravity.nc"
+rotation_file    = "inputs/kliore1980_closure_rotation.nc"
+raw_bundle       = "../../occul_data/kliore1980/raw/kliore1980_raw.nc"
+output           = "inputs/kliore1980_closure_wind_source.nc"
+prefix           = "kliore1980_closure"
+title            = "Ingersoll and Pollard (1982) cloud top zonal wind, as assumed by the kliore1980_closure run"
+
+bin_width_deg     = 2.0
+min_count_per_bin = 3
+
+gap_rule        = "reflect_north"
+polar_rule      = "pchip_to_zero"
+join_window_deg = [-10.9, -15.0]
+
+latitude_grid_step_deg = 0.5
+vertical_structure     = "altitude independent"
+
+pressure_grid_Pa = [
+  1, 1.25893, 1.58489, 1.99526, 2.51189, 3.16228, 3.98107, 5.01187, 6.30957, 7.94328,
+  10, 12.5893, 15.8489, 19.9526, 25.1189, 31.6228, 39.8107, 50.1187, 63.0957, 79.4328,
+  100, 125.893, 158.489, 199.526, 251.189, 316.228, 398.107, 501.187, 630.957, 794.328,
+  1000, 1258.93, 1584.89, 1995.26, 2511.89, 3162.28, 3981.07, 5011.87, 6309.57, 7943.28,
+  10000, 12589.3, 15848.9, 19952.6, 25118.9, 31622.8, 39810.7, 50118.7, 63095.7, 79432.8,
+  100000, 125893, 158489, 199526, 251189, 316228, 398107, 501187, 630957, 794328,
+  1e+06
+]
+
+[shear]
+# SPEC_05 Step 3: the shear step is part of every forward run's build. [wind] writes the source
+# wind; this section writes the wind the namelist reads. identity returns the source as it is.
+source = "inputs/kliore1980_closure_wind_source.nc"
+output = "inputs/kliore1980_closure_wind.nc"
+case   = "identity"
+
+[composition]
+# Kliore's own mixture, as his reduction: 90 percent H2 and 10 percent He by number (SPEC_18 section 1
+# item 2). The levels are his raw bundle's, the 100 mbar level included.
+raw_bundle     = "../../occul_data/kliore1980/raw/kliore1980_raw.nc"
+species_master = "../../data_static/species_master.toml"
+species_set    = "lindal1985"
+output         = "inputs/kliore1980_closure_composition.nc"
+prefix         = "kliore1980_closure"
+title          = "Kliore et al. (1980) composition, 90 percent H2 and 10 percent He, as assumed by the kliore1980_closure run"
+
+h2_fraction_of_remainder = 0.90
+he_fraction_of_remainder = 0.10
+
+vertical_coordinate = "pressure_Pa"
+latitude_grid_deg   = [-90.0, 90.0, 1.0]
