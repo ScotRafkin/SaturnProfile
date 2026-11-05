@@ -170,7 +170,7 @@ SPEC_17 accepted by the author at v0.2 on 30 October 2026. The Voyager 1 profile
 
 | Step | Deliverable | Status | Report | Date |
 |---|---|---|---|---|
-| 1 | Part A: Lindal Fig. 9's 100 mbar altitudes digitized, against the delivered 100 mbar surface at the anchor and three Voyager targets. Part B: the linearized balance weight w(φ, p) beside `construct`; the segment constraints for 30.8 N to 2.4 S, 2.4 S to 26.1 S and 26.1 S to 71.1 S; the linearization tested at two amplitudes in a copy | not started | | |
+| 1 | Part A: Lindal Fig. 9's 100 mbar altitudes digitized, against the delivered 100 mbar surface at the anchor and three Voyager targets. Part B: the linearized balance weight w(φ, p) beside `construct`; the segment constraints for 30.8 N to 2.4 S, 2.4 S to 26.1 S and 26.1 S to 71.1 S; the linearization tested at two amplitudes in a copy | accepted (`3c6cb9e`; 2 of 2 under REVIEW_17_step1; 100 mbar delivered minus observed: anchor +0.8 km, 3.0 S +3.3, 31.2 S +8.4, 74.2 S +7.1; delivered over predicted 0.989 at zero amplitude, 0.969 for a 4 K correction; segment 2 asks -7 m/s per unit ln p at 110 mbar; no regression. SPEC_17 closed) | `reports/REPORT_17_step1.md`, `reports/REVIEW_17_step1.md` | 2026-11-05 |
 
 ## SPEC_18, Kliore et al. (1980) as a second registered profile
 
