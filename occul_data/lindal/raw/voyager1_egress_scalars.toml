@@ -1,0 +1,76 @@
+# CASSPIAN raw transcription: the scalars the reduction of the Voyager 1 egress profile needs (SPEC_20
+# section 2 deliverable 1). Each value names where it was read. The profile is ../voyager1_egress.csv, traced
+# from Lindal et al. (1985) Fig. 6 (solid) (SPEC_15), temperature against pressure, with no altitude.
+#
+# Epoch: 13 November 1980 (Fig. 1 caption), nine months before Lindal's anchor. Lindal's G and R are
+# reused, and the season his: no solar longitude is computed for this date, since nothing reads one
+# (REVIEW_20_step0 ruling 3). The keys below are required by the shared tools and record that reuse.
+# Reliability (Lindal p. 1139): the link traversed much larger horizontal distances than Voyager 2's, so
+# horizontal refractivity variations may produce systematic errors. Lindal regards both Voyager 1 profiles
+# as less reliable than the Voyager 2 profiles.
+# The egress ran from 1.5 S, 192.1 E to 8.9 S, 197.3 E planetographic, near the morning terminator: the
+# ray swept 7.4 deg of latitude. It was affected by strong scintillations in the equatorial jet, by
+# attenuation in Saturn's C ring, and by instrumentation problems at DSS 63 that lost data records (p. 1139,
+# Fig. 1 caption). Its 10 to 20 mbar inversion and layering suggest vertically propagating waves (Fig. 6
+# caption).
+
+[source]
+citation         = "Lindal, G. F., Sweetnam, D. N., Eshleman, V. R. 1985, AJ 90, 1136"
+spacecraft       = "Voyager 1"
+event            = "egress"
+observation_date = "1980-11-13"
+observation_date_source = "Fig. 1 caption: 'The measurements were made on 13 November 1980.'"
+solar_longitude_deg    = 18.2
+subsolar_latitude_deg  = 8.06
+solar_longitude_source = "Lindal's, for 1981-08-26, reused and not computed for this date (REVIEW_20_step0 ruling 3)"
+table1_footnote  = "Fig. 6, Voyager 1 egress, traced (SPEC_15). Computed for 94 percent H2 and 6 percent He by number."
+
+[latitude]
+planetographic_deg = -3.0
+value_source       = "Fig. 6 label: 3.0 S"
+convention_source  = "Fig. 4 caption: each profile is labeled with the planetographic latitude at which the lowest point on the radio ray touched the 100 mbar surface"
+
+[composition]
+# Lindal's (REVIEW_20_step0 ruling 2): 94 percent H2 with his ammonia, on this profile's levels.
+h2_fraction    = 0.94
+h2_uncertainty = 0.03
+h2_source      = "p. 1137: 'we have adopted a hydrogen abundance of 94 +/- 3%; the remainder is assumed to be primarily helium.'"
+
+[profile]
+trace          = "../voyager1_egress.csv"
+ammonia_bundle = "lindal_raw.nc"
+output         = "voyager1_egress_raw.nc"
+value_source   = "Lindal et al. (1985) Fig. 6, traced (SPEC_15)"
+
+# Lindal's surfaces, transcribed from lindal_scalars.toml as Kliore's are, so that this profile's kind D
+# carries its own name and lindal_geodesy.nc is never written.
+[geodesy]
+citation                  = "Lindal, G. F., Sweetnam, D. N., Eshleman, V. R. 1985, AJ 90, 1136"
+fit_method                = "Least-squares fit of a computed geoid to the five observed 100 mbar radii (four Voyager occultations, one Pioneer 11); p. 1141 and Fig. 9 caption"
+fit_residual_km           = [3.0, 4.0]
+fit_residual_source       = "p. 1141: 'the standard deviations of these fits range from 3 to 4 km'"
+fit_inputs                = "External gravity field (Null et al. 1981; Campbell 1984 pers. comm.), zonal winds at the cloud tops (Smith et al. 1982; Ingersoll and Pollard 1982; Garneau 1984 is also cited in the Fig. 9 caption), assumed independent of altitude (p. 1141, Appendix p. 1144), pole vector (Kozai 1957; Null et al. 1981; Simpson et al. 1983), System III rotation"
+fit_latitude_convention   = "planetocentric (Fig. 9 abscissa; Appendix: 'r and phi denote the distance to the center of mass and the planetocentric latitude')"
+reference_geoid_polar_radius_km = 54438.0
+reference_geoid_source    = "Lindal et al. 1985, Appendix Eq. 12 and Fig. 9 caption"
+
+[geodesy.surface_100mbar]
+pressure_Pa               = 1.0e4
+radius_equatorial_km      = 60367.0
+radius_equatorial_unc_km  = 4.0
+radius_polar_mean_km      = 54438.0
+radius_polar_mean_unc_km  = 10.0
+oblateness                = 0.09822
+oblateness_unc            = 0.00018
+value_source              = "Lindal et al. 1985, p. 1141, abstract and Fig. 9 caption"
+polar_asymmetry_note      = "Lindal et al. 1985, Fig. 9 caption: south-polar radius may be of order 10 km greater than the north-polar radius, possibly seasonal."
+
+[geodesy.surface_1bar]
+pressure_Pa               = 1.0e5
+radius_equatorial_km      = 60268.0
+radius_equatorial_unc_km  = 4.0
+radius_polar_mean_km      = 54364.0
+radius_polar_mean_unc_km  = 10.0
+oblateness                = 0.09796
+oblateness_unc            = 0.00018
+value_source              = "Lindal et al. 1985, p. 1141 and Table II p. 1143"

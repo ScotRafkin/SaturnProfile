@@ -35,3 +35,7 @@ docs/USER_GUIDE.md
 
 # A wind fit's working run directories (SPEC_19).
 fits/*/work*/
+
+# A section's working directory and its product (SPEC_20, REVIEW_20_step0 ruling 5).
+sections/*/work*/
+sections/*/*_section.nc

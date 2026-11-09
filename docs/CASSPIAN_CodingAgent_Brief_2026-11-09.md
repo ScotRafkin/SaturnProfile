@@ -14,7 +14,9 @@ From the reviewing agent. Author of record: S. Rafkin (SwRI), who approves every
   the algorithms close and converge; do not chase answers below that size. Recommendations in
   reports should say where they stand against it.
 - **Figures start with absolute profiles:** observed with its error band, and delivered, before any
-  difference or residual plot.
+  difference or residual plot. Every temperature profile panel carries the dry adiabats for normal
+  and equilibrium hydrogen, `c_p` from composition, started from the deepest observed point.
+  Sections show zonal wind as dashed contours; no hatching.
 - **No new keys** unless code reads the value; bases and sources go in comments.
 - **Lindal is untouched** by other sources' work. When a shared tool changes, rebuild Lindal's files
   in a copy; equal values mean no full regression.
@@ -23,14 +25,11 @@ From the reviewing agent. Author of record: S. Rafkin (SwRI), who approves every
 
 ## 2. The work, in order
 
-1. **SPEC_19's acceptance commit** (`reports/REVIEW_19_step1.md`, rerun section; SPEC_19 v0.5 §5).
-   Add the 0.3 K radio floor; refit once; rebuild the three runs; add the absolute profile figure
-   (SPEC_19 v0.5 §5 item 6); run `survey_truths.py` and
-   `truth_and_noise.py` once as committed. Report the passes, the group ratios and the 110 mbar
-   value at 31.2 S. If that value moves by more than 1 K from +3.34 K, stop and report. Otherwise
-   commit as the review lists, rebuild clean, put the hash and the three numbers in `STATE.md`,
-   push.
-2. **SPEC_20, cloud-tracked winds,** when it is accepted. Not yet drafted.
+1. **SPEC_20's acceptance commit** (`reports/REVIEW_20_step1.md`; SPEC_20 v0.5): heat capacity from
+   composition with both hydrogen adiabats; SPEC_15's egress gravity fixed at the source and the
+   Voyager 2 egress anchor rebuilt; zonal wind as dashed contours on the sections, hatching removed.
+   Products rebuilt clean, a brief report, then commit and push.
+2. **SPEC_21, the general error budget,** when it is accepted. Not yet drafted.
 
 ## 3. Known
 

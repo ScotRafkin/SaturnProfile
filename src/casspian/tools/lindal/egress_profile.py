@@ -49,9 +49,11 @@ distance along the local vertical above the profile's 1 bar level. From 1 bar,
 with `T` the profile's own, `m_bar` Lindal's composition at the level (`lindal_composition.nc`),
 and `g` the magnitude of the effective gravity of `lib.gravity` (Lindal's gravity, rotation and
 wind) at the profile's planetocentric latitude and at the radius `r = r_1bar + h cos(psi)`, the
-reduction's own placement of an altitude (`lib.reduction.absolute_radius`). `r_1bar` is Lindal's
-1 bar surface of `lindal_geodesy.nc` at that latitude, the ellipse of its equatorial and polar
-radii. The integration is the trapezoid rule in `h` on the profile's own altitudes, repeated once
+reduction's own placement of an altitude (`lib.reduction.absolute_radius`). `r_1bar` is the wind
+geoid through Lindal's 1 bar surface of `lindal_geodesy.nc` (its equatorial radius, the reduction's
+anchor rule), marched to that latitude by `refrac.anchor.geoid_setup` as the reduction marches its
+own. Until SPEC_20 v0.5 it was the ellipse of the surface's two radii, about 100 km above the geoid
+at 26.1 S, which put gravity 0.41 percent low (REPORT_20_step1 section 3.2). The integration is the trapezoid rule in `h` on the profile's own altitudes, repeated once
 so that `m_bar` is read at the pressures it gives.
 """
 
@@ -497,13 +499,18 @@ class Profile:
     gravity_ms2: np.ndarray
 
 
-def one_bar_radius(geodesy, latitude_planetocentric_deg) -> float:
-    """Lindal's 1 bar surface at a planetocentric latitude: the ellipse of its two radii."""
-    row = int(np.flatnonzero(np.asarray(geodesy["surface_pressure_Pa"].values) == ONE_BAR_Pa)[0])
-    a = float(geodesy["radius_equatorial_m"].values[row])
-    b = float(geodesy["radius_polar_m"].values[row])
-    phi = np.radians(latitude_planetocentric_deg)
-    return a * b / np.sqrt((b * np.cos(phi)) ** 2 + (a * np.sin(phi)) ** 2)
+def one_bar_radius(geodesy, latitude_planetocentric_deg, gravity, rotation, wind) -> float:
+    """Lindal's 1 bar surface at a planetocentric latitude: the wind geoid through its equatorial
+    radius, marched as the reduction marches its anchor surface (SPEC_20 v0.5, REVIEW_20_step1)."""
+    from types import SimpleNamespace
+
+    from casspian.refrac.anchor import geoid_setup
+
+    inputs = SimpleNamespace(gravity=gravity, rotation=rotation, wind=wind, geodesy=geodesy)
+    manifest = SimpleNamespace(anchor_surface_Pa=ONE_BAR_Pa, anchor_quantity="radius_equatorial_m",
+                               anchor_rule="equatorial_radius", convergence_m=1.0)
+    at = np.radians(np.array([float(latitude_planetocentric_deg)]))
+    return float(geoid_setup(inputs, manifest).march(at).radius[0])
 
 
 def to_pressure(altitude_km, temperature_K, latitude_planetocentric_deg, composition, gravity,
@@ -521,7 +528,7 @@ def to_pressure(altitude_km, temperature_K, latitude_planetocentric_deg, composi
                  np.asarray(gravity["J"].values, dtype="float64"),
                  np.asarray(gravity["degree"].values), float(gravity["normalization_radius_m"]))
     u = float(wind_of_latitude(wind)(np.array([phi]))[0])
-    r1 = one_bar_radius(geodesy, latitude_planetocentric_deg)
+    r1 = one_bar_radius(geodesy, latitude_planetocentric_deg, gravity, rotation, wind)
     psi = float(g_eff_vector(u, r1, phi, *constants)[3])
     radius = r1 + h * np.cos(psi)
     g = np.asarray(g_eff_vector(np.full(h.shape, u), radius, np.full(h.shape, phi), *constants)[2])

@@ -1,0 +1,54 @@
+# CASSPIAN build control file for the Voyager 1 ingress profile as an anchor (SPEC_20 section 2 deliverable 1).
+# Pointers and declared choices only; every physical value lives in the files this points at.
+#
+# Lindal et al. (1985) Fig. 5, 74.2 S planetographic, traced by SPEC_15. Lindal's reduction set is used as is:
+# his kinds G, R and W are named below and never written (REVIEW_20_step0). This profile has its own raw
+# bundle, kind C on its own levels, kind T, kind D under its own name, manifest and kind N.
+#
+# Built in this order: casspian-voyager-raw raw/voyager1_ingress_scalars.toml, then [composition] by
+# casspian-composition-lindal, then [stage_two] by casspian-voyager-inputs, then casspian-refrac on the
+# manifest.
+
+[composition]
+# Lindal's composition (REVIEW_20_step0 ruling 2): 94 percent H2 with his ammonia, on this profile's levels.
+raw_bundle     = "raw/voyager1_ingress_raw.nc"
+species_master = "../../data_static/species_master.toml"
+species_set    = "lindal1985"
+output         = "voyager1_ingress_composition.nc"
+prefix         = "voyager1_ingress"
+title          = "Lindal et al. (1985) reduction composition on the Voyager 1 ingress levels, 94 percent H2 with He and NH3"
+
+h2_fraction_of_remainder = 0.94
+he_fraction_of_remainder = 0.06
+
+nh3_fill_rule = "linear in pressure through Lindal's Table I values carried onto these levels, extrapolated below the deepest, zero above the highest (tools/lindal/ammonia.py)"
+vertical_coordinate = "pressure_Pa"
+latitude_grid_deg   = [-90.0, 90.0, 1.0]
+
+[stage_two]
+raw_bundle       = "raw/voyager1_ingress_raw.nc"
+prefix           = "voyager1_ingress"
+description      = "Voyager 1 ingress, Lindal, Sweetnam and Eshleman 1985, Fig. 5, traced"
+thermo_output    = "voyager1_ingress_thermo.nc"
+geodesy_output   = "voyager1_ingress_geodesy.nc"
+manifest         = "voyager1_ingress_reduction.toml"
+product          = "voyager1_ingress_refractivity.nc"
+
+# Lindal's, read and never written.
+gravity_file     = "lindal_gravity.nc"
+rotation_file    = "lindal_rotation.nc"
+wind_file        = "lindal_wind.nc"
+composition_file = "voyager1_ingress_composition.nc"
+
+# Lindal's anchor isobar, surface and rule.
+anchor_isobar_Pa          = 1.0e4
+fixed_point_tolerance_deg = 1.0e-6
+max_iterations            = 20
+geoid_anchor_surface_Pa   = 1.0e4
+geoid_anchor_quantity     = "radius_equatorial_m"
+geoid_anchor_rule         = "equatorial_radius"
+geoid_convergence_m       = 1.0
+
+diagnostics_figures       = true
+diagnostics_format        = "png"
+diagnostics_dpi           = 150

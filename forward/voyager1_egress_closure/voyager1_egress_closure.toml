@@ -1,0 +1,36 @@
+[run]
+name        = "voyager1_egress_closure"
+description = "Hydrostatic closure of the voyager1_egress anchor (SPEC_20) at its own latitude under matching forward inputs"
+mode        = "closure"          # this specification implements only closure; SPEC_04 adds transfer
+solar_longitude_deg = 18.2       # v0.9: the run's season; in closure mode equal to the anchor's
+date        = "1980-11-13"       # v0.13: the closure closes on the occultation, so it carries its date
+
+[[anchors]]                      # exactly one entry in closure mode
+slug   = "voyager1_egress"                # must equal profile_or_run inside the file, or refuse
+path   = "../../occul_data/lindal/voyager1_egress_refractivity.nc"
+weight = 1.0
+measurement_uncertainty_scale = 1.0
+
+[inputs]                         # all under inputs/, all prefixed with the run name (SPEC_00 section 7.2)
+composition = "inputs/voyager1_egress_closure_composition.nc"
+gravity     = "inputs/voyager1_egress_closure_gravity.nc"
+rotation    = "inputs/voyager1_egress_closure_rotation.nc"
+wind        = "inputs/voyager1_egress_closure_wind.nc"
+
+[hydrostatic_boundary]
+p_b_rule     = "anchor_profile_top"   # the tabulated pressure at the anchor's top level, read
+                                      # from the thermo group embedded in kind N; the only rule
+                                      # accepted in closure mode. A general run may instead
+                                      # declare p_b_Pa (SPEC_00 section 7.2); exactly one of the two.
+
+[isobars]
+gauge_isobar_Pa = 1.0e4          # where Phi = 0; must be a tabulated level of the anchor in closure mode
+
+[output]
+directory = "output"
+product   = "voyager1_egress_closure_profile.nc"
+
+[diagnostics]                    # as SPEC_00 section 7.1
+figures = true
+format  = "png"
+dpi     = 150

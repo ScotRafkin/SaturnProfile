@@ -53,16 +53,27 @@ then `casspian_status_2026-10-22.md` (updated 9 November) and
 - **Every wind is a hypothesis,** with its own kind W and run; earlier ones are kept.
 - **Comparisons are absolute** (temperature and density at the target). Every comparison figure set
   starts with the absolute profiles, observed with its error band and delivered, before any
-  difference or residual plot. Latitudes planetographic, with planetocentric in parentheses.
+  difference or residual plot. Every temperature profile panel carries the dry adiabats for normal
+  and equilibrium hydrogen, `c_p` from composition, started from the deepest observed point.
+  Sections show zonal wind as dashed contours; no hatching. Latitudes planetographic, with planetocentric in parentheses.
 - **Prose without dashes** as parentheticals, in everything you write. Lean documentation.
 
 ## 4. Where things stand
 
-- **Closed:** SPEC_00 to SPEC_19 and SPEC_R1. SPEC_19 closed on 9 November at v0.5.
-- **Pending:** SPEC_19's acceptance commit. The coding agent adds a 0.3 K floor to the radio
-  covariance, refits once, and reports the passes, the group ratios and the delivered 110 mbar value
-  at 31.2 S. If that value moves by more than 1 K from +3.34 K, it comes back for review; otherwise
-  it is recorded in STATE.md and committed (REVIEW_19_step1, rerun section).
+- **Closed:** SPEC_00 to SPEC_19 and SPEC_R1. SPEC_19 closed on 9 November at v0.5, committed at
+  `5493fee` with the 0.3 K radio floor (5 passes; 110 mbar at 31.2 S +3.33 K).
+- **Closed: SPEC_20 v0.5** (REVIEW_20_step1). Three new anchors; `casspian-section`; the anchor matrix.
+  At its acceptance commit: heat capacity from composition with both hydrogen adiabats; SPEC_15's
+  egress gravity fixed; zonal wind as dashed contours on the sections, hatching removed. A single
+  anchor carries everything it holds; the product blends all anchors (author). At 110 mbar the
+  southern profiles miss each other by 6.5 to 6.8 K: the IRIS weighting, to SPEC_21.
+- **Error budget rules for later fits (author, 9 November):** a source's own reliability statement
+  inflates its errors (Lindal's Voyager 1 profiles, a factor of 2 as a start); structure a balanced
+  zonal model cannot represent is representativeness error; robust weighting in the solver when
+  Cassini data arrive. The Voyager fit stays as is.
+- **The 3.0 S inversion** (28 K between 20 and 11 mbar) is in Lindal's Fig. 6 as drawn. Pioneer 11 has
+  a similar single step near 4 mbar. Artifact of the method or a real equatorial feature: Cassini
+  will tell. The author is skeptical of it.
 - **The wind fit** (`casspian-wind-fit`, `src/casspian/tools/wind/estimation/`): observation types
   (reader, operator, error covariance), a prior, one solver. Two types: radio targets and
   temperature gradients. The budget as closed is in SPEC_19 §2 and the status note.
@@ -73,18 +84,19 @@ then `casspian_status_2026-10-22.md` (updated 9 November) and
 
 ## 5. Next
 
-1. **SPEC_20, cloud-tracked winds** as the third observation type, with the reference wind entering
-   the state. Voyager first (Sanchez-Lavega et al. 2000 is in `data_static/winds/`), then Cassini,
-   including the equatorial winds measured at two levels in different imaging filters (García-Melendo
-   et al. 2011), which constrain the equatorial shear directly. The 100 mbar geometry of
-   SPEC_17 Part A; `p_ref` sampled later. Find the sources and their error statements before
-   drafting; ask the author for papers the tools cannot reach.
-2. **Cassini radio occultations and CIRS** with the time machinery.
-3. **The Monte Carlo,** with helium and `p_ref` as parameters. **Check helium first:** Lindal used
-   about 6 percent by number; later estimates are higher (Conrath and Gautier 2000). The reviewing
-   agent estimated 7 to 10 K in absolute temperature from that difference; confirm against current
-   values before ruling.
-4. **More Voyager anchors** only if they pass the materiality rule.
+The plan in `casspian_status_2026-10-22.md` (Next and "The general error budget"), in order:
+1. **Design note v0.6:** the general error budget, no rule for one dataset: state the wind; shear
+   prior from a temperature-anomaly covariance through the balance; every amplitude, length and
+   form an input; one representativeness error by pressure for every observation; robust
+   weighting; an IRIS systematic term with the 110 versus 150 mbar ambiguity. Draft it for the
+   author first.
+2. **SPEC_21:** that budget built, every Voyager radio profile an anchor in the fit, hypothesis 4.
+3. **SPEC_22:** the blended product, every anchor combined (Eq. A30): the final single answer, the
+   profile matrix with every anchor and leaving each out, and the sections.
+4. **SPEC_23:** cloud winds (kind W, one new operator, the reference wind estimated).
+5. **Cassini radio occultations and CIRS** with time; the equatorial oscillation as climatology.
+6. **The Monte Carlo,** with helium and `p_ref`. **Check helium first:** Lindal used about 6 percent
+   by number; later estimates are higher (Conrath and Gautier 2000); confirm before ruling.
 
 **Deferred from SPEC_19** (v0.5 §5 item 7): the IRIS systematic term, a latitude-varying prior
 amplitude, the jet's bias study, 2.5 deg knots, the 3.0 S wave term.

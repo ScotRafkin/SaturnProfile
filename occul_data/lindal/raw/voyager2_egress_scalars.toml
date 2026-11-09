@@ -1,0 +1,71 @@
+# CASSPIAN raw transcription: the scalars the reduction of the Voyager 2 egress profile needs (SPEC_20
+# section 2 deliverable 1). Each value names where it was read. The profile is ../voyager2_egress.csv,
+# traced from Lindal et al. (1985) Fig. 4 (SPEC_15); its pressures are SPEC_15's, integrated from 1 bar
+# on Lindal's altitudes with his kinds C, G, R, W and D.
+#
+# Epoch: 26 August 1981, the same day as Lindal's ingress anchor, so his season stands as computed.
+# Reliability (Lindal p. 1138 to 1139): the egress swath ran from 31.2 S, 69.9 E to 31.5 S, 71.7 E
+# planetographic, in the early-morning atmosphere. Voyager 2 set and rose nearly perpendicular to the
+# limb, so horizontal refractivity variations probably did not produce substantial systematic errors.
+# Fig. 4 draws its sigma_T curve, which SPEC_19 uses for all three targets.
+
+[source]
+citation         = "Lindal, G. F., Sweetnam, D. N., Eshleman, V. R. 1985, AJ 90, 1136"
+spacecraft       = "Voyager 2"
+event            = "egress"
+observation_date = "1981-08-26"
+observation_date_source = "Fig. 2 caption, the Voyager 2 occultation of 26 August 1981"
+solar_longitude_deg    = 18.2
+subsolar_latitude_deg  = 8.06
+solar_longitude_source = "Lindal's, computed for 1981-08-26 (lindal_scalars.toml), the date of this profile too"
+table1_footnote  = "Fig. 4, Voyager 2 egress, traced (SPEC_15). Computed for 94 percent H2 with the remainder He and NH3, as Table I."
+
+[latitude]
+planetographic_deg = -31.2
+value_source       = "Fig. 4 label on the Voyager 2 egress profile: 31.2 S"
+convention_source  = "Fig. 4 caption: the planetographic latitude at which the lowest point on the radio ray touched the 100 mbar surface"
+
+[composition]
+# Lindal's (REVIEW_20_step0 ruling 2): 94 percent H2 with his ammonia, on this profile's levels.
+h2_fraction    = 0.94
+h2_uncertainty = 0.03
+h2_source      = "p. 1137: 'we have adopted a hydrogen abundance of 94 +/- 3%; the remainder is assumed to be primarily helium.'"
+
+[profile]
+trace          = "../voyager2_egress.csv"
+ammonia_bundle = "lindal_raw.nc"
+output         = "voyager2_egress_raw.nc"
+value_source   = "Lindal et al. (1985) Fig. 4, traced (SPEC_15); pressures from Lindal's altitudes (SPEC_15)"
+
+# Lindal's surfaces, transcribed from lindal_scalars.toml as Kliore's are, so that this profile's kind D
+# carries its own name and lindal_geodesy.nc is never written.
+[geodesy]
+citation                  = "Lindal, G. F., Sweetnam, D. N., Eshleman, V. R. 1985, AJ 90, 1136"
+fit_method                = "Least-squares fit of a computed geoid to the five observed 100 mbar radii (four Voyager occultations, one Pioneer 11); p. 1141 and Fig. 9 caption"
+fit_residual_km           = [3.0, 4.0]
+fit_residual_source       = "p. 1141: 'the standard deviations of these fits range from 3 to 4 km'"
+fit_inputs                = "External gravity field (Null et al. 1981; Campbell 1984 pers. comm.), zonal winds at the cloud tops (Smith et al. 1982; Ingersoll and Pollard 1982; Garneau 1984 is also cited in the Fig. 9 caption), assumed independent of altitude (p. 1141, Appendix p. 1144), pole vector (Kozai 1957; Null et al. 1981; Simpson et al. 1983), System III rotation"
+fit_latitude_convention   = "planetocentric (Fig. 9 abscissa; Appendix: 'r and phi denote the distance to the center of mass and the planetocentric latitude')"
+reference_geoid_polar_radius_km = 54438.0
+reference_geoid_source    = "Lindal et al. 1985, Appendix Eq. 12 and Fig. 9 caption"
+
+[geodesy.surface_100mbar]
+pressure_Pa               = 1.0e4
+radius_equatorial_km      = 60367.0
+radius_equatorial_unc_km  = 4.0
+radius_polar_mean_km      = 54438.0
+radius_polar_mean_unc_km  = 10.0
+oblateness                = 0.09822
+oblateness_unc            = 0.00018
+value_source              = "Lindal et al. 1985, p. 1141, abstract and Fig. 9 caption"
+polar_asymmetry_note      = "Lindal et al. 1985, Fig. 9 caption: south-polar radius may be of order 10 km greater than the north-polar radius, possibly seasonal."
+
+[geodesy.surface_1bar]
+pressure_Pa               = 1.0e5
+radius_equatorial_km      = 60268.0
+radius_equatorial_unc_km  = 4.0
+radius_polar_mean_km      = 54364.0
+radius_polar_mean_unc_km  = 10.0
+oblateness                = 0.09796
+oblateness_unc            = 0.00018
+value_source              = "Lindal et al. 1985, p. 1141 and Table II p. 1143"

@@ -1,0 +1,25 @@
+# CASSPIAN data_static: what the heat capacity of a run's mixture is computed from (SPEC_20 v0.5,
+# REVIEW_20_step1 ruling 1). Read by casspian.lib.heat_capacity. The mixture's c_p(T) comes from the
+# run's own kind C; each species' c_p(T) from physics:
+#   H2: translation 5/2 R plus rotation from its rotational partition function, rigid rotor levels
+#       E_J = k theta J(J+1); para (even J, nuclear spin weight 1) and ortho (odd J, weight 3). Normal
+#       hydrogen holds ortho to para at 3:1, frozen, so its c_p is the weighted sum of the two
+#       separately; equilibrium hydrogen sums over all J with the weights, conversion included.
+#       Vibration is frozen at these temperatures (its temperature is about 6300 K).
+#   He: 5/2 R.
+#   Minor species as rigid rotors, classical: 7/2 R if linear, 4 R if not. Immaterial at their abundance.
+
+[H2]
+# theta = h c B / k with B_0 = 59.322 cm^-1 for v = 0 (Huber and Herzberg 1979, Constants of Diatomic
+# Molecules) and h c / k = 1.438777 cm K (CODATA 2018): 85.35 K. Stated from the reference, not read
+# from its page here; the ruling gives "about 85 K". Centrifugal distortion (D_0 about 0.047 cm^-1)
+# is neglected: at 150 K it moves c_p by under 0.1 percent.
+rotational_temperature_K = 85.35
+spin_weight_even = 1
+spin_weight_odd  = 3
+normal_ortho_fraction = 0.75
+
+[rigid_rotor]
+# Whether each minor species is linear, for its classical rotational heat capacity.
+NH3 = false
+CH4 = false
