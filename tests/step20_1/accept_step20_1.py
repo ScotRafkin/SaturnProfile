@@ -224,11 +224,13 @@ def main():
     u_grid = {k: on_grid(v, "u_ms") for k, v in sections.items()}
     levels_u = [-50, 0, 100, 200, 300, 400, 500]
 
-    iris = np.genfromtxt(LINDAL / "iris_temperatures.csv", delimiter=",", names=True)
     lat_c = np.asarray(wind["latitude_planetocentric_deg"].values)
-    lat_g = np.asarray(wind["latitude_planetographic_deg"].values)
-    iris_c = np.interp(iris["latitude_planetographic_deg"], lat_g, lat_c)
-    levels_T = np.arange(70, 182, 4)
+    # Temperature as labeled contours over the zonal wind shaded (author, 10 November).
+    levels_T = np.arange(60, 181, 5)
+    # The westward winds reach only about -21 m/s and the jet about 530, so each side gets its own scale: blue
+    # in 5 m/s steps to -25, red in 25 m/s steps to 550, both from zero (author, 10 November).
+    levels_wind = np.concatenate([np.arange(-25, 0, 5), np.arange(0, 551, 25)])
+    norm_wind = matplotlib.colors.TwoSlopeNorm(vmin=-25, vcenter=0, vmax=550)
 
     def decorate(ax):
         for slug in ANCHORS:
@@ -241,23 +243,21 @@ def main():
     names = ["lindal", "voyager2_egress", "voyager1_ingress", "voyager1_egress", "hypothesis 1"]
     fig, axes = plt.subplots(2, 3, figsize=(19, 11), sharex=True, sharey=True)
     for ax, key in zip(axes.ravel(), names):
-        cs = ax.contourf(lat_s, GRID_PA / 100, T_grid[key].T, levels=levels_T, cmap="viridis", extend="both")
-        ax.contour(lat_s, GRID_PA / 100, T_grid[key].T, levels=levels_T[::2], colors="w", linewidths=0.4)
-        ax.scatter(iris_c, iris["pressure_mbar"], c=iris["temperature_K"], cmap="viridis", vmin=levels_T[0], vmax=levels_T[-1],
-                   s=14, edgecolors="w", linewidths=0.4)
-        cu = ax.contour(lat_s, GRID_PA / 100, u_grid[key].T, levels=levels_u, colors="k", linestyles="--", linewidths=0.7)
-        ax.clabel(cu, fmt="%d", fontsize=7, inline_spacing=2)
+        cs = ax.contourf(lat_s, GRID_PA / 100, u_grid[key].T, levels=levels_wind, cmap="RdBu_r", norm=norm_wind, extend="both")
+        ct = ax.contour(lat_s, GRID_PA / 100, T_grid[key].T, levels=levels_T, colors="k", linewidths=0.6)
+        ax.clabel(ct, levels=levels_T[::2], fmt="%d K", fontsize=7, inline_spacing=2)
         decorate(ax)
         title = f"{LABEL[key]} anchor, hypothesis 3" if key in LABEL else "Lindal anchor, hypothesis 1"
         ax.set_title(title, fontsize=10)
     axes[1, 2].axis("off")
-    fig.colorbar(cs, ax=axes, label="temperature (K)", shrink=0.8)
+    fig.colorbar(cs, ax=axes, label="zonal wind of the run (m/s); blue and red on separate scales", shrink=0.8,
+                 ticks=[-25, -20, -15, -10, -5, 0, 100, 200, 300, 400, 500])
     for ax in axes[1]:
         ax.set_xlabel("planetocentric latitude (deg)")
     for ax in axes[:, 0]:
         ax.set_ylabel("pressure (mbar)")
-    fig.suptitle("Temperature sections, the run's zonal wind in dashed black contours (m/s). Dots: IRIS at 110, 290, "
-                 "730 mbar, same colors. Vertical lines: the four Voyager anchors (dashed), Pioneer 11 (dotted).", fontsize=10)
+    fig.suptitle("Temperature sections: temperature in black contours every 5 K, the run's zonal wind shaded. "
+                 "Vertical lines: the four Voyager anchors (dashed), Pioneer 11 (dotted).", fontsize=10)
     fig.savefig(FIG / "step20_1_sections_temperature.png", dpi=95)
     plt.close(fig)
 

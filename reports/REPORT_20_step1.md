@@ -68,9 +68,11 @@ and checked them after: identical.
 | Anchor | Levels | Largest dT (K) | RMS dT (K) | Largest dp/p |
 |---|---|---|---|---|
 | Lindal, for scale | 66 | 0.48 | 0.13 | 3.3e-3 |
-| Voyager 2 egress | 392 | 0.60 | 0.42 | 4.1e-3 |
+| Voyager 2 egress | 392 | 0.012 | 0.007 | 8.6e-5 |
 | Voyager 1 ingress | 385 | 0.0036 | 0.0017 | 2.5e-5 |
 | Voyager 1 egress | 345 | 0.0035 | 0.0018 | 2.9e-5 |
+
+*Post-fix values from `reports/step20_1/summary.json` at `b7b09e9`; they replace the pre-fix Voyager 2 egress row (0.60, 0.42, 4.1e-3), whose cause §3.2 records.*
 
 The Voyager 1 closures are near exact because their heights are hydrostatic in the model's own terms (ruling 1),
 so they test the chain, not the data. **The Voyager 2 egress's 0.6 K has a cause** (§3.2).
@@ -109,19 +111,21 @@ Delivered minus observed (K); the band is Lindal's Fig. 4 sigma_T:
 
 | At | From | 730 | 290 | 110 | 30 | 10 | 1 mbar |
 |---|---|---|---|---|---|---|---|
-| 36.3 N | V2 egress | +1.53 | -0.20 | -3.11 | +0.53 | +0.60 | +2.30 |
-| | V1 ingress | -1.14 | +2.77 | +3.38 | -0.06 | +0.34 | -0.93 |
-| | V1 egress | +1.38 | +0.59 | -0.14 | +0.15 | **+11.63** | -4.65 |
-| 31.2 S | Lindal | -1.41 | +0.75 | +3.33 | -0.27 | +0.23 | -1.47 |
-| | V1 ingress | -2.29 | +3.31 | **+6.80** | -0.14 | +0.47 | -2.48 |
-| | V1 egress | +0.20 | +1.11 | +3.30 | +0.08 | **+11.72** | -6.28 |
+| 36.3 N | V2 egress | +1.25 | -0.43 | -3.37 | -0.06 | -0.40 | +1.92 |
+|  | V1 ingress | -1.14 | +2.77 | +3.38 | -0.06 | +0.34 | -0.93 |
+|  | V1 egress | +1.38 | +0.59 | -0.14 | +0.15 | **+11.63** | -4.65 |
+| 31.2 S | Lindal | -1.46 | +0.67 | +3.27 | -0.09 | +0.67 | -1.45 |
+|  | V1 ingress | -2.34 | +3.22 | **+6.74** | +0.04 | +0.91 | -2.46 |
+|  | V1 egress | +0.15 | +1.03 | +3.24 | +0.25 | **+12.15** | -6.26 |
 | 74.2 S | Lindal | +0.92 | -2.71 | -3.58 | -0.17 | -0.23 | +0.94 |
-| | V2 egress | +2.64 | -3.00 | **-6.45** | +0.60 | +0.46 | +3.40 |
-| | V1 egress | +2.51 | -2.21 | -3.47 | +0.23 | **+11.45** | -3.64 |
+|  | V2 egress | +2.37 | -3.23 | **-6.71** | +0.00 | -0.53 | +3.05 |
+|  | V1 egress | +2.51 | -2.21 | -3.47 | +0.23 | **+11.45** | -3.64 |
 | 3.0 S | Lindal | -1.44 | +0.03 | +0.61 | +0.66 | -10.46 | +5.51 |
-| | V2 egress | +0.26 | -0.42 | -2.34 | +1.26 | -9.82 | +7.67 |
-| | V1 ingress | -2.33 | +2.55 | +4.05 | +0.69 | -10.24 | +4.50 |
+|  | V2 egress | -0.01 | -0.64 | -2.60 | +0.67 | -10.81 | +7.28 |
+|  | V1 ingress | -2.33 | +2.55 | +4.05 | +0.69 | -10.24 | +4.50 |
 | sigma_T | | 2.73 | 2.29 | 2.27 | 2.47 | 2.88 | 5.42 |
+
+*Post-fix values from `reports/step20_1/summary.json` at `b7b09e9`; they replace the pre-fix matrix, which changes only in the six rows to and from the Voyager 2 egress, by up to 1.0 K (10 mbar).*
 
 - **110 mbar is where the anchors disagree,** as in SPEC_19. The two southern profiles miss each other by 6.5 to
   6.8 K, about 3 sigma_T. Lindal's anchor misses each by about half that, so hypothesis 3, fitted to Lindal's
