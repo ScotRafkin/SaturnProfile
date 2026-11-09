@@ -1,15 +1,15 @@
-# CASSPIAN status, 22 October 2026 (updated 5 November)
+# CASSPIAN status, 22 October 2026 (updated 9 November)
 
 Reviewing agent. Supersedes `casspian_status_2026-10-08.md`. The results of SPEC_13 and the first
 comparison are in that note and are unchanged; this note records what has happened since.
 
 ## Where things stand
 
-- **Closed:** SPEC_00 to SPEC_18 and SPEC_R1. SPEC_17 and SPEC_18 closed on 5 November. SPEC_00 is
-  at v0.25: its §8 is now the whole of what readers enforce.
-- **Accepted:** `docs/CASSPIAN_Wind_Estimation_Design_Note_2026-11-05.md` v0.4, the plan for the
+- **Closed:** SPEC_00 to SPEC_19 and SPEC_R1. SPEC_17 and SPEC_18 closed on 5 November, SPEC_19 on
+  9 November. SPEC_00 is at v0.25: its §8 is now the whole of what readers enforce.
+- **Accepted:** `docs/CASSPIAN_Wind_Estimation_Design_Note_2026-11-05.md` v0.5, the plan for the
   best-guess wind (below).
-- **Next:** SPEC_19, hypothesis 3, the Voyager-epoch shear blend.
+- **Next:** cloud-tracked winds as the third observation type (below, Next).
 - **The coding agent is new.** It works from `docs/CASSPIAN_CodingAgent_Handoff_2026-10-22.md`
   and `docs/CASSPIAN_CodingAgent_Brief_2026-10-22.md`.
 
@@ -171,7 +171,7 @@ The registered kind T now warns once on reading, because its `input_hashes` name
   becomes an anchor, re-deriving his T and p from his refractivity with the exact mass is to be
   considered.
 
-## The best-guess wind (design note v0.4, accepted 5 November)
+## The best-guess wind (design note v0.5, accepted 5 November)
 
 - **One weighted least-squares fit,** outside the model, using the model as the operator: a prior
   wind and its covariance, and one term per observation type (data, operator, error model). Adding
@@ -208,17 +208,64 @@ The registered kind T now warns once on reading, because its `input_hashes` name
 - **Not yet in the model:** cloud tracking beyond Voyager, and transport in time (the seasonal
   propagator, CIRS seasonal fields).
 
+## SPEC_19, the wind fit (closed 9 November)
+
+- **The tool:** `casspian-wind-fit` (`src/casspian/tools/wind/estimation/`). Observation types
+  (reader, operator, error covariance), a prior, and one solver: weighted least squares, iterated,
+  with the posterior covariance, the consistency check and leave-one-out. Two types so far: radio
+  targets and temperature gradients. New data add a type or a term, not a tool.
+- **The budget as closed:** prior 40 m/s per unit ln p, 5 deg in latitude, one scale height in ln p;
+  radio sigma_T from Lindal Fig. 4, Matérn 3/2 over 0.5 scale height, a 0.3 K floor; IRIS random,
+  every 4 deg, as a half scale height layer mean.
+- **The first budget failed honestly.** With the prior's mean moved to zero, a 20 amplitude and a
+  10 deg correlation could not hold the equatorial jet, and the fit's 110 mbar answer came from that.
+- **Hypothesis 3** (`voyager_fit_1`), delivered minus observed at 110 mbar: +3.3 K at 31.2 S (from
+  +5.0 under hypothesis 1), +0.6 K at 3.0 S, -3.6 K at 74.2 S. Better than hypotheses 1 and 2 at
+  most levels, most of all aloft. The radio and IRIS disagreement at 110 mbar is now 1.5 sigma_T at
+  31.2 S.
+- **The equator is a physics limit.** IRIS has no rows within about 8 deg, and there the balance
+  ties shear to the curvature of temperature, not its gradient. The equatorial shear is the prior's
+  and its uncertainty is understated. About 1 K in delivered temperature; for the equatorial wind
+  aloft, not a result.
+
+## Materiality (author, 6 and 9 November)
+
+- **The yardstick.** A Monte Carlo mean within a few kelvin of what a probe measures, and winds within
+  about 10 percent, would be an excellent result.
+- **The rule.** A change worth less than about 1 K in delivered temperature or about 5 percent in wind
+  at probe levels gets a comment, not a specification. Algorithm checks (closure, convergence,
+  synthetic recovery) remain, since they test the tool, not the answer.
+- **What the fit does.** The observations, within their errors, are the answer where and when they
+  exist. The model fills between them with balanced, smooth temperature gradients and shears. The
+  prior is what keeps the shear physical and smooth; balance alone does not.
+- **Where the large errors are,** largest first by the reviewing agent's estimate:
+  1. **Helium.** Radio temperatures scale with the assumed mean molecular mass. Lindal used about 6
+     percent helium by number; later estimates (Conrath and Gautier 2000) are near 10 to 13 percent.
+     About 7 to 10 K in absolute temperature. It cancels in the latitude differences the wind fit
+     uses, not in the profile a probe measures. To be checked against current values and made a
+     Monte Carlo parameter.
+  2. **Epoch.** Voyager is 1980 to 1981; a probe arrives decades later, in another season. Stratospheric
+     seasonal swings reach 10 K or more at high latitudes.
+  3. **The deep wind** below the clouds, for probe drift. The fit holds the cloud wind and relaxes the
+     shear below 730 mbar; Cassini gravity (Iess et al. 2019) has the cloud-level winds extending
+     thousands of km deep, which supports that to first order.
+  4. **Equatorial winds aloft,** which temperatures cannot set (above).
+
 ## Next
 
-The design note's path (§10):
-1. **SPEC_19, hypothesis 3:** the Voyager-epoch shear blend from IRIS and the radio targets, the
-   reference wind held, with the error budget ruled first.
-2. **The reference wind:** the cloud winds and the 100 mbar geometry; `p_ref` sampled.
-3. **More Voyager anchors:** the Voyager 2 egress and Voyager 1 profiles reduced to kind N, entering
-   as anchor pairs; the model's combination reduced to Eq. A30.
-4. **Time:** the seasonal propagator, the joint estimate across epochs, Kliore at 1979, CIRS nadir and
-   limb, Cassini radio occultations and cloud winds.
-5. **The Monte Carlo,** each member rebuilding its own wind.
+In order:
+1. **Cloud-tracked winds** as the third observation type, with the reference wind entering the
+   state: Voyager and Cassini winds, including those measured at two levels near the equator
+   (Cassini imaging in different filters), which constrain the equatorial shear directly; the 100
+   mbar geometry; `p_ref` sampled.
+2. **Cassini radio occultations and CIRS** (nadir and limb), with the time machinery they need: the
+   seasonal propagator and the joint estimate across epochs, Kliore at 1979.
+3. **The Monte Carlo,** each member rebuilding its own wind, with helium and `p_ref` as parameters.
+4. **More Voyager anchors** (the Voyager 2 egress and Voyager 1 profiles as kind N anchor pairs) only
+   if they move an answer by more than the materiality rule.
+
+**Deferred from SPEC_19:** the IRIS systematic term, a latitude-varying prior amplitude (for the
+Monte Carlo, if its draws need it), the jet's bias study, 2.5 deg knots, the 3.0 S wave term.
 
 **Later**, unchanged from the 8 October note: the IRIS profile catalog; the dry adiabat for normal
 hydrogen in lapse-rate plots; convective adjustment mixing entropy, momentum and composition;
@@ -226,5 +273,5 @@ cylinders at depth.
 
 ## Parked
 
-Decision L (the linear wind interpolant), the branch `spec07-l2-parked`, the tabled redesign of the
-vertical on a staggered grid, and the radio versus IRIS disagreement at 110 mbar (about 5 K).
+Decision L (the linear wind interpolant), the branch `spec07-l2-parked`, and the tabled redesign of
+the vertical on a staggered grid.

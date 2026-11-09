@@ -1,6 +1,6 @@
 # CASSPIAN design note: the best-guess wind
 
-Reviewing agent and author, 5 November 2026. **Version 0.4. Status: accepted by the author, 5 November 2026.**
+Reviewing agent and author, 5 November 2026. **Version 0.5. Status: accepted by the author, 5 November 2026; v0.5 amends §5 (SPEC_19 §4).**
 Companion to `CASSPIAN_Seasonal_Design_Note.md`, whose §5 it builds on and whose §6 it amends
 (§6 here).
 
@@ -94,8 +94,9 @@ The weights are the errors, so the errors decide the answer.
 
 ## 5. The prior
 
-- **The prior wind** `x_b(e)` is the current hypothesis at each epoch: the cloud wind for `u_ref`,
-  the IRIS shear for `s` where IRIS exists.
+- **The prior carries no observation (v0.5).** Its mean is zero shear and the held reference wind,
+  or later an imposed seasonal cycle. Every dataset, IRIS included, is an observation term (§3), so
+  nothing counts twice. The prior supplies smoothness and settles what the data leave open.
 - **Its error covariance `B`** has an amplitude and correlation lengths in latitude, in `ln p` and
   in time.
   - The vertical length makes IRIS's influence fade away from its levels over about the
@@ -241,3 +242,5 @@ Each is one specification or a few.
   the model does not correct the wind (author).
 - v0.4, 5 November 2026: accepted; §11 ruled (the time correlation from `τ`, IRIS random by
   default, `p_ref` a Monte Carlo parameter).
+- v0.5, 5 November 2026: §5, the prior carries no observation; IRIS enters as an observation only
+  (SPEC_19 §4).

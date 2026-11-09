@@ -1,0 +1,95 @@
+# CASSPIAN wind fit: hypothesis 3, the shear at the Voyager epoch (SPEC_19). Read by casspian-wind-fit.
+# The error budget is SPEC_19 section 2, a first budget open to revision.
+#
+# Caveat (SPEC_19 v0.5 section 5 item 2): within about 10 deg of the equator IRIS has no rows and the balance
+# sets little shear, so the shear there comes from the prior and its stated uncertainty is too small (the
+# noise-free resolution test returns a true +54 as +85 at 110 mbar). For delivered temperature this is worth about
+# 1 K along any path; for the equatorial wind aloft it is not a result. Cloud-tracked winds at more than one
+# level, the next observation type, constrain it.
+
+[fit]
+name   = "voyager_fit_1"
+epoch  = "1981-08-26"   # the Lindal anchor's date; Voyager 1 is near-epoch (SPEC_17 section 0)
+output = "voyager_fit_1_wind.nc"
+repository_root = "../.."
+
+[base]
+# The reference wind is held at this run's: Sanchez-Lavega at 398 mbar. Its composition, Lindal's with
+# true molecular masses, is the one composition for every input (SPEC_19 section 1 item 6).
+run = "lindal_iris_v_sl_ii_110"
+
+[state]
+latitude_step_deg = 5.0
+# Every half scale height from 1.3 bar to 0.2 mbar; the span divides into equal steps nearest this.
+ln_p_step = 0.5
+bottom_Pa = 1.3e5
+top_Pa    = 20.0
+
+[prior]
+# Mean zero shear, so the prior must hold the whole shear, not a correction to an IRIS-based mean. The
+# equatorial shear of hypotheses 1 and 2 reaches about 65 at 110 mbar; at 40 that is within 2 sd. The first
+# value, 20, made the jet a 3.5 sd event (SPEC_19 v0.3, REVIEW_19_step1).
+amplitude_ms = 40.0
+# The jets are narrower than 10 deg, the first value, which flattened the equatorial shear at 110 mbar from
+# +65 to +11 (REPORT_19_step1 section 4). 5 deg is the knot spacing and close to IRIS's 4 deg resolution.
+latitude_correlation_deg = 5.0
+# About the thickness an IRIS level measures, so IRIS's influence fades away from its levels.
+ln_p_correlation = 1.0
+
+[solve]
+tolerance_K = 0.1
+# A limit, not a target: the iteration ends at the tolerance. Plain passes alone had not settled by 8 under this budget.
+max_passes  = 20
+
+[radio]
+anchor_latitude_planetocentric_deg = 30.80556842739218
+# Lindal's sigma_T curve (Fig. 4) for all three targets and for the anchor's shared term; the Voyager 1
+# bars at the ends of Figs. 5 and 6 agree with it, as the same instrument and processing would.
+sigma_profile = "occul_data/lindal/voyager2_egress.csv"
+# The sigma_T curve is smooth because much of the error is the refractivity baseline. The form, Matern 3/2,
+# is code (radio.py, with its basis); this is its length.
+correlation_ln_p = 0.5
+# An uncorrelated floor on each target's diagonal (SPEC_19 v0.5 section 2 item 2). The linearized operator
+# departs from the model by 0.1 to 0.3 K in rough detail, and the Matern matrix (condition number about 6e5)
+# gives its smallest modes an sd near 0.07 K, so that departure counted as much as the whole radio noise
+# (REPORT_19_step1_v04 section 5).
+floor_K = 0.3
+
+[[radio.target]]
+name = "31.2 S"
+run  = "lindal_iris_v_sl_ii_110"
+latitude_planetocentric_deg = -26.06095353762054
+observed = "occul_data/lindal/voyager2_egress.csv"
+
+[[radio.target]]
+name = "74.2 S"
+run  = "lindal_iris_v_sl_ii_110_74s"
+latitude_planetocentric_deg = -71.06804211320447
+observed = "occul_data/lindal/voyager1_ingress.csv"
+# Fig. 5's depth bias, 600 to 1200 mbar (REVIEW_15_step1): kelvins, top Pa, bottom Pa.
+extra_K = [[2.0, 60000.0, 120000.0]]
+
+[[radio.target]]
+name = "3.0 S"
+run  = "lindal_iris_v_sl_ii_110_03s"
+latitude_planetocentric_deg = -2.3736176374048172
+observed = "occul_data/lindal/voyager1_egress.csv"
+# Representativeness above 30 mbar, the wave layering SPEC_15 found: kelvins, top Pa, bottom Pa.
+extra_K = [[15.0, 0.0, 3000.0]]
+
+[gradient]
+# The operator is a uniform mean in ln p over half a scale height centered on each level, the retrievals'
+# vertical resolution (Conrath and Pirraglia 1983, Fig. 1); the thickness and quadrature are code (gradient.py).
+data = "occul_data/lindal/iris_temperatures.csv"
+# The window's width, so that neighboring gradients are nearly independent.
+sample_deg = 4.0
+# The balance sets no shear near the equator.
+equatorial_deg = 5.0
+# Where no dot lies this near the fit only bridges, such as -27.7 to -38.5 deg.
+gap_deg = 2.0
+
+[gradient.levels_Pa]
+# Printed level (mbar) and where it is placed; the top level's placement is SPEC_11's, 110 mbar.
+110 = 11000.0
+290 = 29000.0
+730 = 73000.0

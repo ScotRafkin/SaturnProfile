@@ -32,3 +32,6 @@ Claude outputs/
 # The author's working documents, kept outside git.
 docs/CONTROL_FILES.md
 docs/USER_GUIDE.md
+
+# A wind fit's working run directories (SPEC_19).
+fits/*/work*/
