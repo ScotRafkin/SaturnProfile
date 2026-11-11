@@ -1,0 +1,149 @@
+# CASSPIAN wind fit: hypothesis 4, the shear at the Voyager epoch under the general error budget (SPEC_21).
+# Read by casspian-wind-fit. Every amplitude, length, form and threshold is here with its basis; a source's own
+# errors are in its data (SPEC_21 section 1 items 5 and 10). The values are SPEC_21 section 2's first guesses,
+# ruled as proposed, to be revisited on results.
+
+[fit]
+name   = "voyager_fit_2"
+epoch  = "1981-08-26"   # the Lindal anchor's date; Voyager 1 is near-epoch (SPEC_17 section 0)
+output = "voyager_fit_2_wind.nc"
+repository_root = "../.."
+
+[base]
+# The reference wind is held at this run's: Sanchez-Lavega at 398 mbar. Its composition, Lindal's with true
+# molecular masses, is the one composition for every input (SPEC_19 section 1 item 6).
+run = "lindal_iris_v_sl_ii_110"
+
+[state]
+# Knots no farther apart than half of each correlation length (SPEC_21 section 1 item 3): 5 deg in latitude,
+# one scale height in ln p.
+latitude_step_deg = 2.5
+ln_p_step = 0.5
+bottom_Pa = 1.3e5
+top_Pa    = 20.0
+
+[prior]
+# Stated in temperature and carried to the shear by the model's balance (SPEC_21 section 1 item 1).
+# The temperature w is held at: the anchor's own profile, uniform in latitude (REVIEW_21_step0 ruling 3).
+temperature_profile = "occul_data/lindal/lindal_thermo.nc"
+# sigma_T(p) = 2 K (1 bar / p)^(1/2), capped at 15 K: meridional contrasts on isobars of a few K near the clouds,
+# 5 to 10 K near the tropopause, 10 to 15 K in the stratosphere (SPEC_21 section 2).
+sigma_T_K = 2.0
+sigma_T_reference_Pa = 1.0e5
+sigma_T_exponent = 0.5
+sigma_T_cap_K = 15.0
+# The jets' scale; IRIS resolves 4 deg. Matern 5/2, the least smooth form with a curvature.
+latitude_correlation_deg = 5.0
+latitude_form = "matern52"
+# The floor: at each latitude and level the length used is the larger of this one and the local deformation
+# radius, c / sqrt(f^2 + beta c), with c = N times the vertical length in height and N from the profile above.
+# A balanced structure cannot be narrower; narrower ones are waves (SPEC_21 v0.4 section 1 item 1a). It binds
+# near the equator, about 7 to 9 deg in the stratosphere for this profile.
+deformation_floor = true
+# One scale height, as SPEC_19.
+ln_p_correlation = 1.0
+ln_p_form = "matern52"
+
+[reference_wind]
+# Its own part of the state, held at zero spread until wind observations enter (SPEC_23).
+spread_ms = 0.0
+
+[representativeness]
+# sigma_rep(p) = 0.5 K (1 bar / p)^(1/2), capped at 15 K, for every observation made at one place (the radio
+# profiles), none for zonal means: about 1.5 K at 110 mbar, 5 K at 10 mbar, 15 K by 1 mbar, the size of the
+# layering in the Voyager profiles aloft. A vertically propagating wave conserving energy grows as (p_0/p)^(1/2)
+# (design note v0.6 section 4; SPEC_21 section 2).
+sigma_K = 0.5
+sigma_reference_Pa = 1.0e5
+sigma_exponent = 0.5
+sigma_cap_K = 15.0
+# Matern 3/2 over half a scale height, the layering's own scale (REVIEW_21_step0 ruling 4).
+correlation_ln_p = 0.5
+correlation_form = "matern32"
+
+[radio]
+# The radio's own error correlation: Matern 3/2 over half a scale height, as SPEC_19, with a 0.3 K floor for the
+# linearized operator's rough departure (SPEC_19 v0.5 section 2 item 2).
+correlation_ln_p = 0.5
+correlation_form = "matern32"
+floor_K = 0.3
+# Every radio profile, the reference included, is compared at the forward model's resolution: averaged in ln p into
+# the layers between the forward wind grid's nodes (0.05 decade, 0.115 in ln p), the grid the stability constraint
+# uses, one row per layer. The fit is not asked to use structure below what the forward run resolves, and a
+# profile's weight does not depend on how finely it is sampled: Lindal's 58 levels and the Voyager profiles' 300
+# give one row per layer alike (REPORT_21_step1_check5_diagnosis). The floor, uncorrelated, enters once per layer;
+# the code keeps a correlated form (floor_correlation_ln_p), unused.
+average_layers = true
+
+[radio.reference]
+# One reference anchor with its error shared by every target (design note v0.6 section 6). Lindal's kind T
+# carries no uncertainty and must not change, so his is the file beside it (REVIEW_21_step0).
+name = "36.3 N"
+latitude_planetocentric_deg = 30.80556842739218
+thermo = "occul_data/lindal/lindal_thermo.nc"
+uncertainty = "occul_data/lindal/lindal_temperature_uncertainty.csv"
+
+[[radio.target]]
+name = "31.2 S"
+run  = "lindal_iris_v_sl_ii_110"
+latitude_planetocentric_deg = -26.06095353762054
+thermo = "occul_data/lindal/voyager2_egress_thermo.nc"
+
+[[radio.target]]
+name = "74.2 S"
+run  = "lindal_iris_v_sl_ii_110_74s"
+latitude_planetocentric_deg = -71.06804211320447
+thermo = "occul_data/lindal/voyager1_ingress_thermo.nc"
+
+[[radio.target]]
+name = "3.0 S"
+run  = "lindal_iris_v_sl_ii_110_03s"
+latitude_planetocentric_deg = -2.3736176374048172
+thermo = "occul_data/lindal/voyager1_egress_thermo.nc"
+
+[gradient]
+# The operator is a uniform mean in ln p over half a scale height centered on each level, the retrievals'
+# vertical resolution (Conrath and Pirraglia 1983, Fig. 1); the thickness and quadrature are code (gradient.py).
+data = "occul_data/lindal/iris_temperatures.csv"
+# The data's own properties, read at ingest: the top level's range (SPEC_21 section 1 item 6).
+properties = "occul_data/lindal/iris_properties.toml"
+# The window's width, so that neighboring gradients are nearly independent.
+sample_deg = 4.0
+# Where no dot lies this near, the IRIS fit only bridges, and a bridge is not a measurement (REVIEW_21_step0
+# ruling 7). Nothing else is omitted.
+gap_deg = 2.0
+
+[gradient.levels_Pa]
+# Printed level (mbar) and where it is placed; the top level's placement is SPEC_11's, 110 mbar.
+110 = 11000.0
+290 = 29000.0
+730 = 73000.0
+
+[gradient.systematic]
+# IRIS's systematic part, sized by the consistency check (SPEC_21 section 1 item 7): correlated over 20 deg,
+# longer than the jets, so it spoils long integrals, not local gradients (SPEC_21 section 2). Gaussian, as the
+# candidate of SPEC_19.
+latitude_correlation_deg = 20.0
+form = "gaussian"
+
+[stability]
+# No delivered profile less stable than its source (SPEC_21 v0.5 section 1 item 1b): layers between the wind grid's
+# pressure nodes (0.115 in ln p), rows from the wind as the forward run sees it, the excess over R / c_p for normal
+# hydrogen held to no more than the anchor's own in the same layer, by a softened hinge. Not an observation: Huber's
+# rule and the consistency check leave it out.
+# sigma, in d ln T / d ln p: about 1.5 percent of kappa (0.34 near 1 bar). Over one layer it holds the temperature
+# difference to about 0.07 K at 130 K, tighter than any radio row, so a layer beyond its allowed excess is held near it.
+sigma = 0.005
+# width of the hinge, in d ln T / d ln p: equal to sigma, so a layer turns on over the same range of slope the
+# penalty holds it to, and a layer entering or leaving moves the solve by about one sigma, not a step.
+width = 0.005
+
+[robust]
+# Huber's rule on whitened residuals within each group (REVIEW_21_step0 ruling 5): a common choice, reported,
+# not tuned (SPEC_21 section 2).
+huber_threshold = 2.0
+
+[solve]
+tolerance_K = 0.1
+# A limit, not a target: the iteration ends at the tolerance.
+max_passes  = 20

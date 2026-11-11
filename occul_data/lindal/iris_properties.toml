@@ -1,0 +1,8 @@
+# CASSPIAN: properties of the IRIS temperatures in iris_temperatures.csv that are the data's own, read at
+# ingest by casspian-wind-fit (SPEC_21 section 1 item 6). Data in a text format; each value with its source.
+
+[level_range_Pa]
+# The top level's placement is uncertain: Lindal et al. (1985) and Conrath et al. (1984) label it 110 mbar,
+# Conrath and Pirraglia (1983) 150 mbar. The data are placed at 110 mbar (SPEC_11); this is the range the label
+# may take, read as uniform (REVIEW_21_step0 ruling 8).
+110 = [11000.0, 15000.0]

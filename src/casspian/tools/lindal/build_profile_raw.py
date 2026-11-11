@@ -23,7 +23,8 @@ transcription of Lindal's surfaces, then kind T and the manifest. Heights (rulin
   `refrac.anchor.freeze_anchor` on this profile's label and kind D, so the heights and the reduction
   agree. The integral is the trapezoid in `ln p`, repeated once with `g` at the first pass's heights.
 `refrac` uses only `h - h_ref` (REPORT_20_preexecution section 1.2). sigma_T is NaN in kind T
-(ruling 4); the traced bars stay in the raw bundle.
+(ruling 4) until SPEC_21: from it, kind T carries the uncertainty the transcription's `[uncertainty]` table
+states (SPEC_21 section 1 item 5). The traced bars also stay in the raw bundle.
 
 Manuscript equations implemented: none. No physical value appears in this module.
 """
@@ -209,6 +210,7 @@ def build_inputs(control_path, section: str = "stage_two"):
         source = dict(raw["scalars/source"].attrs)
         latitude = dict(raw["scalars/latitude"].attrs)
         profile = dict(raw["scalars/profile"].attrs)
+        uncertainty = dict(raw["scalars/uncertainty"].attrs)
     finally:
         raw.close()
 
@@ -250,7 +252,7 @@ def build_inputs(control_path, section: str = "stage_two"):
                   f"r0 {anchor.r0_m:.1f} m")
 
     nan = np.full(pressure.shape, np.nan)
-    none = "the trace's half bars are in the raw bundle; NaN here, as SPEC_18 (REVIEW_20_step0 ruling 4)"
+    sigma_T, sigma_method = profile_uncertainty(pressure, uncertainty, raw_path.parent)
     thermo = xr.Dataset({
         "pressure_Pa": (("level",), pressure,
                         pi.attrs("Pa", "pressure of the source profile", "derived", value_source=profile["value_source"],
@@ -264,9 +266,9 @@ def build_inputs(control_path, section: str = "stage_two"):
         "temperature_K": (("level",), temperature,
                           pi.attrs("K", "temperature of the source profile", "derived",
                                    value_source=profile["value_source"])),
-        "temperature_uncertainty_K": (("level",), nan.copy(),
-                                      pi.attrs("K", "uncertainty on temperature", "derived", uncertainty_kind="stated",
-                                               uncertainty_method=none)),
+        "temperature_uncertainty_K": (("level",), sigma_T,
+                                      pi.attrs("K", "uncertainty on temperature", "derived", uncertainty_kind="1sigma",
+                                               uncertainty_method=sigma_method)),
         "height_m": (("level",), height,
                      pi.attrs("m", "altitude above the datum, along the local vertical", "derived",
                               value_source=height_source)),
@@ -309,4 +311,67 @@ def main_inputs(argv=None) -> int:
     args = parser.parse_args(argv)
     for written in build_inputs(args.control, args.section):
         print(f"ready {written}")
+    return 0
+
+
+# ---- each profile's uncertainty (SPEC_21 section 1 item 5, REVIEW_21_step0) --------------------------------
+
+def sigma_curve(trace_csv: Path):
+    """A traced sigma_T curve, `(pressure_Pa, sigma_K)` in increasing pressure, from the rows that carry one."""
+    table = read_trace(Path(trace_csv))
+    good = np.isfinite(table["temperature_uncertainty_K"])
+    return table["pressure_Pa"][good], table["temperature_uncertainty_K"][good]
+
+
+def on_curve(pressure_Pa, curve) -> np.ndarray:
+    """The curve at `pressure_Pa`, linear in `ln p`; beyond the drawn bars, the nearest bar (REVIEW_21_step0 ruling 6)."""
+    p, s = curve
+    return np.interp(np.log(np.asarray(pressure_Pa, dtype="float64")), np.log(p), s)
+
+
+def profile_uncertainty(pressure_Pa, table: dict, directory: Path):
+    """The temperature uncertainty a scalars transcription's `[uncertainty]` table states: a traced curve times a
+    factor, and one band added in quadrature. Returns the values and the method in words."""
+    curve = sigma_curve(directory / str(table["curve"]))
+    sigma = float(table["factor"]) * on_curve(pressure_Pa, curve)
+    method = f"{table['curve_source']}, times {float(table['factor']):g} ({table['factor_source']})"
+    if "added_K" in table:
+        p = np.asarray(pressure_Pa, dtype="float64")
+        band = (p >= float(table["added_top_Pa"])) & (p <= float(table["added_bottom_Pa"]))
+        sigma = np.where(band, np.hypot(sigma, float(table["added_K"])), sigma)
+        method += (f"; {float(table['added_K']):g} K added in quadrature from {float(table['added_top_Pa']) / 100:g} to "
+                   f"{float(table['added_bottom_Pa']) / 100:g} mbar ({table['added_source']})")
+    return sigma, method + "; beyond the drawn bars, the nearest bar"
+
+
+UNCERTAINTY_TOOL = "casspian-anchor-uncertainty"
+
+
+def write_anchor_uncertainty(thermo_path, curve_csv, factor, output, basis) -> Path:
+    """An anchor's temperature uncertainty on its own levels, as a data file beside its kind T, for an anchor whose
+    registered kind T must not change (Lindal's, REVIEW_21_step0). Columns pressure_mbar, temperature_uncertainty_K."""
+    handle = cio.read(Path(thermo_path), "thermo")
+    try:
+        pressure = np.asarray(handle["pressure_Pa"].values, dtype="float64")
+    finally:
+        handle.close()
+    sigma = float(factor) * on_curve(pressure, sigma_curve(Path(curve_csv)))
+    lines = [f"# {line}" for line in basis.splitlines()]
+    lines += [f"# Written by {UNCERTAINTY_TOOL} from {Path(curve_csv).name} times {float(factor):g}, on the levels of "
+              f"{Path(thermo_path).name}; beyond the drawn bars, the nearest bar.", "pressure_mbar,temperature_uncertainty_K"]
+    lines += [f"{p / 100.0:.10g},{s:.4f}" for p, s in zip(pressure, sigma)]
+    Path(output).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return Path(output)
+
+
+def main_uncertainty(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog=UNCERTAINTY_TOOL,
+                                     description="Write an anchor's temperature uncertainty beside its kind T.")
+    parser.add_argument("thermo", help="the anchor's kind T, whose levels the file takes")
+    parser.add_argument("curve", help="a traced profile carrying the sigma_T curve")
+    parser.add_argument("output", help="the CSV to write")
+    parser.add_argument("--factor", type=float, default=1.0)
+    parser.add_argument("--basis", required=True, help="the basis, written as the file's comment")
+    args = parser.parse_args(argv)
+    print(f"wrote {write_anchor_uncertainty(args.thermo, args.curve, args.factor, args.output, args.basis)}")
     return 0

@@ -37,6 +37,13 @@ ammonia_bundle = "lindal_raw.nc"
 output         = "voyager2_egress_raw.nc"
 value_source   = "Lindal et al. (1985) Fig. 4, traced (SPEC_15); pressures from Lindal's altitudes (SPEC_15)"
 
+[uncertainty]
+# SPEC_21 section 1 item 5: this profile's own temperature uncertainty, written into its kind T at ingest.
+curve         = "../voyager2_egress.csv"
+curve_source  = "Lindal et al. (1985) Fig. 4 sigma_T, traced on this profile (SPEC_15)"
+factor        = 1.0
+factor_source = "Lindal's own curve for this profile"
+
 # Lindal's surfaces, transcribed from lindal_scalars.toml as Kliore's are, so that this profile's kind D
 # carries its own name and lindal_geodesy.nc is never written.
 [geodesy]

@@ -1,0 +1,18 @@
+# CASSPIAN section (SPEC_20 section 2 deliverable 3): the Voyager 1 ingress anchor transferred to every latitude under
+# hypothesis 4. Read by casspian-section. The base run supplies the namelist and the inputs, its wind
+# voyager_fit_2's; only the anchor and the target change.
+
+[section]
+name              = "voyager1_ingress_voyager_fit_2"
+repository_root   = "../.."
+base_run          = "lindal_voyager_fit_2"
+anchor_slug       = "voyager1_ingress"
+anchor            = "occul_data/lindal/voyager1_ingress_refractivity.nc"
+# The run's composition must be on the anchor's levels: the anchor's own, the same mixture as the base
+# run's (94/6 with Lindal's ammonia, REVIEW_20_step0 ruling 2), uniform in latitude.
+composition       = "occul_data/lindal/voyager1_ingress_composition.nc"
+# Every 2.5 deg planetocentric (SPEC_20 section 2 deliverable 2). The wind file stops at 90 deg and a
+# march's mesh reaches one spacing past its target, so the last latitude is 87.5 (REVIEW_20_step0).
+latitude_step_deg  = 2.5
+latitude_limit_deg = 87.5
+output            = "voyager1_ingress_voyager_fit_2_section.nc"

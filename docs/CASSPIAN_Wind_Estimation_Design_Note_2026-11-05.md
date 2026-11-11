@@ -1,6 +1,6 @@
 # CASSPIAN design note: the best-guess wind
 
-Reviewing agent and author, 5 November 2026. **Version 0.5. Status: accepted by the author, 5 November 2026; v0.5 amends §5 (SPEC_19 §4).**
+Reviewing agent and author, 5 November 2026. **Version 0.9. Status: accepted by the author, 5 November 2026; v0.5 amends §5 (SPEC_19 §4); v0.6, the general error budget (accepted, 9 November 2026), amends §4, §5, §6 and §11; v0.7 adds two physical limits to §5.**
 Companion to `CASSPIAN_Seasonal_Design_Note.md`, whose §5 it builds on and whose §6 it amends
 (§6 here).
 
@@ -85,28 +85,63 @@ The weights are the errors, so the errors decide the answer.
     IRIS shapes everything within them.
 
   The fit does this by itself once the correlations are stated; no hand-built rule is needed.
-- **Representativeness.** What a zonal-mean balanced wind cannot carry (waves, local anomalies)
-  enters as error, not as signal. The equatorial profiles above 30 mbar are the present case.
+- **No rule for one dataset (v0.6, author).** Every rule below applies by what an observation is
+  and where it is, never by its name. What is particular to one source (its authors' reliability
+  statement, a known bias in one figure, an uncertain level) is put into that source's own error
+  at ingest, in the source-specific layer, as the tools already separate them.
+- **Representativeness (v0.6).** What a zonal, balanced wind cannot carry (waves, eddies, anything
+  that varies in longitude or time) enters as error, not signal. It is one error `σ_rep(p)` for
+  every observation made at one place (a radio profile), none for a zonal mean (IRIS, CIRS zonal
+  means). Its shape is physical: a vertically propagating wave conserving energy grows as
+  `(p_0 / p)^(1/2)` until it saturates, so `σ_rep = σ_0 (p_0 / p)^(1/2)`, capped. It replaces the
+  hand-set equatorial term of SPEC_19.
+- **An uncertain level (v0.6).** Where a source's level is uncertain (IRIS's top level is 110 mbar to
+  Lindal, 150 to Conrath and Pirraglia), the observation's error includes its operator's change
+  across that uncertainty.
+- **Systematic parts are sized by the consistency check (v0.6).** For any observation group whose
+  weighted misfit exceeds its expected value, a systematic term correlated over a long distance is
+  sized to bring it to that value. Being random by default (§11 item 3) is the starting point, not
+  a ruling that the check cannot change.
+- **Scales matched (v0.9, author).** Observations are compared with the model at the forward model's
+  own resolution: each profile is averaged into layers between the forward wind grid's nodes, and the
+  delivered profile is taken on the same layers. Structure finer than the model can represent never
+  pulls the fit, and a profile's weight stops growing with how finely it was sampled. The stability
+  constraint uses the same layers.
+- **Robust weighting (v0.6).** An observation whose normalized misfit far exceeds its stated error is
+  downweighted by one rule (Huber's), so a true outlier cannot drag the fit; the fit reports which
+  were and by how much.
 - **Model error.** The model's own approximations (the equatorial bridge, 0.6 to 0.9 K) take their
   share as error before the wind takes the rest.
 - **Where the numbers live.** An error that code reads is a value in a data file or a data
-  property file, with its basis in a comment. Nothing else is a key.
+  property file, with its basis in a comment. Nothing else is a key. Every amplitude, length and
+  correlation form is such an input, set from physics first, varied by the Monte Carlo, and
+  estimated from data when data allow (v0.6).
 
 ## 5. The prior
 
 - **The prior carries no observation (v0.5).** Its mean is zero shear and the held reference wind,
-  or later an imposed seasonal cycle. Every dataset, IRIS included, is an observation term (§3), so
-  nothing counts twice. The prior supplies smoothness and settles what the data leave open.
-- **Its error covariance `B`** has an amplitude and correlation lengths in latitude, in `ln p` and
-  in time.
-  - The vertical length makes IRIS's influence fade away from its levels over about the
-    retrieval's own thickness; above 110 mbar and below 730 mbar the radio and the prior carry
-    the shear alone.
-  - The time correlation (§7) is what lets anchors close in epoch inform each other's wind.
-  - A smooth prior also settles which of the many path-equivalent corrections the fit takes, and
-    keeps it from fitting noise with unphysical winds.
-- **The equatorial band** keeps its own treatment: there the balance sets no shear from a
-  temperature gradient, and the prior and the wind observations carry it.
+  or later a climatology for the date (the seasonal cycle, the equatorial oscillation). Every
+  dataset, IRIS included, is an observation term (§3), so nothing counts twice. The prior supplies
+  smoothness and settles what the data leave open.
+- **The state is the wind; its prior is stated in temperature (v0.6).** The shear's prior covariance
+  is not given directly. A temperature-anomaly covariance on isobars is given (an amplitude `σ_T(p)`
+  and correlation lengths in latitude, `ln p` and time), and the model's own linearized balance
+  carries it forward to the shear. No inversion is needed. Where rotation is strong the implied
+  shear is small; near the equator, where the balance ties shear to the curvature of temperature,
+  it is large, as the physics requires. The temperature field must be smooth enough to have that
+  curvature. One rule then covers every latitude: the equatorial band needs no treatment of its own,
+  and a balanced equatorial oscillation is within the prior's reach.
+- **The reference wind has its own prior,** since the balance fixes only the shear. It is held (zero
+  spread) until wind observations enter.
+- **Two physical limits (v0.7).** The prior's latitude length is never shorter than the local
+  deformation radius, since narrower structures are not balanced (it binds near the equator, where the
+  balance alone would admit any curvature). And no delivered profile may be less stable than its source
+  allows: a smooth one-sided constraint at the forward model's resolution, on the fit and on every
+  Monte Carlo member (v0.8). A clip on the shear is not used:
+  it would stop a runaway without being right.
+- **The basis follows the lengths.** Its knots resolve the correlation lengths (no more than half of
+  each); they are not tuned separately.
+- **The time correlation (§7)** is what lets anchors close in epoch inform each other's wind.
 
 ## 6. Anchors: every radio profile is one
 
@@ -127,6 +162,10 @@ it is an anchor like any other.
 - **A radio profile not yet reduced to kind N** enters the tool as a target of the reduced anchors
   (the present Voyager 2 egress and Voyager 1 profiles). It enters once, and leave-one-out
   withholds it from wherever it is.
+- **One reference, every profile (v0.6).** Fitting every profile against one reference anchor, with
+  that anchor's error shared across them, carries the same information as every pair once, because
+  path integrals add. So the fit picks any one same-epoch anchor as its reference, and the answer
+  must not depend on which: that is a check, not a choice.
 
 ## 7. Time
 
@@ -225,7 +264,9 @@ Each is one specification or a few.
    for Saturn first, replaced by the propagator's own fitted values once it exists.
 3. **The IRIS error model** is random by default. A systematic part is added only where comparison
    with independent observations shows a bias. The fit's consistency check is that comparison; the
-   hypothesis 3 specification sets how it sizes the systematic term.
+   hypothesis 3 specification sets how it sizes the systematic term. **Amended (v0.6):** the rule is
+   general (§4); for IRIS the check shows a bias at 110 mbar (SPEC_19, SPEC_20), so its systematic
+   term is sized from now on.
 4. **`p_ref` is a Monte Carlo parameter.** Each member draws its own reference level, and its wind
    is rebuilt with it in the wind tool (§9 step 2). The range and distribution, by default uniform in
    `ln p` from the upper haze to the ammonia cloud top, come from the cloud-structure literature
@@ -244,3 +285,15 @@ Each is one specification or a few.
   default, `p_ref` a Monte Carlo parameter).
 - v0.5, 5 November 2026: §5, the prior carries no observation; IRIS enters as an observation only
   (SPEC_19 §4).
+- v0.6, 9 November 2026 (accepted): the general error budget. §4, no rule for one dataset;
+  representativeness by pressure for point observations; uncertain levels; systematic parts sized
+  by the consistency check; robust weighting; every amplitude, length and form an input. §5, the
+  shear prior stated in temperature and carried by the balance; the reference wind's own prior;
+  the basis follows the lengths. §6, one reference anchor is equivalent to every pair, and the
+  answer must not depend on it. §11 item 3 amended.
+- v0.7, 9 November 2026: §5, the deformation-radius floor and the no-superadiabatic constraint
+  (SPEC_21 v0.4).
+- v0.8, 10 November 2026: §5, the stability constraint relative to the source and at the forward
+  model's resolution (SPEC_21 v0.5).
+- v0.9, 10 November 2026: §4, observations compared at the forward model's resolution (SPEC_21,
+  check 5 diagnosis).

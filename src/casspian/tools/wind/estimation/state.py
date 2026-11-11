@@ -80,6 +80,17 @@ class Basis:
                          + edge_low[j] * np.minimum(x - low, 0.0) + edge_high[j] * np.maximum(x - high, 0.0))
         return out
 
+    def x_matrix_forward(self, pressure_Pa, nodes_Pa):
+        """The shear as the forward run sees it, `(point, n_x)`: the wind on the wind grid's pressure nodes, linear
+        in `ln p` between them, so `du / dln p` is the node difference over the cell (`lib.windfield`, decision L).
+        A point on a node takes the cell to higher pressure, as `WindField._cell` does. SPEC_21 v0.5 section 1
+        item 1b."""
+        nodes = np.sort(np.asarray(nodes_Pa, dtype="float64"))
+        x_nodes = np.log(nodes)
+        k = np.clip(np.searchsorted(x_nodes, np.log(np.atleast_1d(pressure_Pa)), side="right") - 1, 0, nodes.size - 2)
+        integral = self.x_integral(nodes)
+        return (integral[k + 1] - integral[k]) / (x_nodes[k + 1] - x_nodes[k])[:, None]
+
     def greville(self):
         """The coefficients' abscissae, where the prior's distances are taken: (latitude, ln p)."""
         lat = np.array([self.t_lat[i + 1:i + DEGREE + 1].mean() for i in range(self.t_lat.size - DEGREE - 1)])

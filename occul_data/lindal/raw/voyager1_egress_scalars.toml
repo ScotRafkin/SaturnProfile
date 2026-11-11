@@ -42,6 +42,13 @@ ammonia_bundle = "lindal_raw.nc"
 output         = "voyager1_egress_raw.nc"
 value_source   = "Lindal et al. (1985) Fig. 6, traced (SPEC_15)"
 
+[uncertainty]
+# SPEC_21 section 1 item 5: this profile's own temperature uncertainty, written into its kind T at ingest.
+curve         = "../voyager2_egress.csv"
+curve_source  = "Lindal et al. (1985) Fig. 4 sigma_T, traced on the Voyager 2 egress (SPEC_15), at this profile's pressures"
+factor        = 2.0
+factor_source = "Lindal p. 1139: 'We consequently regard the Voyager 1 profiles as less reliable than the Voyager 2 profiles'; the factor of 2 is the reviewing agent's judgment (SPEC_21 section 2)"
+
 # Lindal's surfaces, transcribed from lindal_scalars.toml as Kliore's are, so that this profile's kind D
 # carries its own name and lindal_geodesy.nc is never written.
 [geodesy]

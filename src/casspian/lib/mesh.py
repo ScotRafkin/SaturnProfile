@@ -34,6 +34,10 @@ __all__ = ["Mesh", "Column", "build_mesh", "column", "build_columns", "stage_geo
 #: The sides `extend` names. The specification says "extended on that side by what the curve
 #: needs"; a curve `Phi_k(phi)` can run off either end of either axis, so all four are named.
 SIDES = ("south", "north", "below", "above")
+#: A uniform latitude node this close to a required latitude, as a fraction of the spacing, is that latitude
+#: computed another way (a rounding difference), not a node of its own: about 1e-9 rad at the usual spacing,
+#: far above rounding (1e-17) and far below any spacing a run uses.
+SAME_NODE_FRACTION = 1.0e-6
 
 
 @dataclass(frozen=True)
@@ -158,6 +162,13 @@ def build_mesh(required_latitude_rad, anchor_geopotential_m2s2, latitude_spacing
     low, high = float(required[0]) - latitude_spacing, float(required[-1]) + latitude_spacing
     steps = int(np.ceil((high - low) / latitude_spacing))
     uniform = low + latitude_spacing * np.arange(steps + 1)
+    # A required latitude that falls on a uniform node, computed the two ways, can differ from it by a
+    # rounding error, and both would be kept: two nodes 1e-17 rad apart, across which every latitude
+    # difference of the mesh divides rounding by nothing, which held the section's outer loop at a floor
+    # of 1e-6 (REVIEW_21_step1_preliminary). Such a uniform node is the required one and is dropped; the
+    # required latitude stays exact.
+    distance = np.min(np.abs(uniform[:, None] - required[None, :]), axis=1)
+    uniform = uniform[distance > SAME_NODE_FRACTION * latitude_spacing]
     latitude = np.unique(np.concatenate([uniform, required]))
 
     # One anchor's Phi_k, or a list of them: M anchors each bring their own levels.

@@ -34,27 +34,29 @@ def latitude(slug) -> float:
     return float(root["latitude_planetocentric_deg"])
 
 
-def name(anchor, target) -> str:
-    return f"{anchor}_to_{ANCHORS[target]}"
+def name(anchor, target, suffix="") -> str:
+    return f"{anchor}_to_{ANCHORS[target]}{suffix}"
 
 
-def runs() -> dict:
-    """`{(anchor, target): run name}` for every pair of the matrix."""
+def runs(lindal_runs=None, suffix="") -> dict:
+    """`{(anchor, target): run name}` for every pair of the matrix. SPEC_21 passes hypothesis 4's Lindal runs and
+    a suffix for the others' names."""
+    lindal_runs = lindal_runs or LINDAL_RUNS
     out = {}
     for anchor in ANCHORS:
         for target in ANCHORS:
             if anchor != target:
-                out[(anchor, target)] = LINDAL_RUNS[target] if anchor == "lindal" else name(anchor, target)
+                out[(anchor, target)] = lindal_runs[target] if anchor == "lindal" else name(anchor, target, suffix)
     return out
 
 
-def make(pair):
+def make(pair, base=BASE, suffix="", hypothesis="hypothesis 3"):
     anchor, target = pair
-    run = name(anchor, target)
+    run = name(anchor, target, suffix)
     directory = Path("forward") / run
     if directory.exists():
         shutil.rmtree(directory)
-    new_run.new_run(run, BASE)
+    new_run.new_run(run, base)
     namelist = directory / f"{run}.toml"
     text = namelist.read_text(encoding="utf-8")
     text = re.sub(r'(?m)^slug\s*=.*$', f'slug   = "{anchor}"', text)
